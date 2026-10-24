@@ -143,6 +143,16 @@ export interface LabVariant {
   error?: string
   costUsd?: number
   durationMs?: number
+  /** Phase 3: what produced this run's harness. Hidden from the renderer until the decision. */
+  role?: LabVariantRole
+  /** Phase 3: revealed name ("Base", "INV 1", "Composto", "Checkpoint 2"); `label` stays neutral. */
+  roleLabel?: string
+  /** Phase 3: the stage whose harness this variant runs. */
+  stageId?: string
+  /** Phase 3: sequential step (1..K). */
+  step?: number
+  /** Phase 3: part of the blind-selection pool (sequential mode leaves the INV/DOM runs out). */
+  inPool?: boolean
 }
 
 export interface LabRound {
@@ -163,6 +173,59 @@ export interface LabRound {
   }
   adoptedSnapshotId?: string
   reflectionId?: string
+  /** Phase 3: how the variants were produced (absent = manual). */
+  mode?: LabMode
+  /** Phase 3: k (parallel width) or K (sequential steps). */
+  depth?: number
+  /** Phase 3: model of the proposer/composer calls (absent = settings default). */
+  proposerModel?: string
+  /** Phase 3: optional budget; the round stops once runs + calls cost more than this. */
+  costCapUsd?: number
+  /** Phase 3: proposer and composer stages, in creation order. */
+  stages?: LabStage[]
+}
+
+// ---- Lab (phase 3: automatic proposers) ----
+
+export type LabMode = 'manual' | 'parallel' | 'sequential'
+export type LabVariantRole = 'base' | 'manual' | 'inv' | 'dom' | 'compose'
+
+/** One proposer (INV/DOM) or composer call that edits a copy of the current harness. */
+export interface LabStage {
+  /** "inv1", "dom1", "agg", "c1"… */
+  id: string
+  dim: 'INV' | 'DOM' | 'COMPOSE'
+  /** Sequential step (1..K); undefined in parallel mode. */
+  step?: number
+  status: 'pending' | 'running' | 'done' | 'error'
+  /** Proposer calls made (an invalid proposal gets one retry). */
+  attempts: number
+  /** The stage left the harness it was editing unchanged (KEEP_BASE). */
+  keptBase?: boolean
+  /** Both attempts were invalid or failed: the stage inherited the harness it was editing. */
+  fellBack?: boolean
+  error?: string
+  /** `<notes>` of the proposer/composer: one line per decision. */
+  notes?: string
+  /** Resulting harness. */
+  tree?: HarnessTree
+  /** The harness the stage started from (base or current checkpoint). */
+  parentTree?: HarnessTree
+  costUsd?: number
+  durationMs?: number
+  startedAt?: number
+  finishedAt?: number
+  /** Variant that runs this stage's harness. */
+  variantId?: string
+}
+
+/** Width k of the automatic parallel mode and steps K of the sequential mode. */
+export const LAB_PARALLEL_MAX = 2
+export const LAB_SEQUENTIAL_MAX = 3
+
+/** Task executions and proposer/composer calls of an automatic round (before retries). */
+export function labRoundPlan(mode: Exclude<LabMode, 'manual'>, depth: number): { executions: number; calls: number } {
+  return mode === 'parallel' ? { executions: 2 + 2 * depth, calls: 2 * depth + 1 } : { executions: 1 + 3 * depth, calls: 3 * depth }
 }
 
 /** Lab rounds: base + 1..MAX_LAB_VARIANTS variants. */

@@ -1,9 +1,18 @@
 import { useEffect, useMemo, useState } from 'react'
 import type { PermissionMode } from '@shared/contracts'
-import { DEFAULT_LAB_VARIANTS, isHarnessPath, MAX_LAB_VARIANTS, type HarnessTree } from '@shared/harness'
-import type { LabPrepareInfo } from '@shared/features/lab'
+import {
+  DEFAULT_LAB_VARIANTS,
+  isHarnessPath,
+  LAB_PARALLEL_MAX,
+  LAB_SEQUENTIAL_MAX,
+  labRoundPlan,
+  MAX_LAB_VARIANTS,
+  type HarnessTree,
+  type LabMode
+} from '@shared/harness'
+import type { LabPrepareInfo, LabRoundView } from '@shared/features/lab'
 import { HarnessTreeEditor } from '../harness'
-import { errorMessage, labApi } from './labApi'
+import { errorMessage, formatCost, labApi } from './labApi'
 import { treeChanges } from './treeDiff'
 import styles from './lab.module.css'
 
@@ -14,6 +23,26 @@ const MODES: { value: PermissionMode; label: string }[] = [
   { value: 'auto', label: 'Automático' },
   { value: 'bypassPermissions', label: 'Ignorar permissões' }
 ]
+
+const ROUND_MODES: { value: LabMode; label: string; hint: string }[] = [
+  { value: 'manual', label: 'Manual', hint: 'Você escreve as variantes; cada uma roda uma vez, ao lado da base.' },
+  {
+    value: 'parallel',
+    label: 'Automático · paralelo',
+    hint: 'A base roda uma vez; k proponentes INV (como o agente trabalha) e k DOM (o que um especialista sabe) propõem harnesses a partir dessa execução; cada proposta roda; um compositor monta um harness a partir de toda a evidência; ele roda; seleção cega entre base, propostas e composto.'
+  },
+  {
+    value: 'sequential',
+    label: 'Automático · sequencial',
+    hint: 'A base roda uma vez; em cada passo um INV e um DOM editam o checkpoint atual com todo o histórico, ambos rodam, o compositor produz o próximo checkpoint e ele roda (é a evidência do passo seguinte); seleção cega entre base e checkpoints.'
+  }
+]
+
+/** Mean of the known costs, or undefined without data. */
+function mean(xs: (number | undefined)[]): number | undefined {
+  const known = xs.filter((x): x is number => x !== undefined && x > 0)
+  return known.length ? known.reduce((a, b) => a + b, 0) / known.length : undefined
+}
 
 interface Draft {
   key: number
@@ -90,7 +119,18 @@ function QuickTreeEditor({ tree, onChange }: { tree: HarnessTree; onChange(tree:
   )
 }
 
-export function NewRound({ cwd, onCreated, onCancel }: { cwd: string; onCreated(roundId: string): void; onCancel(): void }) {
+export function NewRound({
+  cwd,
+  history,
+  onCreated,
+  onCancel
+}: {
+  cwd: string
+  /** Earlier rounds of this project, for the cost estimate. */
+  history: LabRoundView[]
+  onCreated(roundId: string): void
+  onCancel(): void
+}) {
   const [info, setInfo] = useState<LabPrepareInfo>()
   const [error, setError] = useState<string>()
   const [task, setTask] = useState('')
@@ -100,6 +140,10 @@ export function NewRound({ cwd, onCreated, onCancel }: { cwd: string; onCreated(
   const [editing, setEditing] = useState<number>()
   const [quick, setQuick] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [roundMode, setRoundMode] = useState<LabMode>('manual')
+  const [depth, setDepth] = useState(1)
+  const [proposerModel, setProposerModel] = useState('')
+  const [cap, setCap] = useState('')
 
   useEffect(() => {
     labApi.prepare(cwd).then(
@@ -147,6 +191,24 @@ export function NewRound({ cwd, onCreated, onCancel }: { cwd: string; onCreated(
     })
   }
 
+  const auto = roundMode !== 'manual'
+  const capValue = cap.trim() ? Number(cap.replace(',', '.')) : undefined
+  const capInvalid = capValue !== undefined && !(capValue > 0)
+
+  const chooseMode = (m: LabMode) => {
+    setRoundMode(m)
+    setDepth(m === 'sequential' ? 2 : 1)
+  }
+
+  const estimate = useMemo(() => {
+    const plan = roundMode === 'manual' ? { executions: 1 + drafts.length, calls: 0 } : labRoundPlan(roundMode, depth)
+    const runCost = mean(history.flatMap((r) => r.variants.map((v) => v.costUsd)))
+    const callCost = mean(history.flatMap((r) => (r.stages ?? []).map((s) => s.costUsd)))
+    const usd =
+      runCost !== undefined && (plan.calls === 0 || callCost !== undefined) ? plan.executions * runCost + plan.calls * (callCost ?? 0) : undefined
+    return { ...plan, usd }
+  }, [roundMode, depth, drafts.length, history])
+
   const submit = async () => {
     setBusy(true)
     setError(undefined)
@@ -156,11 +218,17 @@ export function NewRound({ cwd, onCreated, onCancel }: { cwd: string; onCreated(
         task,
         model: model || undefined,
         permissionMode: mode,
-        variants: drafts.map((d) => ({
-          label: d.label,
-          tree: d.tree,
-          snapshotId: d.origin === 'base' ? undefined : d.origin
-        }))
+        mode: roundMode,
+        depth: auto ? depth : undefined,
+        proposerModel: auto ? proposerModel || undefined : undefined,
+        costCapUsd: capValue,
+        variants: auto
+          ? []
+          : drafts.map((d) => ({
+              label: d.label,
+              tree: d.tree,
+              snapshotId: d.origin === 'base' ? undefined : d.origin
+            }))
       })
       onCreated(round.id)
     } catch (e) {
@@ -195,7 +263,8 @@ export function NewRound({ cwd, onCreated, onCancel }: { cwd: string; onCreated(
   }
 
   const baseFiles = Object.keys(base).length
-  const canSubmit = !busy && task.trim().length > 0 && drafts.length > 0
+  const canSubmit = !busy && task.trim().length > 0 && (auto || drafts.length > 0) && !capInvalid
+  const maxDepth = roundMode === 'parallel' ? LAB_PARALLEL_MAX : LAB_SEQUENTIAL_MAX
 
   return (
     <div className={styles.detail}>
@@ -213,9 +282,21 @@ export function NewRound({ cwd, onCreated, onCancel }: { cwd: string; onCreated(
         />
       </label>
 
+      <div className={styles.field}>
+        <span className={styles.label}>Modo</span>
+        <div className={styles.segmented}>
+          {ROUND_MODES.map((m) => (
+            <button key={m.value} className={roundMode === m.value ? styles.segActive : ''} onClick={() => chooseMode(m.value)}>
+              {m.label}
+            </button>
+          ))}
+        </div>
+        <p className={styles.hint}>{ROUND_MODES.find((m) => m.value === roundMode)?.hint}</p>
+      </div>
+
       <div className={styles.fieldRow}>
         <label className={styles.field}>
-          <span className={styles.label}>Modelo</span>
+          <span className={styles.label}>{auto ? 'Modelo das execuções' : 'Modelo'}</span>
           <select className="input" value={model} onChange={(e) => setModel(e.target.value)}>
             {MODELS.map((m) => (
               <option key={m} value={m}>
@@ -234,16 +315,63 @@ export function NewRound({ cwd, onCreated, onCancel }: { cwd: string; onCreated(
             ))}
           </select>
         </label>
+        {auto ? (
+          <label className={styles.field}>
+            <span className={styles.label}>{roundMode === 'parallel' ? 'Largura (k)' : 'Passos (K)'}</span>
+            <select className="input" value={depth} onChange={(e) => setDepth(Number(e.target.value))}>
+              {Array.from({ length: maxDepth }, (_, i) => i + 1).map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <label className={styles.field}>
+            <span className={styles.label}>Variantes (K)</span>
+            <select className="input" value={drafts.length} onChange={(e) => setCount(Number(e.target.value))}>
+              {Array.from({ length: MAX_LAB_VARIANTS }, (_, i) => i + 1).map((k) => (
+                <option key={k} value={k}>
+                  {k}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+      </div>
+      <div className={styles.fieldRow}>
+        {auto && (
+          <label className={styles.field}>
+            <span className={styles.label}>Modelo dos proponentes</span>
+            <select className="input" value={proposerModel} onChange={(e) => setProposerModel(e.target.value)}>
+              {MODELS.map((m) => (
+                <option key={m} value={m}>
+                  {m || 'Padrão das configurações'}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
         <label className={styles.field}>
-          <span className={styles.label}>Variantes (K)</span>
-          <select className="input" value={drafts.length} onChange={(e) => setCount(Number(e.target.value))}>
-            {Array.from({ length: MAX_LAB_VARIANTS }, (_, i) => i + 1).map((k) => (
-              <option key={k} value={k}>
-                {k}
-              </option>
-            ))}
-          </select>
+          <span className={styles.label}>Teto de custo (US$, opcional)</span>
+          <input className="input" inputMode="decimal" placeholder="sem teto" value={cap} onChange={(e) => setCap(e.target.value)} />
         </label>
+      </div>
+      <div className={styles.estimate}>
+        <strong>Estimativa:</strong> {estimate.executions} {estimate.executions === 1 ? 'execução' : 'execuções'} da tarefa
+        {estimate.calls > 0 && (
+          <>
+            {' '}
+            + {estimate.calls} chamadas de proponente/compositor (até {estimate.calls * 2} se propostas inválidas pedirem nova
+            tentativa)
+          </>
+        )}
+        .{estimate.usd !== undefined && <> Pelo custo médio das rodadas anteriores deste projeto: ≈ {formatCost(estimate.usd)}.</>}
+        {capInvalid ? (
+          <span className={styles.warnText}> O teto precisa ser um valor maior que zero.</span>
+        ) : capValue !== undefined ? (
+          <> A rodada é interrompida se o gasto (execuções + chamadas) passar de {formatCost(capValue)}.</>
+        ) : null}
       </div>
       <p className={styles.hint}>
         Pedidos de permissão param a variante até você responder na sessão dela.
@@ -262,7 +390,8 @@ export function NewRound({ cwd, onCreated, onCancel }: { cwd: string; onCreated(
         </div>
       </div>
 
-      {drafts.map((d, i) => {
+      {!auto &&
+        drafts.map((d, i) => {
         const diff = changes[i]
         const open = editing === d.key
         return (
@@ -323,7 +452,11 @@ export function NewRound({ cwd, onCreated, onCancel }: { cwd: string; onCreated(
           Cancelar
         </button>
         <button className="btn btn-primary" disabled={!canSubmit} onClick={() => void submit()}>
-          {busy ? 'Preparando…' : `Rodar base + ${drafts.length} variante${drafts.length === 1 ? '' : 's'}`}
+          {busy
+            ? 'Preparando…'
+            : auto
+              ? 'Iniciar rodada automática'
+              : `Rodar base + ${drafts.length} variante${drafts.length === 1 ? '' : 's'}`}
         </button>
       </div>
     </div>

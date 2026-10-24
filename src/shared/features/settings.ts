@@ -1,5 +1,6 @@
 // IPC channels and payload types for the "settings" feature. Owned by the settings agent.
 import type { PermissionMode } from '../contracts'
+import type { ProviderProfile } from '../providers'
 
 export const SETTINGS = {
   // Claude Code CLI
@@ -29,6 +30,15 @@ export const SETTINGS = {
   schedulesRunNow: 'settings:schedulesRunNow', // (id) => ScheduleRun
   cronValidate: 'settings:cronValidate', // (expr) => CronCheck
 
+  // Provider profiles (src/shared/providers.ts). Secrets go in, never come back out.
+  providersList: 'settings:providersList', // () => ProvidersState
+  providerSave: 'settings:providerSave', // (input: ProviderInput) => ProviderProfile
+  providerDelete: 'settings:providerDelete', // (id) => boolean
+  providerSetSecret: 'settings:providerSetSecret', // (id, secret: string) => ProviderProfile
+  providerClearSecret: 'settings:providerClearSecret', // (id) => ProviderProfile
+  providerSetDefault: 'settings:providerSetDefault', // (id) => void
+  providerTest: 'settings:providerTest', // (id) => ProviderTestResult
+
   // Quick Entry (global shortcut + small always-on-top window)
   quickEntryStatus: 'settings:quickEntryStatus', // () => QuickEntryStatus
   quickEntrySuspend: 'settings:quickEntrySuspend', // (suspended: boolean) => QuickEntryStatus (while recording a shortcut)
@@ -41,7 +51,8 @@ export const SETTINGS = {
   newSession: 'settings:event:newSession', // void (tray "Nova sessão")
   schedulesChanged: 'settings:event:schedulesChanged', // void
   quickEntryStatusChanged: 'settings:event:quickEntryStatus', // QuickEntryStatus
-  quickEntryShown: 'settings:event:quickEntryShown' // void (sent to the Quick Entry window each time it opens)
+  quickEntryShown: 'settings:event:quickEntryShown', // void (sent to the Quick Entry window each time it opens)
+  providersChanged: 'settings:event:providersChanged' // void
 } as const
 
 export interface CliResult {
@@ -223,4 +234,27 @@ export interface AppInfo {
   node: string
   chrome: string
   dataDir: string
+}
+
+/** Editable fields of a provider profile (`hasSecret` and timestamps are managed by main). */
+export type ProviderInput = Omit<ProviderProfile, 'id' | 'hasSecret' | 'createdAt' | 'updatedAt'> & { id?: string }
+
+export interface ProvidersState {
+  profiles: ProviderProfile[]
+  defaultId: string
+  /** False when Electron's safeStorage can't encrypt (secrets can't be saved). */
+  encryptionAvailable: boolean
+  /** ANTHROPIC_BASE_URL from the user's ~/.claude/settings.json, which the subscription profile keeps using. */
+  userSettingsBaseUrl?: string
+}
+
+export interface ProviderTestResult {
+  ok: boolean
+  /** Model id reported by the response (or the one requested). */
+  model?: string
+  latencyMs: number
+  /** Assistant reply (truncated), on success. */
+  reply?: string
+  /** Error text with secrets masked. */
+  error?: string
 }

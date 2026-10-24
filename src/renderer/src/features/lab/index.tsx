@@ -1,6 +1,6 @@
 // Feature "lab" — renderer side. Owned by the lab agent.
 import { useEffect, useState } from 'react'
-import { BASE_VARIANT_ID, type LabRoundView } from '@shared/features/lab'
+import { isBaseVariant, type LabRoundView } from '@shared/features/lab'
 import { useUi } from '../../core/ui'
 import { formatDate, useLabRounds } from './labApi'
 import { NewRound } from './NewRound'
@@ -10,7 +10,13 @@ import styles from './lab.module.css'
 function winnerLabel(r: LabRoundView): string | undefined {
   if (r.status !== 'decided') return undefined
   const v = r.variants.find((x) => x.id === r.selection?.variantId)
-  return v ? (v.id === BASE_VARIANT_ID ? 'Base mantida' : v.label) : undefined
+  return v ? (isBaseVariant(v) ? 'Base mantida' : (v.roleLabel ?? v.label)) : undefined
+}
+
+function modeLabel(r: LabRoundView): string {
+  if (r.mode === 'parallel') return `automático paralelo · k=${r.depth ?? 1}`
+  if (r.mode === 'sequential') return `automático sequencial · K=${r.depth ?? 1}`
+  return `base + ${r.variants.length - 1} variante${r.variants.length === 2 ? '' : 's'}`
 }
 
 function isEditable(el: Element | null): boolean {
@@ -82,7 +88,7 @@ export function LabView({ cwd, onClose }: { cwd: string; onClose: () => void }) 
               </div>
               <div className={styles.listTask}>{r.task}</div>
               <div className={styles.listMeta}>
-                base + {r.variants.length - 1} variante{r.variants.length === 2 ? '' : 's'}
+                {modeLabel(r)}
                 {winnerLabel(r) && <> · vencedor: {winnerLabel(r)}</>}
               </div>
             </button>
@@ -92,6 +98,7 @@ export function LabView({ cwd, onClose }: { cwd: string; onClose: () => void }) 
           {selected === 'new' ? (
             <NewRound
               cwd={cwd}
+              history={rounds ?? []}
               onCreated={(id) => setSelected(id)}
               onCancel={() => setSelected(rounds?.[0]?.id ?? 'new')}
             />

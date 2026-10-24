@@ -3,6 +3,7 @@ import { db } from '../../core/store'
 import type { EngineState, SlashCommandInfo, TranscriptEntry } from '../../../shared/features/engine'
 import { fromAssistantContent, promptTextFromUserContent, toolResultsFromUserContent, type EntryDraft } from './convert'
 import { Runner } from './runner'
+import { effectiveProviderId, providerInfo } from './providers'
 import { loadSdk, probeCommands } from './sdk'
 import { appendEntries, makeEntry, readEntries, transcriptExists } from './transcript'
 
@@ -51,10 +52,28 @@ export async function slashCommandsFor(sessionId: string): Promise<SlashCommandI
   const s = db('sessions').get(sessionId)
   if (!s) return []
   try {
-    return await probeCommands(s.worktree?.path ?? s.cwd)
+    return await probeCommands(s.worktree?.path ?? s.cwd, effectiveProviderId(s))
   } catch {
     return []
   }
+}
+
+/**
+ * Moves a session to another provider profile. The running query ends; the next message resumes the same
+ * conversation (`resume`) under the new profile.
+ */
+export function switchProvider(sessionId: string, providerId: string): void {
+  const s = db('sessions').get(sessionId)
+  if (!s) throw new Error(`Sessão ${sessionId} não encontrada`)
+  if (runners.get(sessionId)?.state().busy) throw new Error('Pare a geração antes de trocar de provedor.')
+  if (effectiveProviderId(s) === providerId && s.providerId) return
+  db('sessions').patch(sessionId, { providerId })
+  const name = providerInfo(providerId).name
+  const runner = runnerFor(sessionId)
+  runner.note(
+    `Provedor alterado para "${name}". A conversa continua com o mesmo histórico, mas o cache de prompt recomeça (a próxima rodada pode ser mais lenta e cara).`
+  )
+  closeRunner(sessionId)
 }
 
 /**

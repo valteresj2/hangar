@@ -11,6 +11,9 @@ import {
   type McpLog,
   type McpToggleInput,
   type McpToggleResult,
+  type ProviderInput,
+  type ProvidersState,
+  type ProviderTestResult,
   type QuickEntryStatus,
   type PluginInfo,
   type ScheduleRun,
@@ -18,6 +21,7 @@ import {
   type ScheduledTaskInput,
   type SkillInfo
 } from '@shared/features/settings'
+import type { ProviderProfile } from '@shared/providers'
 import { bridge } from '../../core/api'
 
 export const settingsApi = {
@@ -40,6 +44,13 @@ export const settingsApi = {
   deleteSchedule: (id: string) => bridge.invoke<boolean>(SETTINGS.schedulesDelete, id),
   runSchedule: (id: string) => bridge.invoke<ScheduleRun>(SETTINGS.schedulesRunNow, id),
   validateCron: (expr: string) => bridge.invoke<CronCheck>(SETTINGS.cronValidate, expr),
+  providers: () => bridge.invoke<ProvidersState>(SETTINGS.providersList),
+  saveProvider: (input: ProviderInput) => bridge.invoke<ProviderProfile>(SETTINGS.providerSave, input),
+  deleteProvider: (id: string) => bridge.invoke<boolean>(SETTINGS.providerDelete, id),
+  setProviderSecret: (id: string, secret: string) => bridge.invoke<ProviderProfile>(SETTINGS.providerSetSecret, id, secret),
+  clearProviderSecret: (id: string) => bridge.invoke<ProviderProfile>(SETTINGS.providerClearSecret, id),
+  setDefaultProvider: (id: string) => bridge.invoke(SETTINGS.providerSetDefault, id),
+  testProvider: (id: string) => bridge.invoke<ProviderTestResult>(SETTINGS.providerTest, id),
   quickEntryStatus: () => bridge.invoke<QuickEntryStatus>(SETTINGS.quickEntryStatus),
   quickEntrySuspend: (suspended: boolean) => bridge.invoke<QuickEntryStatus>(SETTINGS.quickEntrySuspend, suspended),
   quickEntryHide: () => bridge.invoke(SETTINGS.quickEntryHide),

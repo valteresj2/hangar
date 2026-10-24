@@ -63,13 +63,14 @@ function toolSummary(e: Entry<'tool_use'>): string {
   return key ? `${e.name} ${clip(String(input[key]).replace(/\s+/g, ' '), 160)}` : e.name
 }
 
-/** User requests, tool calls, errors and the final answer — the reflector's view of a run. */
-export function condenseTrajectory(entries: TranscriptEntry[]): string {
+/** User requests, tool calls (and, with `withResults`, short tool outputs), errors and the final answer. */
+export function condenseTrajectory(entries: TranscriptEntry[], limit = TRAJECTORY_LIMIT, withResults = false): string {
   const lines: string[] = []
   for (const e of runEntries(entries)) {
     if (e.kind === 'user') lines.push(`USER: ${clip(e.text, 1500)}`)
     else if (e.kind === 'tool_use' && !e.parentToolUseId) lines.push(`TOOL: ${toolSummary(e)}`)
     else if (e.kind === 'tool_result' && e.isError) lines.push(`TOOL ERROR: ${clip(e.content, 300)}`)
+    else if (e.kind === 'tool_result' && withResults) lines.push(`  -> ${clip(e.content.replace(/\s+/g, ' '), 300)}`)
     else if (e.kind === 'error') lines.push(`ERROR: ${clip(e.message, 300)}`)
     else if (e.kind === 'permission_request') lines.push(`PERMISSION ASKED: ${e.request.toolName}`)
     else if (e.kind === 'assistant' && !e.parentToolUseId) lines.push(`ASSISTANT: ${clip(e.text, 400)}`)
@@ -79,9 +80,9 @@ export function condenseTrajectory(entries: TranscriptEntry[]): string {
   }
   const final = finalAnswerOf(entries)
   let text = lines.join('\n')
-  if (text.length > TRAJECTORY_LIMIT) {
+  if (text.length > limit) {
     // Keep the start (what was asked, first moves) and the end (how it finished).
-    const half = Math.floor(TRAJECTORY_LIMIT / 2)
+    const half = Math.floor(limit / 2)
     text = `${text.slice(0, half)}\n… [trajectory condensed] …\n${text.slice(-half)}`
   }
   return final ? `${text}\n\nFINAL ANSWER:\n${clip(final, 4000)}` : text

@@ -11,7 +11,8 @@ import { fork, rewind, rewindPreview } from './branch'
 import { invalidateFiles, listFiles } from './files'
 import { imageDataUrl } from './images'
 import { setRewindPoint } from './points'
-import { closeAll, closeRunner, existingRunner, runnerFor, setActive, slashCommandsFor, stateOf } from './registry'
+import { profiles } from './providers'
+import { closeAll, closeRunner, existingRunner, runnerFor, setActive, slashCommandsFor, stateOf, switchProvider } from './registry'
 
 export const engineFeature: Feature = {
   name: 'engine',
@@ -37,6 +38,8 @@ export const engineFeature: Feature = {
     ipcMain.handle(ENGINE.rewindPreview, (_e, sessionId: string, entryId: string) => rewindPreview(sessionId, entryId))
     ipcMain.handle(ENGINE.rewind, (_e, sessionId: string, entryId: string, opts?: RewindOptions) => rewind(sessionId, entryId, opts))
     ipcMain.handle(ENGINE.fork, (_e, sessionId: string, entryId: string) => fork(sessionId, entryId))
+    ipcMain.handle(ENGINE.providers, () => profiles())
+    ipcMain.handle(ENGINE.setProvider, (_e, sessionId: string, providerId: string) => switchProvider(sessionId, providerId))
 
     // Files the agent writes show up in the @mention index right away.
     bus.on('session:file-written', ({ sessionId }: { sessionId: string }) => invalidateFiles(sessionId))

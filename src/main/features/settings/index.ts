@@ -1,5 +1,6 @@
 // Feature "settings" — main process side. Owned by the settings agent.
-// CLI info/login, MCP servers, skills/plugins, scheduled tasks, theme, notifications, tray and Quick Entry.
+// CLI info/login, MCP servers, skills/plugins, scheduled tasks, theme, notifications, tray, Quick Entry and
+// provider profiles.
 
 import { app, dialog, ipcMain, nativeTheme } from 'electron'
 import { join } from 'node:path'
@@ -9,6 +10,7 @@ import {
   type AppInfo,
   type McpAddInput,
   type McpToggleInput,
+  type ProviderInput,
   type ScheduledTaskInput
 } from '../../../shared/features/settings'
 import { bus } from '../../core/bus'
@@ -17,6 +19,17 @@ import { settings } from '../../core/store'
 import { authStatus, cliInfo } from './cli'
 import { claudeDir, listPlugins, listSkills } from './extensions'
 import { mcpAdd, mcpGet, mcpList, mcpLog, mcpRemove, mcpSetEnabled } from './mcp'
+import {
+  clearProviderSecret,
+  deleteProvider,
+  loadProviders,
+  maskSecrets,
+  providersState,
+  saveProvider,
+  setDefaultProvider,
+  setProviderSecret,
+  testProvider
+} from './providers'
 import {
   applyQuickEntryShortcut,
   hideQuickEntry,
@@ -89,6 +102,24 @@ export const settingsFeature: Feature = {
     ipcMain.handle(SETTINGS.schedulesRunNow, (_e, id: string) => runTask(id, true))
     ipcMain.handle(SETTINGS.cronValidate, (_e, expr: string) => validateCron(expr))
 
+    // Provider errors can echo input back; never let a secret ride along in an IPC error.
+    const guarded =
+      <A extends unknown[], R>(fn: (...args: A) => R) =>
+      (_e: unknown, ...args: A): R => {
+        try {
+          return fn(...args)
+        } catch (err) {
+          throw new Error(maskSecrets(err instanceof Error ? err.message : String(err)))
+        }
+      }
+    ipcMain.handle(SETTINGS.providersList, () => providersState())
+    ipcMain.handle(SETTINGS.providerSave, guarded((input: ProviderInput) => saveProvider(input)))
+    ipcMain.handle(SETTINGS.providerDelete, guarded((id: string) => deleteProvider(id)))
+    ipcMain.handle(SETTINGS.providerSetSecret, guarded((id: string, secret: string) => setProviderSecret(id, secret)))
+    ipcMain.handle(SETTINGS.providerClearSecret, guarded((id: string) => clearProviderSecret(id)))
+    ipcMain.handle(SETTINGS.providerSetDefault, guarded((id: string) => setDefaultProvider(id)))
+    ipcMain.handle(SETTINGS.providerTest, (_e, id: string) => testProvider(id))
+
     ipcMain.handle(SETTINGS.quickEntryStatus, () => quickEntryStatus())
     ipcMain.handle(SETTINGS.quickEntrySuspend, (_e, suspended: boolean) => suspendQuickEntryShortcut(suspended))
     ipcMain.handle(SETTINGS.quickEntryHide, () => hideQuickEntry())
@@ -98,6 +129,7 @@ export const settingsFeature: Feature = {
       showMainAndSend(ctx, SETTINGS.focusSession, { sessionId })
     })
 
+    loadProviders()
     startSchedules()
     startTrayAndNotifications(ctx)
     applyQuickEntryShortcut()

@@ -5,6 +5,8 @@ import { api } from '../../../core/api'
 import { useSettings } from '../../../core/data'
 import { settingsApi } from '../api'
 import { Card, Dot, Row, Segmented, Spinner, Switch } from '../ui'
+import { useSettingsSection } from '../SettingsView'
+import { KIND_LABEL, useProvidersState } from './Providers'
 import { TrayQuickEntryCard } from './TrayQuickEntry'
 import styles from '../settings.module.css'
 
@@ -146,7 +148,30 @@ function CliCard({ settings }: { settings: Settings }) {
           </span>
         )}
       </Row>
+      <DefaultProviderRow />
     </Card>
+  )
+}
+
+/** Which provider profile new sessions use; the login above only matters for the subscription profile. */
+function DefaultProviderRow() {
+  const state = useProvidersState()
+  const setSection = useSettingsSection((s) => s.setSection)
+  const current = state?.profiles.find((p) => p.id === state.defaultId)
+  return (
+    <Row
+      label="Provedor padrão"
+      hint={
+        current && current.kind !== 'subscription'
+          ? 'Sessões sem provedor próprio usam este perfil; o login acima só vale para o perfil da assinatura.'
+          : 'Sessões usam o login acima (assinatura) e o seu ~/.claude/settings.json.'
+      }
+    >
+      <span>{current ? `${current.name} · ${KIND_LABEL[current.kind]}` : '—'}</span>
+      <button className="btn" onClick={() => setSection('providers')}>
+        Provedores
+      </button>
+    </Row>
   )
 }
 

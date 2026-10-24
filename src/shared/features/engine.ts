@@ -1,5 +1,6 @@
 // IPC channels and payload types for the "engine" feature. Owned by the engine agent.
 import type { Effort, PermissionMode, SessionStatus } from '../contracts'
+import type { ProviderKind } from '../providers'
 
 export const ENGINE = {
   /** (sessionId, text, opts?: SendOptions) → void */
@@ -30,6 +31,10 @@ export const ENGINE = {
   rewind: 'engine:rewind',
   /** (sessionId, entryId) → ForkResult — new session with the history up to that message's turn */
   fork: 'engine:fork',
+  /** () → ProviderProfile[] — provider profiles (no secrets), the built-in subscription first */
+  providers: 'engine:providers',
+  /** (sessionId, providerId) → void — switches the session's provider; the next message resumes under it */
+  setProvider: 'engine:setProvider',
 
   evEntry: 'engine:event:entry',
   evDelta: 'engine:event:delta',
@@ -187,6 +192,21 @@ export type TranscriptEntry =
       contextTokens?: number
       contextWindow?: number
       errors?: string[]
+      /** Model that answered (from Claude Code's init message). */
+      model?: string
+      /** Provider profile the turn ran under. */
+      providerId?: string
+      providerName?: string
+      providerKind?: ProviderKind
+    })
+  | (EntryBase & {
+      kind: 'provider_error'
+      /** Authentication or connection failure of the provider profile (secrets masked). */
+      providerId: string
+      providerName: string
+      message: string
+      /** Claude Code is still retrying when this was recorded. */
+      retrying?: boolean
     })
   | (EntryBase & { kind: 'system'; text: string })
   | (EntryBase & { kind: 'error'; message: string })

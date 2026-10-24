@@ -6,7 +6,7 @@
 import { structuredPatch } from 'diff'
 import type { EditRow, EditVerdict, HarnessTree, LessonConfidence, ReflectInput } from '../../../shared/harness'
 import { settings } from '../../core/store'
-import { claudeEnv, loadSdk, resolveClaudeExecutable } from '../engine/sdk'
+import { claudeLaunchOptions, loadSdk } from '../engine/sdk'
 import { scratchDir } from './data'
 
 const FILE_MAX = 6000
@@ -290,8 +290,8 @@ export async function runReflector(prompt: string, model?: string): Promise<stri
       maxTurns: 2,
       systemPrompt: SYSTEM,
       abortController: abort,
-      pathToClaudeCodeExecutable: resolveClaudeExecutable(),
-      env: claudeEnv()
+      // Provider profile: executable, environment and the flag-settings env that outranks ~/.claude/settings.json.
+      ...claudeLaunchOptions()
     }
   })
   let assistantText = ''

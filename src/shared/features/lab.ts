@@ -1,6 +1,6 @@
 // IPC channels and payload types for the "lab" feature. Owned by the lab agent.
 import type { PermissionMode, Worktree } from '../contracts'
-import type { HarnessSnapshot, HarnessTree, LabRound, LabVariant, ReflectResult } from '../harness'
+import type { HarnessSnapshot, HarnessTree, LabMode, LabRound, LabVariant, ReflectResult } from '../harness'
 
 export const LAB = {
   /** (projectCwd) → LabRoundView[], newest first */
@@ -57,8 +57,31 @@ export interface CreateLabRoundInput {
   task: string
   model?: string
   permissionMode?: PermissionMode
-  /** Variants besides the base (1..MAX_LAB_VARIANTS). The base is always the project's current harness. */
+  /** Manual variants besides the base (1..MAX_LAB_VARIANTS). Empty in the automatic modes. */
   variants: LabVariantInput[]
+  /** Absent = manual. */
+  mode?: LabMode
+  /** k for 'parallel' (1..LAB_PARALLEL_MAX), K for 'sequential' (1..LAB_SEQUENTIAL_MAX). */
+  depth?: number
+  /** Model of the proposer/composer calls; absent = settings default. */
+  proposerModel?: string
+  /** Stops the round once runs + calls cost more than this (USD). */
+  costCapUsd?: number
+}
+
+/** One step of the automatic pipeline, aggregated so it does not reveal which run is which. */
+export interface LabPhaseView {
+  key: string
+  title: string
+  status: 'pending' | 'running' | 'done' | 'error'
+  /** Items in the phase (calls or runs) and how many finished. */
+  total: number
+  finished: number
+  costUsd?: number
+  durationMs?: number
+  /** Proposals that needed a retry or fell back to the current harness. */
+  retries?: number
+  fallbacks?: number
 }
 
 /** What one run delivered, as the selector sees it. */
@@ -98,6 +121,10 @@ export interface LabRoundView extends Omit<LabRound, 'variants' | 'blindMap'> {
   cleanedUp?: boolean
   cleanupErrors?: string[]
   error?: string
+  /** Automatic modes: the pipeline timeline. */
+  phases?: LabPhaseView[]
+  /** Runs + proposer/composer calls + selection so far (USD). */
+  totalCostUsd?: number
 }
 
 export interface AdoptResult {
@@ -118,4 +145,9 @@ export function anonId(index: number): string {
     out = String.fromCharCode(65 + rem) + out
   }
   return out
+}
+
+/** The base run: `role` in the automatic modes (revealed after the decision), the fixed id in manual rounds. */
+export function isBaseVariant(v: { id: string; role?: string }): boolean {
+  return v.role === 'base' || v.id === BASE_VARIANT_ID
 }

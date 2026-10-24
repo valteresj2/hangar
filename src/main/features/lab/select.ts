@@ -6,7 +6,7 @@ import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { anonId, type BlindCandidate } from '../../../shared/features/lab'
 import { settings } from '../../core/store'
-import { claudeEnv, loadSdk, resolveClaudeExecutable } from '../engine/sdk'
+import { claudeLaunchOptions, loadSdk } from '../engine/sdk'
 import { labDir } from './store'
 
 /** anonId -> variant id, from a cryptographically shuffled order. */
@@ -105,8 +105,8 @@ export async function askClaude(task: string, candidates: BlindCandidate[]): Pro
       settingSources: [],
       maxTurns: 2,
       persistSession: false,
-      pathToClaudeCodeExecutable: resolveClaudeExecutable(),
-      env: claudeEnv()
+      // Provider profile: executable, environment and the flag-settings env that outranks ~/.claude/settings.json.
+      ...claudeLaunchOptions()
     }
   })
   let text = ''

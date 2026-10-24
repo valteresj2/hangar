@@ -9,6 +9,8 @@ interface UiState {
   sidePanelOpen: boolean
   sidePanelTab: SidePanelTab
   settingsOpen: boolean
+  /** Section the settings view should show when it opens (consumed and cleared by SettingsView). */
+  settingsSection?: string
   paletteOpen: boolean
   /** Full-screen Harness Lab (compare variants) for this project directory. */
   labCwd?: string
@@ -17,6 +19,8 @@ interface UiState {
   openSidePanel(tab?: SidePanelTab): void
   closeSidePanel(): void
   setSettingsOpen(open: boolean): void
+  /** Opens settings on a given section id (e.g. 'providers'). */
+  openSettings(section?: string): void
   setPaletteOpen(open: boolean): void
   openLab(cwd: string): void
   closeLab(): void
@@ -33,6 +37,7 @@ export const useUi = create<UiState>((set) => ({
   openSidePanel: (tab) => set((s) => ({ sidePanelOpen: true, sidePanelTab: tab ?? s.sidePanelTab })),
   closeSidePanel: () => set({ sidePanelOpen: false }),
   setSettingsOpen: (open) => set({ settingsOpen: open }),
+  openSettings: (section) => set({ settingsOpen: true, settingsSection: section }),
   setPaletteOpen: (open) => set({ paletteOpen: open }),
   openLab: (cwd) => set({ labCwd: cwd }),
   closeLab: () => set({ labCwd: undefined })

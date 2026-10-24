@@ -3,10 +3,11 @@ import type { Effort, PermissionMode, Session } from '@shared/contracts'
 import { ENGINE, type EngineOptions, type OutputMode, type SlashCommandInfo } from '@shared/features/engine'
 import { bridge } from '../../core/api'
 import { useSettings } from '../../core/data'
+import { SUBSCRIPTION_PROFILE_ID, type ProviderProfile } from '@shared/providers'
 import { blobToImage, type ComposerImage } from './pasted'
+import { modelChoices } from './providers'
 import styles from './engine.module.css'
 
-const MODELS = ['opus', 'sonnet', 'haiku', 'fable']
 const EFFORTS: { value: Effort; label: string }[] = [
   { value: 'low', label: 'Baixo' },
   { value: 'medium', label: 'Médio' },
@@ -27,29 +28,71 @@ function basename(p: string): string {
   return p.split(/[\\/]/).pop() ?? p
 }
 
-function OptionsBar({ session }: { session: Session }) {
+function OptionsBar({
+  session,
+  busy,
+  providers,
+  onError
+}: {
+  session: Session
+  busy: boolean
+  providers: ProviderProfile[]
+  onError(message: string): void
+}) {
   const settings = useSettings()
-  const model = session.model ?? settings?.defaultModel ?? 'opus'
+  const providerId = session.providerId || settings?.defaultProviderId || SUBSCRIPTION_PROFILE_ID
+  const profile = providers.find((p) => p.id === providerId)
+  const model = session.model ?? profile?.models?.default ?? settings?.defaultModel ?? 'opus'
   const effort = session.effort ?? settings?.defaultEffort ?? 'high'
   const mode = session.permissionMode ?? settings?.defaultPermissionMode ?? 'default'
-  const [customModel, setCustomModel] = useState<string | undefined>(MODELS.includes(model) ? undefined : model)
+  const choices = useMemo(() => modelChoices(profile?.models), [profile?.models])
+  const [customModel, setCustomModel] = useState<string>()
 
   const apply = (patch: EngineOptions) => void bridge.invoke(ENGINE.setOptions, session.id, patch)
+  const switchProvider = (id: string) =>
+    bridge.invoke(ENGINE.setProvider, session.id, id).catch((err: unknown) =>
+      onError(err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err))
+    )
 
   return (
     <div className={styles.optionsBar}>
+      <select
+        className={styles.select}
+        title={
+          busy
+            ? 'Pare a geração para trocar de provedor'
+            : 'Provedor: trocar mantém o histórico da conversa, mas o cache de prompt recomeça'
+        }
+        disabled={busy}
+        value={providerId}
+        onChange={(e) => void switchProvider(e.target.value)}
+      >
+        {!profile && <option value={providerId}>{providers.length ? `${providerId} (não encontrado)` : 'Provedor…'}</option>}
+        {providers.map((p) => (
+          <option key={p.id} value={p.id}>
+            ⛁ {p.name}
+          </option>
+        ))}
+      </select>
       {customModel !== undefined ? (
         <input
           className={styles.modelInput}
           value={customModel}
+          autoFocus
           placeholder="id do modelo"
           title="Modelo (Enter aplica, Esc volta)"
           onChange={(e) => setCustomModel(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Enter' && customModel.trim()) apply({ model: customModel.trim() })
+            if (e.key === 'Enter' && customModel.trim()) {
+              apply({ model: customModel.trim() })
+              setCustomModel(undefined)
+            }
             if (e.key === 'Escape') setCustomModel(undefined)
           }}
-          onBlur={() => customModel.trim() && customModel.trim() !== model && apply({ model: customModel.trim() })}
+          onBlur={() => {
+            if (customModel.trim() && customModel.trim() !== model) apply({ model: customModel.trim() })
+            setCustomModel(undefined)
+          }}
         />
       ) : (
         <select
@@ -58,10 +101,10 @@ function OptionsBar({ session }: { session: Session }) {
           value={model}
           onChange={(e) => (e.target.value === CUSTOM ? setCustomModel('') : apply({ model: e.target.value }))}
         >
-          {!MODELS.includes(model) && <option value={model}>{model}</option>}
-          {MODELS.map((m) => (
-            <option key={m} value={m}>
-              {m[0].toUpperCase() + m.slice(1)}
+          {!choices.some((c) => c.value === model) && <option value={model}>{model}</option>}
+          {choices.map((c) => (
+            <option key={c.value} value={c.value}>
+              {c.label}
             </option>
           ))}
           <option value={CUSTOM}>Outro…</option>
@@ -94,7 +137,6 @@ function OptionsBar({ session }: { session: Session }) {
   )
 }
 
-
 export interface ComposerDraft {
   text: string
   /** Changes on every new draft so the same text can be restored twice. */
@@ -109,6 +151,8 @@ interface Props {
   images: ComposerImage[]
   setImages(update: (i: ComposerImage[]) => ComposerImage[]): void
   draft?: ComposerDraft
+  /** Provider profiles (no secrets), for the "Provedor" selector and the profile's models. */
+  providers: ProviderProfile[]
   /** "Saída": 'motion' sends every message with the Motion guide until switched back. */
   output?: OutputMode
   setOutput(mode: OutputMode | undefined): void
@@ -132,7 +176,7 @@ function mentionFor(path: string): string {
 }
 
 export function Composer(props: Props) {
-  const { session, busy, attachments, setAttachments, images, setImages, draft, output, setOutput, onSend, onStop, onError } = props
+  const { session, busy, attachments, setAttachments, images, setImages, draft, providers, output, setOutput, onSend, onStop, onError } = props
   const [text, setText] = useState('')
   const [caret, setCaret] = useState(0)
   const [commands, setCommands] = useState<SlashCommandInfo[]>([])
@@ -407,7 +451,7 @@ export function Composer(props: Props) {
             <option value="default">🎬 Saída: Padrão</option>
             <option value="motion">🎬 Saída: Motion</option>
           </select>
-          <OptionsBar session={session} />
+          <OptionsBar session={session} busy={busy} providers={providers} onError={onError} />
           <div className={styles.spacer} />
           {busy && (
             <button className={`btn ${styles.stopBtn}`} title="Parar (Esc)" onClick={onStop}>

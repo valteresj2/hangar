@@ -1,41 +1,48 @@
 // Round lifecycle: preparing (worktrees + sessions) → running → selecting (blind) → decided,
-// plus cancel, adopt, reflect, cleanup and the reconciliation done at startup.
-import { randomBytes, randomUUID } from 'node:crypto'
+// plus cancel, adopt, reflect, cleanup and the reconciliation done at startup. Manual rounds run
+// their variants side by side; automatic ones (parallel / sequential) are driven by pipeline.ts.
+import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { nanoid } from 'nanoid'
-import type { Group, Session, Worktree } from '../../../shared/contracts'
+import { rm } from 'node:fs/promises'
+import { join } from 'node:path'
+import type { Worktree } from '../../../shared/contracts'
 import {
   BASE_VARIANT_ID,
-  LAB_DIFF_LIMIT,
-  LAB_GROUP_NAME,
+  isBaseVariant,
   type AdoptResult,
   type BlindCandidate,
   type CreateLabRoundInput,
-  type LabDeliverable,
   type LabPrepareInfo,
   type LabRoundView,
   type LabVariantView
 } from '../../../shared/features/lab'
-import { MAX_LAB_VARIANTS, type ReflectCandidate, type ReflectResult } from '../../../shared/harness'
-import { db, settings } from '../../core/store'
-import { closeSession, interrupt, readTranscript, sendPrompt } from '../engine/api'
-import { createWorktree, isGitRepo, removeWorktree } from '../git/api'
+import {
+  LAB_PARALLEL_MAX,
+  LAB_SEQUENTIAL_MAX,
+  MAX_LAB_VARIANTS,
+  type ReflectCandidate,
+  type ReflectResult
+} from '../../../shared/harness'
+import { db } from '../../core/store'
+import { closeSession, interrupt, readTranscript } from '../engine/api'
+import { isGitRepo, removeWorktree } from '../git/api'
 import { createSnapshot, listSnapshots, readHarness, reflect, writeHarness } from '../harness/api'
-import { diffTrees, git, hasHead, hasNonHarnessChanges, snapshotTree } from './git'
-import { askClaude, makeBlindMap } from './select'
-import { allRounds, deleteRound, getRound, putRound, requireRound, toView, updateRound, type LabRoundRecord } from './store'
-import { condenseTrajectory, finalAnswerOf, outcomeOf } from './transcript'
-
-const ACTIVE = new Set(['preparing', 'running'])
-
-function errorText(err: unknown): string {
-  return err instanceof Error ? err.message : String(err)
-}
-
-function shortTask(task: string, max = 40): string {
-  const line = task.trim().split('\n')[0].replace(/\s+/g, ' ')
-  return line.length > max ? `${line.slice(0, max - 1)}…` : line
-}
+import { git, hasHead, hasNonHarnessChanges } from './git'
+import { runPipeline } from './pipeline'
+import {
+  ACTIVE,
+  errorText,
+  finalize,
+  maybeFinalize,
+  normalize,
+  prepareVariant,
+  shortTask,
+  startVariant,
+  stopRound
+} from './runs'
+import { askClaude } from './select'
+import { allRounds, deleteRound, labDir, patchVariant, putRound, requireRound, toView, updateRound, type LabRoundRecord } from './store'
+import { condenseTrajectory, outcomeOf } from './transcript'
 
 export function listRounds(projectCwd: string): LabRoundView[] {
   const key = normalize(projectCwd)
@@ -43,10 +50,6 @@ export function listRounds(projectCwd: string): LabRoundView[] {
     .filter((r) => normalize(r.projectCwd) === key)
     .sort((a, b) => b.createdAt - a.createdAt)
     .map(toView)
-}
-
-function normalize(p: string): string {
-  return p.replace(/[\\/]+/g, '/').replace(/\/$/, '').toLowerCase()
 }
 
 export async function prepare(projectCwd: string): Promise<LabPrepareInfo> {
@@ -65,222 +68,74 @@ export async function prepare(projectCwd: string): Promise<LabPrepareInfo> {
 export async function createRound(input: CreateLabRoundInput): Promise<LabRoundView> {
   const task = input.task.trim()
   if (!task) throw new Error('Descreva a tarefa da rodada.')
-  if (!input.variants.length || input.variants.length > MAX_LAB_VARIANTS) {
+  const mode = input.mode ?? 'manual'
+  const depth = input.depth ?? 1
+  if (mode === 'manual' && (!input.variants.length || input.variants.length > MAX_LAB_VARIANTS)) {
     throw new Error(`Use de 1 a ${MAX_LAB_VARIANTS} variantes além da base.`)
   }
+  if (mode === 'parallel' && (depth < 1 || depth > LAB_PARALLEL_MAX)) throw new Error(`k deve ficar entre 1 e ${LAB_PARALLEL_MAX}.`)
+  if (mode === 'sequential' && (depth < 1 || depth > LAB_SEQUENTIAL_MAX)) throw new Error(`K deve ficar entre 1 e ${LAB_SEQUENTIAL_MAX}.`)
+  if (input.costCapUsd !== undefined && !(input.costCapUsd > 0)) throw new Error('O teto de custo deve ser maior que zero.')
   if (!(await isGitRepo(input.projectCwd))) {
     throw new Error('O Lab precisa de um repositório git: cada variante roda num worktree próprio.')
   }
   if (!(await hasHead(input.projectCwd))) throw new Error('O repositório ainda não tem commits; faça o primeiro commit antes.')
 
   const baseTree = await readHarness(input.projectCwd)
-  const round: LabRoundRecord = {
+  const common = {
     id: randomUUID().slice(0, 8),
     projectCwd: input.projectCwd,
     task,
     model: input.model || undefined,
     permissionMode: input.permissionMode ?? 'acceptEdits',
-    status: 'preparing',
+    status: 'preparing' as const,
     createdAt: Date.now(),
     updatedAt: Date.now(),
-    variants: [
-      { id: BASE_VARIANT_ID, label: 'Base (harness atual)', tree: baseTree, status: 'pending' },
-      ...input.variants.map((v, i) => ({
-        id: `v${i + 1}`,
-        label: v.label.trim() || `Variante ${i + 1}`,
-        tree: v.tree,
-        snapshotId: v.snapshotId,
-        status: 'pending' as const
-      }))
-    ],
+    costCapUsd: input.costCapUsd,
     baselines: {}
   }
+  const round: LabRoundRecord =
+    mode === 'manual'
+      ? {
+          ...common,
+          mode: 'manual',
+          variants: [
+            { id: BASE_VARIANT_ID, label: 'Base (harness atual)', tree: baseTree, status: 'pending', role: 'base' },
+            ...input.variants.map((v, i) => ({
+              id: `v${i + 1}`,
+              label: v.label.trim() || `Variante ${i + 1}`,
+              tree: v.tree,
+              snapshotId: v.snapshotId,
+              status: 'pending' as const,
+              role: 'manual' as const
+            }))
+          ]
+        }
+      : { ...common, mode, depth, proposerModel: input.proposerModel || undefined, variants: [], stages: [], baseTree }
   putRound(round)
-  void launch(round.id)
+  void (mode === 'manual' ? launchManual(round.id) : runPipeline(round.id))
   return toView(round)
 }
 
-function labGroupId(): string {
-  const groups = db('groups').list()
-  const existing = groups.find((g) => g.name === LAB_GROUP_NAME)
-  if (existing) return existing.id
-  const group: Group = { id: nanoid(), name: LAB_GROUP_NAME, order: groups.reduce((m, g) => Math.max(m, g.order), 0) + 1 }
-  return db('groups').put(group).id
-}
-
-function patchVariant(roundId: string, variantId: string, patch: Partial<LabVariantView>): LabRoundRecord {
-  return updateRound(roundId, (r) => {
-    const v = r.variants.find((x) => x.id === variantId)
-    if (v) Object.assign(v, patch)
-  })
-}
-
-async function launch(roundId: string): Promise<void> {
+async function launchManual(roundId: string): Promise<void> {
   const round = requireRound(roundId)
-  const projectId = db('projects')
-    .list()
-    .find((p) => normalize(p.cwd) === normalize(round.projectCwd))?.id
-  const defaults = settings().get()
   const ready: { variantId: string; sessionId: string }[] = []
-
-  // Worktrees one at a time (git takes repository-wide locks); the runs themselves go in parallel.
   for (const v of round.variants) {
     if (requireRound(roundId).status !== 'preparing') break
     try {
-      const branch = `lab-${round.id}-${randomBytes(2).toString('hex')}`
-      const worktree = await createWorktree(round.projectCwd, branch)
-      patchVariant(roundId, v.id, { worktree, worktreePath: worktree.path })
-      await writeHarness(worktree.path, v.tree)
-      const baseline = await snapshotTree(worktree.path)
-      const now = Date.now()
-      const session: Session = {
-        id: nanoid(),
-        title: `Lab · ${shortTask(round.task)} · ${v.label}`,
-        cwd: round.projectCwd,
-        groupId: labGroupId(),
-        pinned: false,
-        archived: false,
-        unread: false,
-        status: 'idle',
-        createdAt: now,
-        updatedAt: now,
-        model: round.model ?? defaults.defaultModel,
-        effort: defaults.defaultEffort,
-        permissionMode: round.permissionMode,
-        worktree,
-        ...(projectId ? { projectId } : {})
-      }
-      db('sessions').put(session)
-      updateRound(roundId, (r) => {
-        r.baselines = { ...r.baselines, [v.id]: baseline }
-        const target = r.variants.find((x) => x.id === v.id)
-        if (target) target.sessionId = session.id
-      })
-      ready.push({ variantId: v.id, sessionId: session.id })
+      ready.push({ variantId: v.id, sessionId: await prepareVariant(roundId, v.id) })
     } catch (err) {
       patchVariant(roundId, v.id, { status: 'error', error: `Preparação falhou: ${errorText(err)}`, finishedAt: Date.now() })
     }
   }
-
-  const current = requireRound(roundId)
-  if (current.status !== 'preparing') return
+  if (requireRound(roundId).status !== 'preparing') return
   updateRound(roundId, (r) => (r.status = 'running'))
-  await Promise.all(
-    ready.map(async ({ variantId, sessionId }) => {
-      patchVariant(roundId, variantId, { status: 'running', startedAt: Date.now() })
-      try {
-        await sendPrompt(sessionId, current.task)
-      } catch (err) {
-        patchVariant(roundId, variantId, { status: 'error', error: errorText(err), finishedAt: Date.now() })
-      }
-    })
-  )
+  await Promise.all(ready.map(({ variantId, sessionId }) => startVariant(roundId, variantId, sessionId)))
   await maybeFinalize(roundId)
 }
 
-function findBySession(sessionId: string): { round: LabRoundRecord; variant: LabVariantView } | undefined {
-  for (const round of allRounds()) {
-    const variant = round.variants.find((v) => v.sessionId === sessionId)
-    if (variant) return { round, variant }
-  }
-  return undefined
-}
-
-/** A variant's turn ended (bus `session:turn-ended`). */
-export async function onTurnEnded(sessionId: string): Promise<void> {
-  const hit = findBySession(sessionId)
-  if (!hit || !ACTIVE.has(hit.round.status) || hit.variant.status !== 'running') return
-  const outcome = outcomeOf(await readTranscript(sessionId))
-  patchVariant(hit.round.id, hit.variant.id, {
-    status: outcome.isError ? 'error' : 'done',
-    error: outcome.isError ? outcome.errors[0] ?? 'A execução terminou com erro.' : undefined,
-    costUsd: outcome.costUsd,
-    durationMs: outcome.durationMs,
-    finishedAt: Date.now()
-  })
-  await maybeFinalize(hit.round.id)
-}
-
-/** A running variant's session disappeared (deleted by the user). */
-export function onSessionsChanged(): void {
-  for (const round of allRounds()) {
-    if (!ACTIVE.has(round.status)) continue
-    for (const v of round.variants) {
-      if (v.status === 'running' && v.sessionId && !db('sessions').get(v.sessionId)) {
-        patchVariant(round.id, v.id, { status: 'error', error: 'A sessão da variante foi excluída.', finishedAt: Date.now() })
-        void maybeFinalize(round.id)
-      }
-    }
-  }
-}
-
-const finalizing = new Set<string>()
-
-/** When every variant is terminal: collect deliverables and open the blind selection. */
-async function maybeFinalize(roundId: string): Promise<void> {
-  const round = getRound(roundId)
-  if (!round || round.status !== 'running' || finalizing.has(roundId)) return
-  if (round.variants.some((v) => v.status === 'pending' || v.status === 'running')) return
-  finalizing.add(roundId)
-  try {
-    const deliverables: Record<string, LabDeliverable> = {}
-    for (const v of round.variants) {
-      if (!v.worktree || !v.sessionId) continue
-      try {
-        deliverables[v.id] = await collect(round, v)
-      } catch (err) {
-        deliverables[v.id] = { finalAnswer: '', diffStat: '', diffExcerpt: '', diffTruncated: false, errors: [errorText(err)] }
-      }
-    }
-    const delivered = round.variants.filter((v) => v.status === 'done' && deliverables[v.id]).map((v) => v.id)
-    updateRound(roundId, (r) => {
-      r.deliverables = deliverables
-      if (delivered.length) {
-        r.blindMap = makeBlindMap(delivered)
-        r.status = 'selecting'
-      } else {
-        r.status = 'failed'
-        r.error = 'Nenhuma variante terminou com sucesso.'
-      }
-    })
-  } finally {
-    finalizing.delete(roundId)
-  }
-}
-
-async function collect(round: LabRoundRecord, v: LabVariantView): Promise<LabDeliverable> {
-  const entries = await readTranscript(v.sessionId!)
-  const wt = v.worktree!
-  const baseline = round.baselines?.[v.id]
-  let diff = { stat: '', excerpt: '', truncated: false }
-  if (baseline) diff = await diffTrees(wt.path, baseline, await snapshotTree(wt.path), LAB_DIFF_LIMIT)
-  // Worktree paths name the branch; keep them out of what the selector reads.
-  const redact = (text: string) =>
-    [wt.path, wt.path.replace(/\\/g, '/'), wt.branch].reduce((acc, needle) => acc.split(needle).join('<repo>'), text)
-  return {
-    finalAnswer: redact(finalAnswerOf(entries)),
-    diffStat: redact(diff.stat),
-    diffExcerpt: redact(diff.excerpt),
-    diffTruncated: diff.truncated,
-    errors: outcomeOf(entries).errors.map(redact)
-  }
-}
-
 export async function cancelRound(roundId: string): Promise<LabRoundView> {
-  const round = requireRound(roundId)
-  if (!ACTIVE.has(round.status)) return toView(round)
-  const sessions = round.variants.filter((v) => v.status === 'running' && v.sessionId).map((v) => v.sessionId!)
-  updateRound(roundId, (r) => {
-    r.status = 'cancelled'
-    for (const v of r.variants) {
-      if (v.status === 'pending' || v.status === 'running') {
-        v.status = 'error'
-        v.error = 'Cancelada.'
-        v.finishedAt = Date.now()
-      }
-    }
-  })
-  await Promise.all(sessions.map((id) => interrupt(id).catch(() => undefined)))
+  await stopRound(roundId, 'Cancelada.')
   return toView(requireRound(roundId))
 }
 
@@ -340,14 +195,16 @@ function winnerOf(round: LabRoundRecord): LabVariantView {
   return winner
 }
 
+const nameOf = (v: LabVariantView) => v.roleLabel ?? v.label
+
 export async function adopt(roundId: string, apply: boolean): Promise<AdoptResult> {
   const round = requireRound(roundId)
   const winner = winnerOf(round)
-  if (winner.id === BASE_VARIANT_ID) return { round: toView(round), unchanged: true, applied: false }
+  if (isBaseVariant(winner)) return { round: toView(round), unchanged: true, applied: false }
   const by = round.selection!.by === 'user' ? 'você' : 'Claude'
   const snapshot = await createSnapshot(
     round.projectCwd,
-    `Lab · ${shortTask(round.task)} · ${winner.label}`,
+    `Lab · ${shortTask(round.task)} · ${nameOf(winner)}`,
     'lab',
     winner.tree,
     `Rodada ${round.id} do Harness Lab, escolhido por ${by}. ${round.selection!.why}`.trim()
@@ -363,17 +220,20 @@ export async function adopt(roundId: string, apply: boolean): Promise<AdoptResul
 export async function reflectRound(roundId: string): Promise<ReflectResult> {
   const round = requireRound(roundId)
   const winner = winnerOf(round)
-  const base = round.variants.find((v) => v.id === BASE_VARIANT_ID)!
+  const base = round.variants.find(isBaseVariant)!
   const candidates: ReflectCandidate[] = []
   for (const v of round.variants) {
     if (!v.sessionId) continue
     const d = round.deliverables?.[v.id]
     const entries = await readTranscript(v.sessionId).catch(() => [])
+    const stage = round.stages?.find((s) => s.id === v.stageId)
+    const changes = d ? [d.diffStat, d.diffExcerpt.slice(0, 6000)].filter(Boolean).join('\n\n') || '(no file changes)' : '(not collected)'
     candidates.push({
-      label: v.label,
+      label: nameOf(v),
       tree: v.tree,
-      trajectory: condenseTrajectory(entries),
-      changes: d ? [d.diffStat, d.diffExcerpt.slice(0, 6000)].filter(Boolean).join('\n\n') || '(no file changes)' : '(not collected)',
+      // The proposer's own reasoning helps the reflector attribute effects to edits.
+      trajectory: (stage?.notes ? `PROPOSER NOTES (${stage.id}):\n${stage.notes}\n\n` : '') + condenseTrajectory(entries),
+      changes,
       costUsd: v.costUsd,
       durationMs: v.durationMs,
       adopted: v.id === winner.id
@@ -428,7 +288,7 @@ export async function cleanup(roundId: string): Promise<LabRoundView> {
   const round = requireRound(roundId)
   const errors: string[] = []
   for (const v of round.variants) {
-    if (!v.sessionId) continue
+    if (!v.sessionId || !db('sessions').get(v.sessionId)) continue
     await interrupt(v.sessionId).catch(() => undefined)
     await archiveAndRelease(v.sessionId)
   }
@@ -440,6 +300,8 @@ export async function cleanup(roundId: string): Promise<LabRoundView> {
       errors.push(`${v.label}: ${errorText(err)}`)
     }
   }
+  // Proposer evidence directories: notes and trees are already stored on the round.
+  await rm(join(labDir(), 'ctx', roundId), { recursive: true, force: true }).catch(() => undefined)
   return toView(
     updateRound(roundId, (r) => {
       r.cleanedUp = errors.length === 0
@@ -476,6 +338,7 @@ export async function reconcile(): Promise<void> {
       continue
     }
     if (round.status !== 'running') continue
+    const auto = round.mode === 'parallel' || round.mode === 'sequential'
     for (const v of round.variants) {
       if (v.status !== 'running' && v.status !== 'pending') continue
       const session = v.sessionId ? db('sessions').get(v.sessionId) : undefined
@@ -498,7 +361,24 @@ export async function reconcile(): Promise<void> {
           : { status: 'error', error: 'Interrompida: o app foi fechado antes do fim da execução.', finishedAt: Date.now() }
       )
     }
-    await maybeFinalize(round.id)
+    if (!auto) {
+      await maybeFinalize(round.id)
+      continue
+    }
+    // A pipeline cannot resume mid-way; what already ran can still be compared blind.
+    const finishedPipeline = round.variants.some((v) => v.role === 'base' && v.status === 'done')
+    updateRound(round.id, (r) => {
+      for (const s of r.stages ?? []) {
+        if (s.status === 'running' || s.status === 'pending') Object.assign(s, { status: 'error', error: 'Interrompida: o app foi fechado.' })
+      }
+      if (!finishedPipeline) {
+        r.status = 'failed'
+        r.error = 'O app foi fechado no meio do pipeline automático.'
+      }
+    })
+    if (finishedPipeline) {
+      updateRound(round.id, (r) => (r.error = 'O app foi fechado no meio do pipeline; a seleção usa as execuções concluídas.'))
+      await finalize(round.id)
+    }
   }
 }
-

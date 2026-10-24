@@ -1,17 +1,20 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import { create } from 'zustand'
 import { CommandPalette } from './CommandPalette'
+import { useUi } from '../../core/ui'
 import { GeneralSection } from './sections/General'
 import { McpSection } from './sections/Mcp'
+import { ProvidersSection } from './sections/Providers'
 import { AboutSection, ShortcutsSection } from './sections/Misc'
 import { SchedulesSection } from './sections/Schedules'
 import { SkillsSection } from './sections/Skills'
 import styles from './settings.module.css'
 
-export type SettingsSectionId = 'general' | 'mcp' | 'skills' | 'schedules' | 'shortcuts' | 'about'
+export type SettingsSectionId = 'general' | 'providers' | 'mcp' | 'skills' | 'schedules' | 'shortcuts' | 'about'
 
 const SECTIONS: { id: SettingsSectionId; label: string; render: () => ReactNode }[] = [
   { id: 'general', label: 'Geral', render: () => <GeneralSection /> },
+  { id: 'providers', label: 'Provedores', render: () => <ProvidersSection /> },
   { id: 'mcp', label: 'Servidores MCP', render: () => <McpSection /> },
   { id: 'skills', label: 'Skills e plugins', render: () => <SkillsSection /> },
   { id: 'schedules', label: 'Tarefas agendadas', render: () => <SchedulesSection /> },
@@ -29,6 +32,15 @@ export function SettingsView({ onClose }: { onClose: () => void }) {
   const { section, setSection } = useSettingsSection()
   const current = SECTIONS.find((s) => s.id === section) ?? SECTIONS[0]
   const contentRef = useRef<HTMLDivElement>(null)
+
+  // Deep link from elsewhere in the app (useUi().openSettings('providers')).
+  const requested = useUi((s) => s.settingsSection)
+  useEffect(() => {
+    if (!requested) return
+    const match = SECTIONS.find((s) => s.id === requested)
+    if (match) setSection(match.id)
+    useUi.setState({ settingsSection: undefined })
+  }, [requested, setSection])
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {

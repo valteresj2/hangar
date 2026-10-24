@@ -6,6 +6,7 @@ import { useUi } from '../../core/ui'
 import { Composer, type ComposerDraft } from './Composer'
 import { useOutputMode } from './MotionCard'
 import { blobToImage, type ComposerImage } from './pasted'
+import { useProviders } from './providers'
 import { Transcript } from './Transcript'
 import { latestTodos } from './tools'
 import { useChat } from './useChat'
@@ -47,10 +48,20 @@ function Footer({ entries }: { entries: TranscriptEntry[] }) {
   }, [entries])
   if (!last) return null
   const pct = last.contextTokens && last.contextWindow ? Math.round((last.contextTokens / last.contextWindow) * 100) : undefined
+  // Claude Code prices tokens at Anthropic list prices; a key, gateway or cloud account bills its own way.
+  const estimated = !!last.providerKind && last.providerKind !== 'subscription'
   return (
     <div className={styles.footer}>
+      {(last.model || last.providerName) && (
+        <span className={styles.footerModel} title="Modelo e perfil de provedor da última rodada">
+          {[last.model, last.providerName].filter(Boolean).join(' · ')}
+        </span>
+      )}
       <span title="Duração da última rodada">{(last.durationMs / 1000).toFixed(1)} s</span>
-      <span title="Custo estimado acumulado desta execução">US$ {last.costUsd.toFixed(4)}</span>
+      <span title={estimated ? 'Estimativa pelos preços de lista da Anthropic; o provedor pode cobrar diferente' : 'Custo estimado acumulado desta execução'}>
+        US$ {last.costUsd.toFixed(4)}
+        {estimated ? ' (estimado)' : ''}
+      </span>
       <span title="Tokens da última rodada (entrada + cache / saída)">
         {formatTokens(last.inputTokens + last.cacheReadTokens + last.cacheCreationTokens)} ↑ · {formatTokens(last.outputTokens)} ↓
       </span>
@@ -80,6 +91,7 @@ function errorText(err: unknown): string {
 /** Transcript + composer for one session. */
 export function ChatView({ session }: { session: Session }) {
   const chat = useChat(session.id)
+  const providers = useProviders()
   const [attachments, setAttachments] = useState<string[]>([])
   const [images, setImages] = useState<ComposerImage[]>([])
   const [draft, setDraft] = useState<ComposerDraft>()
@@ -240,6 +252,7 @@ export function ChatView({ session }: { session: Session }) {
           images={images}
           setImages={setImages}
           draft={draft}
+          providers={providers}
           output={output}
           setOutput={setOutput}
           onSend={onSend}

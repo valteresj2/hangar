@@ -3,6 +3,7 @@ import type { PermissionRequest, PermissionResponse, RewindResult, TranscriptEnt
 import { Markdown } from './Markdown'
 import { MotionCard } from './MotionCard'
 import { PermissionCard, PermissionSummary, QuestionCard } from './PermissionCard'
+import { ProviderErrorCard } from './ProviderErrorCard'
 import { ToolCard } from './ToolCard'
 import { TASK_TOOLS } from './tools'
 import { UserMessage } from './UserMessage'
@@ -145,6 +146,8 @@ export function Transcript(props: Props) {
               ) : null
             case 'motion':
               return <MotionCard key={e.id} entry={e} busy={busy} onAskFix={onAskFix} />
+            case 'provider_error':
+              return <ProviderErrorCard key={e.id} entry={e} />
             case 'system':
               return (
                 <div key={e.id} className={styles.system}>

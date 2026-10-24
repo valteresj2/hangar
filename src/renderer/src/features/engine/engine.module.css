@@ -961,3 +961,51 @@
 .suggestionIcon {
   font-size: 16px;
 }
+
+/* Wave 6: provider profiles */
+.footerModel {
+  margin-right: auto;
+  font-family: var(--mono);
+  max-width: 50%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.providerError {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--radius);
+  border: 1px solid color-mix(in srgb, var(--danger) 45%, var(--border));
+  background: color-mix(in srgb, var(--danger) 6%, var(--bg-elev));
+  font-size: 13px;
+}
+.providerWarning {
+  border-color: color-mix(in srgb, var(--warning) 50%, var(--border));
+  background: color-mix(in srgb, var(--warning) 7%, var(--bg-elev));
+}
+.providerErrorIcon {
+  font-size: 18px;
+  line-height: 1.3;
+}
+.providerErrorBody {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.providerErrorTitle {
+  font-weight: 600;
+}
+.providerErrorMessage {
+  font-family: var(--mono);
+  font-size: 12px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.select:disabled {
+  opacity: 0.55;
+  cursor: default;
+}

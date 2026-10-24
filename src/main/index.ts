@@ -59,6 +59,20 @@ function createWindow(): BrowserWindow {
 
 app.setAppUserModelId('dev.hangar.app')
 
+// Launched from inside a Claude Code session (dev runs, agents), Hangar would pass that session's host variables
+// on to every Claude Code it starts, and the child CLI would reuse the host's auth and ignore provider profiles.
+if (process.env['CLAUDECODE']) {
+  for (const key of Object.keys(process.env)) {
+    if (
+      key === 'CLAUDECODE' ||
+      /^CLAUDE_CODE_(ENTRYPOINT|SESSION_ID|SSE_PORT|SDK_HAS_HOST_AUTH_REFRESH|OAUTH_SCOPES|MESSAGING_.+)$/.test(key) ||
+      key.startsWith('CLAUDE_AGENT_SDK_')
+    ) {
+      delete process.env[key]
+    }
+  }
+}
+
 // A second launch focuses the running instance instead of opening another one.
 if (!app.requestSingleInstanceLock()) {
   app.quit()

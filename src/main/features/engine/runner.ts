@@ -11,7 +11,8 @@ import type {
   Query,
   RewindFilesResult,
   SDKMessage,
-  SDKUserMessage
+  SDKUserMessage,
+  Settings as SdkSettings
 } from '@anthropic-ai/claude-agent-sdk'
 import { broadcast } from '../../core/broadcast'
 import { bus } from '../../core/bus'
@@ -31,10 +32,11 @@ import {
   type TranscriptEntry
 } from '../../../shared/features/engine'
 import { fromAssistantContent, parseQuestions, toolResultsFromUserContent, writtenPath, type EntryDraft } from './convert'
-import { claudeEnv, loadSdk, MessageQueue, resolveClaudeExecutable, toCommandInfo } from './sdk'
+import { claudeLaunch, loadSdk, MessageQueue, toCommandInfo } from './sdk'
 import { isValidImage, saveImage } from './images'
 import { isMotionPath, motionCard, motionInstructions } from './motion'
 import { rewindPoint, setRewindPoint } from './points'
+import { effectiveProviderId, isProviderFailure, maskSecrets, providerInfo, type ProviderInfo } from './providers'
 import { appendEntries, makeEntry } from './transcript'
 
 const IMAGE_TYPES: Record<string, string> = {
@@ -74,6 +76,14 @@ export class Runner {
   private interrupting = false
   private stderrTail: string[] = []
   private lastContextTokens: number | undefined
+  /** Provider profile, secrets (for masking) and model of the running query. */
+  private provider: ProviderInfo | undefined
+  private secrets: string[] = []
+  private model: string | undefined
+  /** A provider failure card was already shown this turn. */
+  private providerErrorShown = false
+  /** The turn was stopped because the provider rejected the credentials. */
+  private authAbort = false
   private streamText = ''
   private streamThinking = ''
   commands: SlashCommandInfo[] = []
@@ -148,13 +158,20 @@ export class Runner {
     const content = await buildContent(text, attachments, pasted, hidden)
     this.inflight++
     this.interrupting = false
+    this.providerErrorShown = false
     this.setStatus('working', patch)
 
     try {
       await this.ensureStarted()
     } catch (err) {
       this.inflight = 0
-      this.record({ kind: 'error', message: `Falha ao iniciar o Claude Code: ${errorText(err)}` })
+      const info = providerInfo(effectiveProviderId(session))
+      const message = maskSecrets(errorText(err), this.secrets)
+      if (info.kind !== 'subscription' || isProviderFailure(message)) {
+        this.record({ kind: 'provider_error', providerId: info.id, providerName: info.name, message: `Falha ao iniciar o Claude Code com este perfil: ${message}` })
+      } else {
+        this.record({ kind: 'error', message: `Falha ao iniciar o Claude Code: ${message}` })
+      }
       this.setStatus('error')
       throw err
     }
@@ -173,12 +190,20 @@ export class Runner {
     const defaults = settings().get()
     const projectInstructions = session.projectId ? db('projects').get(session.projectId)?.instructions?.trim() : undefined
     const instructions = [projectInstructions, ...collectSystemAppend(session)].filter(Boolean).join('\n\n')
+    // The session's provider profile decides executable, environment and the flag settings that carry its variables.
+    const providerId = effectiveProviderId(session)
+    const launch = claudeLaunch(providerId)
+    this.provider = providerInfo(providerId)
+    this.secrets = launch.secrets
+    this.model = undefined
+    const flagSettings: SdkSettings = { ...(launch.options.settings ?? {}), ...(session.fastMode ? { fastMode: true } : {}) }
+
     const input = new MessageQueue()
     this.stderrTail = []
 
     const options: Options = {
       cwd: session.worktree?.path ?? session.cwd,
-      model: session.model ?? defaults.defaultModel,
+      model: session.model ?? launch.defaultModel ?? defaults.defaultModel,
       effort: session.effort ?? defaults.defaultEffort,
       permissionMode: session.permissionMode ?? defaults.defaultPermissionMode,
       // Lets the user switch to "Ignorar permissões" mid-session; the mode itself is still opt-in.
@@ -190,10 +215,10 @@ export class Runner {
       extraArgs: { 'replay-user-messages': null },
       includePartialMessages: true,
       thinking: { type: 'adaptive', display: 'summarized' },
-      pathToClaudeCodeExecutable: resolveClaudeExecutable(),
-      env: claudeEnv(),
+      pathToClaudeCodeExecutable: launch.options.pathToClaudeCodeExecutable,
+      env: launch.options.env,
       systemPrompt: { type: 'preset', preset: 'claude_code', ...(instructions ? { append: instructions } : {}) },
-      ...(session.fastMode ? { settings: { fastMode: true } } : {}),
+      ...(Object.keys(flagSettings).length ? { settings: flagSettings } : {}),
       canUseTool: this.canUseTool,
       stderr: (data) => {
         this.stderrTail.push(data)
@@ -217,7 +242,9 @@ export class Runner {
     } catch (err) {
       if (this.q === q && !this.interrupting) {
         const tail = this.stderrTail.join('').trim().split('\n').slice(-5).join('\n')
-        this.record({ kind: 'error', message: [errorText(err), tail].filter(Boolean).join('\n') })
+        const message = maskSecrets([errorText(err), tail].filter(Boolean).join('\n'), this.secrets)
+        if (isProviderFailure(message)) this.providerFailure(message, { final: true })
+        else this.record({ kind: 'error', message })
         this.inflight = 0
         this.setStatus('error')
         bus.emit('session:turn-ended', { sessionId: this.sessionId, result: 'error' })
@@ -306,6 +333,7 @@ export class Runner {
       case 'init': {
         const session = db('sessions').get(this.sessionId)
         if (session && session.sdkSessionId !== m.session_id) db('sessions').patch(this.sessionId, { sdkSessionId: m.session_id })
+        this.model = m.model
         return
       }
       case 'commands_changed':
@@ -331,9 +359,21 @@ export class Runner {
       case 'informational':
         if (m.level === 'warning' || m.level === 'notice') this.record({ kind: 'system', text: m.content })
         return
-      case 'api_retry':
+      case 'api_retry': {
+        if (this.authAbort) return
         this.record({ kind: 'system', text: `Erro da API (${m.error}); nova tentativa ${m.attempt}/${m.max_retries}…` })
+        // Claude Code retries for minutes even when the credentials are refused or the endpoint is down: tell the
+        // user early. Refused credentials stop the turn (except on the subscription, whose login may refresh).
+        if (m.error === 'authentication_failed' || m.error_status === 401 || m.error_status === 403) {
+          this.providerFailure(`O provedor recusou as credenciais (HTTP ${m.error_status ?? 401}).`, { fatal: true })
+        } else if (m.error_status == null && m.attempt >= 3) {
+          this.providerFailure(
+            `Sem resposta do endpoint deste perfil; o Claude Code continua tentando (${m.attempt}/${m.max_retries}). Pare a rodada se a configuração estiver errada.`,
+            { retrying: true }
+          )
+        }
         return
+      }
       default:
         return
     }
@@ -341,7 +381,9 @@ export class Runner {
 
   private handleResult(m: Extract<SDKMessage, { type: 'result' }>): void {
     const wasInterrupt = this.interrupting
+    const authAbort = this.authAbort
     this.interrupting = false
+    this.authAbort = false
     this.streamText = ''
     this.streamThinking = ''
     this.inflight = Math.max(0, m.queued_turn_count ?? 0)
@@ -367,20 +409,52 @@ export class Runner {
       cacheCreationTokens: m.usage.cache_creation_input_tokens ?? 0,
       contextTokens: this.lastContextTokens,
       contextWindow,
-      ...(errors.length && !wasInterrupt ? { errors } : {})
+      ...(errors.length && !wasInterrupt ? { errors: errors.map((e) => maskSecrets(e, this.secrets)) } : {}),
+      ...(this.model ? { model: this.model } : {}),
+      ...(this.provider ? { providerId: this.provider.id, providerName: this.provider.name, providerKind: this.provider.kind } : {})
     })
 
-    if (wasInterrupt) this.record({ kind: 'system', text: 'Interrompido pelo usuário.' })
+    if (authAbort) this.record({ kind: 'system', text: 'Rodada interrompida: o provedor recusou as credenciais deste perfil.' })
+    else if (wasInterrupt) this.record({ kind: 'system', text: 'Interrompido pelo usuário.' })
+    else if (m.is_error && errors.some(isProviderFailure)) this.providerFailure(errors.join('\n'), { final: true })
     else if (errors.some((e) => /no conversation found/i.test(e))) {
       // The CLI lost the conversation we tried to resume: start fresh next time.
       db('sessions').patch(this.sessionId, { sdkSessionId: undefined })
       this.record({ kind: 'error', message: 'Não foi possível retomar a conversa anterior; a próxima mensagem inicia uma nova conversa.' })
     }
 
+    this.providerErrorShown = false
     if (this.inflight > 0) return
-    const failed = m.is_error && !wasInterrupt
+    const failed = (m.is_error && !wasInterrupt) || authAbort
     this.setStatus(failed ? 'error' : 'idle', this.host.isActive(this.sessionId) ? {} : { unread: true })
     bus.emit('session:turn-ended', { sessionId: this.sessionId, result: failed ? 'error' : 'success' })
+  }
+
+  /**
+   * Card for a failure of the provider profile (credentials, endpoint, connection), secrets masked.
+   * At most one early card per turn; the final one (when the turn fails) is always recorded.
+   */
+  private providerFailure(message: string, opts: { fatal?: boolean; retrying?: boolean; final?: boolean }): void {
+    if (this.providerErrorShown && !opts.final) return
+    this.providerErrorShown = true
+    const info = this.provider ?? providerInfo(effectiveProviderId(db('sessions').get(this.sessionId)))
+    const stopsTurn = opts.fatal && info.kind !== 'subscription'
+    this.record({
+      kind: 'provider_error',
+      providerId: info.id,
+      providerName: info.name,
+      message: maskSecrets(message, this.secrets),
+      ...((opts.retrying || (opts.fatal && !stopsTurn)) ? { retrying: true } : {})
+    })
+    if (stopsTurn && !this.authAbort) {
+      this.authAbort = true
+      void this.interrupt()
+    }
+  }
+
+  /** Adds a system line to the transcript (e.g. after the session switched provider). */
+  note(text: string): void {
+    this.record({ kind: 'system', text })
   }
 
   // ── Permissions ────────────────────────────────────────────────────────

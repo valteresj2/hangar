@@ -5,7 +5,7 @@ import type { BlindCandidate, LabDeliverable, LabRoundView } from '@shared/featu
 import { errorMessage, labApi } from './labApi'
 import styles from './lab.module.css'
 
-function DiffBlock({ text }: { text: string }) {
+export function DiffBlock({ text }: { text: string }) {
   return (
     <pre className={styles.diff}>
       {text.split('\n').map((line, i) => (

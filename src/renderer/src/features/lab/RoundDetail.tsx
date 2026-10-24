@@ -1,10 +1,11 @@
 import { useState } from 'react'
 import type { Session } from '@shared/contracts'
 import type { ReflectResult } from '@shared/harness'
-import { BASE_VARIANT_ID, type LabRoundView, type LabVariantView } from '@shared/features/lab'
+import { isBaseVariant, type LabRoundView, type LabVariantView } from '@shared/features/lab'
 import { useCollection } from '../../core/data'
 import { BlindSelect, DeliverableCard } from './BlindSelect'
 import { errorMessage, formatCost, formatDate, formatDuration, labApi, useTicker } from './labApi'
+import { PipelineTimeline, StagesReveal } from './Pipeline'
 import styles from './lab.module.css'
 
 export const ROUND_STATUS: Record<LabRoundView['status'], string> = {
@@ -16,6 +17,12 @@ export const ROUND_STATUS: Record<LabRoundView['status'], string> = {
   cancelled: 'Cancelada'
 }
 
+const ROUND_MODE_LABEL: Record<string, string> = {
+  manual: 'manual',
+  parallel: 'automático paralelo',
+  sequential: 'automático sequencial'
+}
+
 const MODE_LABEL: Record<string, string> = {
   default: 'perguntar sempre',
   acceptEdits: 'aceitar edições',
@@ -23,6 +30,9 @@ const MODE_LABEL: Record<string, string> = {
   auto: 'automático',
   bypassPermissions: 'ignorar permissões'
 }
+
+/** Revealed name in the automatic modes ("INV 1", "Composto"…), the variant label otherwise. */
+const nameOf = (v: LabVariantView) => v.roleLabel ?? v.label
 
 function variantStatus(v: LabVariantView, session?: Session): { text: string; cls?: string } {
   if (v.status === 'running' && session?.status === 'waiting') return { text: 'Aguardando você', cls: styles.stWaiting }
@@ -44,7 +54,7 @@ function Progress({ round, onOpenSession }: { round: LabRoundView; onOpenSession
         const elapsed = v.durationMs ?? (v.startedAt ? (v.finishedAt ?? now) - v.startedAt : undefined)
         return (
           <div key={v.id} className={`${styles.progressRow} ${st.cls === styles.stWaiting ? styles.progressWaiting : ''}`}>
-            <span className={styles.progressLabel}>{v.label}</span>
+            <span className={styles.progressLabel}>{nameOf(v)}</span>
             <span className={`${styles.badge} ${st.cls ?? ''}`}>{st.text}</span>
             <span className={styles.metric}>{formatDuration(elapsed)}</span>
             <span className={styles.metric}>{formatCost(v.costUsd)}</span>
@@ -121,7 +131,8 @@ function Reveal({ round }: { round: LabRoundView }) {
   const [askApply, setAskApply] = useState(false)
   const winner = round.variants.find((v) => v.id === round.selection?.variantId)
   const anonOf = Object.fromEntries(Object.entries(round.blindMap ?? {}).map(([a, v]) => [v, a]))
-  const baseWon = winner?.id === BASE_VARIANT_ID
+  const baseWon = !!winner && isBaseVariant(winner)
+  const baseTree = round.variants.find(isBaseVariant)?.tree ?? {}
 
   const run = async (label: string, fn: () => Promise<void>) => {
     setBusy(label)
@@ -152,7 +163,7 @@ function Reveal({ round }: { round: LabRoundView }) {
     <div className={styles.reveal}>
       <div className={`${styles.winner} ${baseWon ? styles.winnerBase : ''}`}>
         <div className={styles.winnerTitle}>
-          Vencedor: Candidato {round.selection?.anonId} = <strong>{winner?.label}</strong>
+          Vencedor: Candidato {round.selection?.anonId} = <strong>{winner && nameOf(winner)}</strong>
           <span className="muted"> · escolhido por {round.selection?.by === 'claude' ? 'Claude' : 'você'}</span>
         </div>
         {round.selection?.why && <div className={styles.why}>{round.selection.why}</div>}
@@ -175,8 +186,9 @@ function Reveal({ round }: { round: LabRoundView }) {
             <tr key={v.id} className={v.id === winner?.id ? styles.rowWinner : undefined}>
               <td>{anonOf[v.id] ?? '—'}</td>
               <td>
-                {v.label}
-                {v.id === BASE_VARIANT_ID && <span className={styles.baseTag}>base</span>}
+                {nameOf(v)}
+                {isBaseVariant(v) && <span className={styles.baseTag}>base</span>}
+                {v.roleLabel && <span className="muted"> · {v.label}</span>}
               </td>
               <td>{v.status === 'done' ? 'Concluída' : v.status === 'error' ? `Erro: ${v.error ?? ''}` : v.status}</td>
               <td>{formatCost(v.costUsd)}</td>
@@ -193,7 +205,7 @@ function Reveal({ round }: { round: LabRoundView }) {
         {askApply ? (
           <div className={styles.callout}>
             <p>
-              Criar um snapshot com o harness de <strong>{winner?.label}</strong> e aplicá-lo agora no projeto? Os arquivos
+              Criar um snapshot com o harness de <strong>{winner && nameOf(winner)}</strong> e aplicá-lo agora no projeto? Os arquivos
               de harness do projeto (CLAUDE.md, .claude/…) passam a ser os da variante vencedora.
             </p>
             <div className={styles.actions}>
@@ -233,6 +245,8 @@ function Reveal({ round }: { round: LabRoundView }) {
 
       {round.reflection && <Reflection result={round.reflection} />}
 
+      <StagesReveal round={round} baseTree={baseTree} />
+
       <h3 className={styles.h3}>Entregáveis revelados</h3>
       <div
         className={styles.candidates}
@@ -243,7 +257,7 @@ function Reveal({ round }: { round: LabRoundView }) {
           .map((v) => (
             <DeliverableCard
               key={v.id}
-              title={`${anonOf[v.id] ? `${anonOf[v.id]} · ` : ''}${v.label}${v.id === winner?.id ? ' ★' : ''}`}
+              title={`${anonOf[v.id] ? `${anonOf[v.id]} · ` : ''}${nameOf(v)}${v.id === winner?.id ? ' ★' : ''}`}
               d={v.deliverable!}
             />
           ))}
@@ -257,6 +271,7 @@ export function RoundDetail({ round, onOpenSession }: { round: LabRoundView; onO
   const [busy, setBusy] = useState<string>()
   const active = round.status === 'preparing' || round.status === 'running'
   const hasWorktrees = round.variants.some((v) => v.worktree)
+  const overCap = round.costCapUsd !== undefined && (round.totalCostUsd ?? 0) > round.costCapUsd
 
   const run = async (label: string, fn: () => Promise<unknown>) => {
     setBusy(label)
@@ -282,14 +297,25 @@ export function RoundDetail({ round, onOpenSession }: { round: LabRoundView; onO
       <div className={styles.detailHead}>
         <span className={`${styles.badge} ${styles[`round_${round.status}`] ?? ''}`}>{ROUND_STATUS[round.status]}</span>
         <span className="muted">
-          {formatDate(round.createdAt)} · modelo {round.model ?? 'padrão'} · {MODE_LABEL[round.permissionMode] ?? round.permissionMode}
+          {formatDate(round.createdAt)} · {ROUND_MODE_LABEL[round.mode ?? 'manual']}
+          {round.depth ? ` (${round.mode === 'parallel' ? 'k' : 'K'}=${round.depth})` : ''} · execuções: {round.model ?? 'modelo padrão'}
+          {round.mode && round.mode !== 'manual' ? ` · proponentes: ${round.proposerModel ?? 'modelo padrão'}` : ''} ·{' '}
+          {MODE_LABEL[round.permissionMode] ?? round.permissionMode}
+        </span>
+        <span className={styles.spacer} />
+        <span className={`${styles.metric} ${overCap ? styles.warnText : ''}`}>
+          gasto {formatCost(round.totalCostUsd ?? 0)}
+          {round.costCapUsd !== undefined && ` de ${formatCost(round.costCapUsd)}`}
         </span>
       </div>
       <div className={styles.task}>{round.task}</div>
       {round.error && <div className={styles.error}>{round.error}</div>}
       {error && <div className={styles.error}>{error}</div>}
 
-      {round.status !== 'selecting' && round.status !== 'decided' && <Progress round={round} onOpenSession={onOpenSession} />}
+      {round.phases && <PipelineTimeline phases={round.phases} />}
+      {round.status !== 'selecting' && round.status !== 'decided' && round.variants.length > 0 && (
+        <Progress round={round} onOpenSession={onOpenSession} />
+      )}
       {active && (
         <p className={styles.hint}>
           Cada variante roda numa sessão própria (grupo “Harness Lab”). Pedidos de permissão param a variante até você
@@ -311,7 +337,7 @@ export function RoundDetail({ round, onOpenSession }: { round: LabRoundView; onO
                 (v) =>
                   v.sessionId && (
                     <button key={v.id} className="btn" onClick={() => onOpenSession(v.sessionId!)}>
-                      Sessão: {v.label}
+                      Sessão: {nameOf(v)}
                     </button>
                   )
               )}
