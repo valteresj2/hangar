@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "title": "Hangar em 12 segundos",
+  "width": 1920,
+  "height": 1080,
+  "fps": 30,
+  "background": "#faf9f5",
+  "fontFamily": "Segoe UI",
+  "scenes": [
+    {
+      "id": "intro",
+      "name": "Abertura",
+      "duration": 4,
+      "elements": [
+        { "id": "arc", "type": "shape", "shape": "circle", "x": 960, "y": 430, "width": 220, "height": 220, "fill": "#c96442", "enter": { "type": "scale", "duration": 0.8, "easing": "backOut" } },
+        { "id": "title", "type": "text", "text": "Hangar", "x": 960, "y": 640, "fontSize": 120, "fontWeight": 700, "color": "#1f1e1d", "start": 0.4, "enter": { "type": "slide-up", "duration": 0.7, "easing": "easeOut" } },
+        { "id": "subtitle", "type": "text", "text": "Seus agentes Claude Code em um só lugar", "x": 960, "y": 760, "fontSize": 48, "color": "#6b6a66", "start": 0.9, "enter": { "type": "typewriter", "duration": 1.4 } }
+      ]
+    },
+    {
+      "id": "numbers",
+      "name": "Números",
+      "duration": 5,
+      "background": "#ffffff",
+      "transition": { "type": "slide-left", "duration": 0.6 },
+      "elements": [
+        { "id": "chart-title", "type": "text", "text": "Sessões por semana", "x": 960, "y": 170, "fontSize": 64, "fontWeight": 600, "color": "#1f1e1d", "enter": { "type": "fade", "duration": 0.5 } },
+        { "id": "chart", "type": "chart", "chart": "bar", "x": 960, "y": 600, "width": 1400, "height": 640, "labels": ["S1", "S2", "S3", "S4"], "series": [{ "name": "Sessões", "values": [12, 28, 41, 66], "color": "#c96442" }], "start": 0.4, "growDuration": 1.5, "textColor": "#1f1e1d", "axisColor": "#e3e0d6", "fontSize": 34 }
+      ]
+    },
+    {
+      "id": "closing",
+      "name": "Fechamento",
+      "duration": 3,
+      "transition": { "type": "fade", "duration": 0.5 },
+      "elements": [
+        { "id": "count", "type": "counter", "from": 0, "to": 6, "suffix": " agentes em paralelo", "x": 960, "y": 520, "fontSize": 96, "fontWeight": 700, "color": "#c96442", "countDuration": 1.2 },
+        { "id": "cta", "type": "text", "text": "npm run dev", "x": 960, "y": 660, "fontSize": 48, "fontFamily": "Consolas", "color": "#1f1e1d", "start": 1.2, "enter": { "type": "fade", "duration": 0.5 } }
+      ]
+    }
+  ]
+}
