@@ -5,9 +5,9 @@ import styles from './shell.module.css'
 
 const PANEL_BUTTONS: { tab: SidePanelTab; label: string }[] = [
   { tab: 'terminal', label: 'Terminal' },
-  { tab: 'changes', label: 'Changes' },
-  { tab: 'files', label: 'Files' },
-  { tab: 'browser', label: 'Browser' },
+  { tab: 'changes', label: 'Alterações' },
+  { tab: 'files', label: 'Arquivos' },
+  { tab: 'browser', label: 'Navegador' },
   { tab: 'artifacts', label: 'Artifacts' }
 ]
 
