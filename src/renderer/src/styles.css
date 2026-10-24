@@ -1,0 +1,144 @@
+/* Design tokens. Features use these variables; per-feature styles go in <name>.module.css. */
+:root {
+  --bg: #faf9f5;
+  --bg-elev: #ffffff;
+  --bg-sunken: #f0eee6;
+  --bg-hover: #ebe9e0;
+  --border: #e3e0d6;
+  --text: #1f1e1d;
+  --text-muted: #6b6a66;
+  --accent: #c96442;
+  --accent-text: #ffffff;
+  --success: #3d8a5a;
+  --warning: #b8860b;
+  --danger: #c0392b;
+  --diff-add: #e6f4ea;
+  --diff-del: #fbe9e7;
+  --radius: 8px;
+  --radius-sm: 5px;
+  --font: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
+  --mono: 'Cascadia Code', 'Cascadia Mono', Consolas, monospace;
+  --sidebar-w: 268px;
+  --topbar-h: 44px;
+  color-scheme: light;
+}
+
+:root[data-theme='dark'] {
+  --bg: #1a1a19;
+  --bg-elev: #242423;
+  --bg-sunken: #141413;
+  --bg-hover: #2e2e2c;
+  --border: #353533;
+  --text: #ecebe6;
+  --text-muted: #9b9a95;
+  --accent: #d97757;
+  --accent-text: #ffffff;
+  --success: #5cb07a;
+  --warning: #d9a83a;
+  --danger: #e06c5a;
+  --diff-add: #1f3326;
+  --diff-del: #3a2220;
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: none;
+  border: none;
+  cursor: pointer;
+}
+
+input,
+textarea,
+select {
+  font: inherit;
+  color: inherit;
+}
+
+code,
+pre,
+kbd {
+  font-family: var(--mono);
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+
+/* Shared primitives */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+}
+.btn:hover {
+  background: var(--bg-hover);
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-text);
+}
+.btn-primary:hover {
+  filter: brightness(1.05);
+  background: var(--accent);
+}
+.icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+}
+.icon-btn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.input {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  outline: none;
+}
+.input:focus {
+  border-color: var(--accent);
+}
+.muted {
+  color: var(--text-muted);
+}

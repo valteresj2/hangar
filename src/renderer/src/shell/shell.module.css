@@ -1,0 +1,107 @@
+.app {
+  display: flex;
+  height: 100%;
+}
+
+.sidebar {
+  width: var(--sidebar-w);
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-sunken);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  height: var(--topbar-h);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 40%;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.panelBtn {
+  padding: 4px 9px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  font-size: 13px;
+}
+.panelBtn:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.panelBtnActive {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+
+.body {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.center {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.sidePanel {
+  position: relative;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  background: var(--bg-elev);
+}
+.sidePanel > * {
+  flex: 1;
+  min-height: 0;
+}
+.sidePanel > .resizer {
+  flex: none;
+}
+
+.sideContent {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+.sideContent[hidden] {
+  display: none;
+}
+
+.resizer {
+  position: absolute;
+  left: -3px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  cursor: col-resize;
+  z-index: 5;
+}

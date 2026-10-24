@@ -1,0 +1,33 @@
+// Global UI state (not persisted). Feature agents may read it and call the actions;
+// add new fields only through the chief.
+import { create } from 'zustand'
+import type { SidePanelTab } from '@shared/contracts'
+
+interface UiState {
+  activeSessionId?: string
+  sidebarOpen: boolean
+  sidePanelOpen: boolean
+  sidePanelTab: SidePanelTab
+  settingsOpen: boolean
+  paletteOpen: boolean
+  selectSession(id: string | undefined): void
+  toggleSidebar(): void
+  openSidePanel(tab?: SidePanelTab): void
+  closeSidePanel(): void
+  setSettingsOpen(open: boolean): void
+  setPaletteOpen(open: boolean): void
+}
+
+export const useUi = create<UiState>((set) => ({
+  sidebarOpen: true,
+  sidePanelOpen: false,
+  sidePanelTab: 'terminal',
+  settingsOpen: false,
+  paletteOpen: false,
+  selectSession: (id) => set({ activeSessionId: id }),
+  toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
+  openSidePanel: (tab) => set((s) => ({ sidePanelOpen: true, sidePanelTab: tab ?? s.sidePanelTab })),
+  closeSidePanel: () => set({ sidePanelOpen: false }),
+  setSettingsOpen: (open) => set({ settingsOpen: open }),
+  setPaletteOpen: (open) => set({ paletteOpen: open })
+}))
