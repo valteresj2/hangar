@@ -29,6 +29,8 @@ export interface Session {
   effort?: Effort
   permissionMode?: PermissionMode
   fastMode?: boolean
+  /** Provider profile (src/shared/providers.ts); undefined = settings.defaultProviderId. */
+  providerId?: string
   /** Claude Code session id, used to resume the conversation. */
   sdkSessionId?: string
   worktree?: Worktree
@@ -59,6 +61,8 @@ export interface Settings {
   notifications: boolean
   recentFolders: string[]
   pinnedFolders: string[]
+  /** Provider profile used by sessions and headless queries without their own. */
+  defaultProviderId: string
   /** Closing the main window hides it to the tray instead of quitting. */
   minimizeToTray: boolean
   /** Electron accelerator for the global Quick Entry shortcut; empty string disables it. */
@@ -73,6 +77,7 @@ export const DEFAULT_SETTINGS: Settings = {
   notifications: true,
   recentFolders: [],
   pinnedFolders: [],
+  defaultProviderId: 'subscription',
   minimizeToTray: true,
   quickEntryShortcut: 'CommandOrControl+Alt+Space'
 }
