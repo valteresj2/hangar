@@ -3,6 +3,7 @@ import { ChatView } from './features/engine'
 import { NewSessionView, Sidebar } from './features/sessions'
 import { CommandPalette, SettingsView } from './features/settings'
 import { LabView } from './features/lab'
+import { OnboardingView } from './features/onboarding'
 import { useRow, useSettings } from './core/data'
 import { useUi } from './core/ui'
 import { SidePanel } from './shell/SidePanel'
@@ -28,7 +29,9 @@ export function App() {
   useThemeAttribute()
   const { activeSessionId, sidebarOpen, sidePanelOpen, settingsOpen, setSettingsOpen, labCwd, closeLab } = useUi()
   const session = useRow('sessions', activeSessionId)
+  const appSettings = useSettings()
 
+  if (appSettings && !appSettings.onboardingDone) return <OnboardingView />
   if (settingsOpen) return <SettingsView onClose={() => setSettingsOpen(false)} />
   if (labCwd) return <LabView cwd={labCwd} onClose={closeLab} />
 

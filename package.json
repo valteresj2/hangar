@@ -12,7 +12,13 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.web.json",
     "pack": "electron-vite build && electron-builder --dir",
-    "dist": "electron-vite build && electron-builder --win nsis --x64"
+    "dist": "electron-vite build && electron-builder --win nsis --x64",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "electron-vite build && playwright test",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.310",
@@ -20,6 +26,7 @@
     "@xterm/addon-web-links": "^0.12.0",
     "@xterm/xterm": "^6.0.0",
     "diff": "^9.0.0",
+    "electron-updater": "^6.8.11",
     "mediabunny": "^1.61.6",
     "nanoid": "^6.0.2",
     "node-cron": "^4.6.0",
@@ -32,6 +39,8 @@
     "zustand": "^5.0.16"
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.1",
     "@types/diff": "^7.0.2",
     "@types/node": "^26.6.5",
     "@types/react": "^19.3.0",
@@ -40,7 +49,13 @@
     "electron": "^45.0.0",
     "electron-builder": "^26.18.0",
     "electron-vite": "^6.0.0",
-    "typescript": "^7.0.2",
-    "vite": "^8.3.5"
+    "eslint": "^10.13.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.10",
+    "typescript": "^6.0.3",
+    "typescript-eslint": "^8.72.0",
+    "vite": "^8.3.5",
+    "vitest": "^5.0.5"
   }
 }

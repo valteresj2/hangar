@@ -63,6 +63,8 @@ export interface Settings {
   pinnedFolders: string[]
   /** Provider profile used by sessions and headless queries without their own. */
   defaultProviderId: string
+  /** First-run assistant finished (or skipped). */
+  onboardingDone: boolean
   /** Closing the main window hides it to the tray instead of quitting. */
   minimizeToTray: boolean
   /** Electron accelerator for the global Quick Entry shortcut; empty string disables it. */
@@ -78,6 +80,7 @@ export const DEFAULT_SETTINGS: Settings = {
   recentFolders: [],
   pinnedFolders: [],
   defaultProviderId: 'subscription',
+  onboardingDone: false,
   minimizeToTray: true,
   quickEntryShortcut: 'CommandOrControl+Alt+Space'
 }

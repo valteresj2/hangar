@@ -8,6 +8,8 @@ import { previewFeature } from './preview'
 import { settingsFeature } from './settings'
 import { harnessFeature } from './harness'
 import { labFeature } from './lab'
+import { onboardingFeature } from './onboarding'
+import { updaterFeature } from './updater'
 
 export const features: Feature[] = [
   sessionsFeature,
@@ -17,5 +19,7 @@ export const features: Feature[] = [
   previewFeature,
   settingsFeature,
   harnessFeature,
-  labFeature
+  labFeature,
+  onboardingFeature,
+  updaterFeature
 ]
