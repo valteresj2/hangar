@@ -5,6 +5,7 @@ import { api } from '../../../core/api'
 import { useSettings } from '../../../core/data'
 import { settingsApi } from '../api'
 import { Card, Dot, Row, Segmented, Spinner, Switch } from '../ui'
+import { TrayQuickEntryCard } from './TrayQuickEntry'
 import styles from '../settings.module.css'
 
 export const MODEL_SUGGESTIONS = ['opus', 'sonnet', 'haiku', 'fable', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-1']
@@ -170,6 +171,8 @@ export function GeneralSection() {
           <Switch label="Notificações" checked={settings.notifications} onChange={(notifications) => patch({ notifications })} />
         </Row>
       </Card>
+
+      <TrayQuickEntryCard settings={settings} />
 
       <Card title="Padrões de novas sessões">
         <Row label="Modelo" hint="Alias (opus, sonnet…) ou id completo do modelo.">

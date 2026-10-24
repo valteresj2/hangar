@@ -9,6 +9,7 @@ import type {
   PermissionResult,
   PermissionUpdate,
   Query,
+  RewindFilesResult,
   SDKMessage,
   SDKUserMessage
 } from '@anthropic-ai/claude-agent-sdk'
@@ -21,6 +22,7 @@ import {
   ENGINE,
   type EngineOptions,
   type EngineState,
+  type PastedImage,
   type PermissionRequest,
   type PermissionResponse,
   type SendOptions,
@@ -29,6 +31,8 @@ import {
 } from '../../../shared/features/engine'
 import { fromAssistantContent, parseQuestions, toolResultsFromUserContent, writtenPath, type EntryDraft } from './convert'
 import { claudeEnv, loadSdk, MessageQueue, resolveClaudeExecutable, toCommandInfo } from './sdk'
+import { isValidImage, saveImage } from './images'
+import { rewindPoint, setRewindPoint } from './points'
 import { appendEntries, makeEntry } from './transcript'
 
 const IMAGE_TYPES: Record<string, string> = {
@@ -117,13 +121,23 @@ export class Runner {
   async send(text: string, opts: SendOptions = {}): Promise<void> {
     const session = this.session()
     const attachments = opts.attachments?.filter(Boolean) ?? []
-    if (!text.trim() && attachments.length === 0) return
+    const pasted = opts.images?.filter(isValidImage) ?? []
+    if (!text.trim() && attachments.length === 0 && pasted.length === 0) return
 
     const patch: Partial<Session> = {}
     if (DEFAULT_SESSION_TITLES.includes(session.title.trim()) && text.trim()) patch.title = makeTitle(text)
 
-    this.record({ kind: 'user', text, ...(attachments.length ? { attachments } : {}) })
-    const content = await buildContent(text, attachments)
+    const images = await Promise.all(pasted.map((img) => saveImage(this.sessionId, img)))
+    // Our own UUID becomes the message's id in the Claude Code session: the anchor for rewind and fork.
+    const sdkUuid = randomUUID()
+    this.record({
+      kind: 'user',
+      text,
+      sdkUuid,
+      ...(attachments.length ? { attachments } : {}),
+      ...(images.length ? { images } : {})
+    })
+    const content = await buildContent(text, attachments, pasted)
     this.inflight++
     this.interrupting = false
     this.setStatus('working', patch)
@@ -136,10 +150,10 @@ export class Runner {
       this.setStatus('error')
       throw err
     }
-    this.input?.push({ type: 'user', message: { role: 'user', content }, parent_tool_use_id: null })
+    this.input?.push({ type: 'user', message: { role: 'user', content }, parent_tool_use_id: null, uuid: sdkUuid })
   }
 
-  private ensureStarted(): Promise<void> {
+  ensureStarted(): Promise<void> {
     if (this.q) return Promise.resolve()
     this.starting ??= this.start().finally(() => (this.starting = undefined))
     return this.starting
@@ -161,6 +175,10 @@ export class Runner {
       // Lets the user switch to "Ignorar permissões" mid-session; the mode itself is still opt-in.
       allowDangerouslySkipPermissions: true,
       resume: session.sdkSessionId,
+      ...(session.sdkSessionId && rewindPoint(this.sessionId) ? { resumeSessionAt: rewindPoint(this.sessionId) } : {}),
+      // Checkpoints let a rewind also restore files; replayed user messages confirm our UUIDs landed.
+      enableFileCheckpointing: true,
+      extraArgs: { 'replay-user-messages': null },
       includePartialMessages: true,
       thinking: { type: 'adaptive', display: 'summarized' },
       pathToClaudeCodeExecutable: resolveClaudeExecutable(),
@@ -249,7 +267,12 @@ export class Runner {
         return
       }
       case 'user': {
-        if (m.parent_tool_use_id || ('isReplay' in m && m.isReplay)) return
+        if ('isReplay' in m && m.isReplay) {
+          // A message now sits after the rewind point: that branch is the session's latest, resume normally.
+          if (!m.parent_tool_use_id && rewindPoint(this.sessionId)) setRewindPoint(this.sessionId, undefined)
+          return
+        }
+        if (m.parent_tool_use_id) return
         const drafts = toolResultsFromUserContent(m.message.content)
         this.record(...drafts)
         for (const d of drafts) {
@@ -433,6 +456,13 @@ export class Runner {
     }
   }
 
+  /** Restores files edited from `userUuid` on (or previews it). Starts the query without sending anything. */
+  async rewindFiles(userUuid: string, dryRun: boolean): Promise<RewindFilesResult> {
+    await this.ensureStarted()
+    if (!this.q) return { canRewind: false, error: 'Sessão não iniciada.' }
+    return this.q.rewindFiles(userUuid, { dryRun })
+  }
+
   async setOptions(patch: EngineOptions): Promise<void> {
     db('sessions').patch(this.sessionId, patch)
     const q = this.q
@@ -470,12 +500,12 @@ function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-async function buildContent(text: string, attachments: string[]): Promise<UserContent> {
-  if (attachments.length === 0) return text
+async function buildContent(text: string, attachments: string[], pasted: PastedImage[]): Promise<UserContent> {
+  if (attachments.length === 0 && pasted.length === 0) return text
   type Part =
     | { type: 'text'; text: string }
     | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
-  const parts: Part[] = []
+  const parts: Part[] = pasted.map((img) => ({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } }))
   const referenced: string[] = []
   for (const path of attachments) {
     const mediaType = IMAGE_TYPES[extname(path).toLowerCase()]

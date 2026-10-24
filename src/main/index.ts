@@ -4,6 +4,7 @@ import type { FeatureContext } from './core/feature'
 import { flushAll, settings } from './core/store'
 import { isQuitting, loadRenderer, markQuitting, rendererWebPreferences } from './core/window'
 import { features } from './features'
+import { appIcon } from './features/settings/tray'
 
 let mainWindow: BrowserWindow | undefined
 
@@ -28,6 +29,7 @@ function createWindow(): BrowserWindow {
     show: false,
     backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a19' : '#faf9f5',
     autoHideMenuBar: true,
+    icon: appIcon(),
     webPreferences: rendererWebPreferences({ webviewTag: true })
   })
   mainWindow = win

@@ -1,0 +1,57 @@
+# Windows installer for Hangar. Build with `npm run dist` (NSIS, x64) or `npm run pack` (unpacked dir).
+appId: dev.hangar.app # must match app.setAppUserModelId in src/main/index.ts (notifications)
+productName: Hangar
+copyright: Copyright © 2026 Valter Eduardo
+
+directories:
+  output: release
+  buildResources: build
+
+# electron-vite bundles main/preload/renderer into out/. Production node_modules are added by electron-builder;
+# packages that only the renderer uses are already bundled, so they are left out.
+files:
+  - out/**
+  - package.json
+  - '!**/*.{map,pdb}'
+  - '!node_modules/{react,react-dom,scheduler,react-markdown,remark-gfm,shiki,@shikijs,@xterm,diff,zustand}/**'
+  # node-pty: keep only the Windows x64 runtime (no sources, build scripts or other platforms' binaries).
+  - '!node_modules/node-addon-api/**'
+  - '!node_modules/node-pty/{src,deps,scripts,typings,binding.gyp,build}{,/**}'
+  - '!node_modules/node-pty/prebuilds/{darwin-arm64,darwin-x64,win32-arm64}/**'
+  - '!node_modules/node-pty/third_party/conpty/*/win10-arm64/**'
+
+# Native/executable bits must live on disk, not inside app.asar:
+#  - node-pty: pty.node / conpty.node / conpty_console_list.node, conpty.dll, OpenConsole.exe, winpty-agent.exe and the
+#    forked console-list helper script.
+#  - Agent SDK: the platform package ships the native `claude.exe` the SDK spawns when no CLI is found.
+asarUnpack:
+  - node_modules/node-pty/**
+  - node_modules/@anthropic-ai/claude-agent-sdk/**
+  - node_modules/@anthropic-ai/claude-agent-sdk-win32-x64/**
+
+# node-pty uses N-API prebuilds; rebuilding is unnecessary and fails on this machine (see docs/agents/reports/terminal.md).
+npmRebuild: false
+
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: build/icon.ico
+  artifactName: ${productName}-Setup-${version}.${ext}
+  # No code signing certificate: SmartScreen will warn on first run.
+  signAndEditExecutable: true
+
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  allowElevation: true
+  createDesktopShortcut: always
+  createStartMenuShortcut: true
+  shortcutName: Hangar
+  uninstallDisplayName: Hangar
+  installerIcon: build/icon.ico
+  uninstallerIcon: build/icon.ico
+  installerHeaderIcon: build/icon.ico
+  deleteAppDataOnUninstall: false
+  runAfterFinish: true

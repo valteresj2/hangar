@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Session } from '@shared/contracts'
-import { ENGINE, type PermissionResponse, type SendOptions, type TodoItem, type TranscriptEntry } from '@shared/features/engine'
+import { ENGINE, type PermissionResponse, type RewindResult, type SendOptions, type TodoItem, type TranscriptEntry } from '@shared/features/engine'
 import { bridge } from '../../core/api'
-import { Composer } from './Composer'
+import { useUi } from '../../core/ui'
+import { Composer, type ComposerDraft } from './Composer'
+import { blobToImage, type ComposerImage } from './pasted'
 import { Transcript } from './Transcript'
 import { latestTodos } from './tools'
 import { useChat } from './useChat'
@@ -63,12 +65,19 @@ function Footer({ entries }: { entries: TranscriptEntry[] }) {
   )
 }
 
+function errorText(err: unknown): string {
+  return err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err)
+}
+
 /** Transcript + composer for one session. */
 export function ChatView({ session }: { session: Session }) {
   const chat = useChat(session.id)
   const [attachments, setAttachments] = useState<string[]>([])
+  const [images, setImages] = useState<ComposerImage[]>([])
+  const [draft, setDraft] = useState<ComposerDraft>()
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState<string>()
+  const [notice, setNotice] = useState<string>()
   const busy = chat.busy || session.status === 'working' || session.status === 'waiting'
 
   useEffect(() => {
@@ -76,21 +85,57 @@ export function ChatView({ session }: { session: Session }) {
     return () => void bridge.invoke(ENGINE.setActive, undefined)
   }, [session.id])
 
+  // After a fork, main asks us to open the new session.
+  useEffect(
+    () => bridge.on(ENGINE.evSelect, ({ sessionId }: { sessionId: string }) => useUi.getState().selectSession(sessionId)),
+    []
+  )
+
   const onSend = useCallback(
     async (text: string) => {
       setError(undefined)
-      const opts: SendOptions = attachments.length ? { attachments } : {}
+      setNotice(undefined)
+      const opts: SendOptions = {
+        ...(attachments.length ? { attachments } : {}),
+        ...(images.length ? { images: images.map(({ mediaType, data }) => ({ mediaType, data })) } : {})
+      }
       try {
         await bridge.invoke(ENGINE.send, session.id, text, opts)
         setAttachments([])
+        setImages([])
         return true
       } catch (err) {
-        setError(err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err))
+        setError(errorText(err))
         return false
       }
     },
-    [attachments, session.id]
+    [attachments, images, session.id]
   )
+
+  const onRewound = useCallback((result: RewindResult) => {
+    setDraft({ text: result.text, nonce: Date.now() })
+    setAttachments(result.attachments ?? [])
+    setImages(
+      (result.images ?? []).map((img) => ({ ...img, id: crypto.randomUUID(), url: `data:${img.mediaType};base64,${img.data}` }))
+    )
+    if (result.filesError) setError(`A conversa voltou, mas os arquivos não foram restaurados: ${result.filesError}`)
+    else if (result.filesRestored?.length) setNotice(`Arquivos restaurados: ${result.filesRestored.map((f) => f.split(/[\\/]/).pop()).join(', ')}`)
+  }, [])
+
+  const onDropFiles = (list: FileList) => {
+    const withPath: string[] = []
+    for (const f of list) {
+      const path = bridge.pathForFile(f)
+      if (path) withPath.push(path)
+      else if (f.type.startsWith('image/')) {
+        blobToImage(f).then(
+          (img) => setImages((all) => [...all, img]),
+          (err) => setError(errorText(err))
+        )
+      }
+    }
+    setAttachments((a) => [...a, ...withPath.filter((p) => !a.includes(p))])
+  }
 
   const onStop = useCallback(() => void bridge.invoke(ENGINE.interrupt, session.id), [session.id])
   const onRespond = useCallback(
@@ -115,8 +160,7 @@ export function ChatView({ session }: { session: Session }) {
       onDrop={(e) => {
         e.preventDefault()
         setDragging(false)
-        const paths = [...e.dataTransfer.files].map((f) => bridge.pathForFile(f)).filter(Boolean)
-        setAttachments((a) => [...a, ...paths.filter((p) => !a.includes(p))])
+        onDropFiles(e.dataTransfer.files)
       }}
     >
       {chat.loaded && chat.entries.length === 0 && !busy ? (
@@ -131,7 +175,10 @@ export function ChatView({ session }: { session: Session }) {
           streamThinking={chat.streamThinking}
           pending={chat.pending}
           busy={busy}
+          sessionId={session.id}
           onRespond={onRespond}
+          onRewound={onRewound}
+          onError={setError}
         />
       )}
       <div className={styles.bottom}>
@@ -144,13 +191,25 @@ export function ChatView({ session }: { session: Session }) {
             </button>
           </div>
         )}
+        {notice && (
+          <div className={styles.notice}>
+            {notice}
+            <button className="icon-btn" onClick={() => setNotice(undefined)}>
+              ×
+            </button>
+          </div>
+        )}
         <Composer
           session={session}
           busy={busy}
           attachments={attachments}
           setAttachments={setAttachments}
+          images={images}
+          setImages={setImages}
+          draft={draft}
           onSend={onSend}
           onStop={onStop}
+          onError={setError}
         />
         <Footer entries={chat.entries} />
       </div>

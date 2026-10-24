@@ -5,8 +5,12 @@ import type { Feature } from '../../core/feature'
 import { bus } from '../../core/bus'
 import { db } from '../../core/store'
 import type { StoreChange } from '../../../shared/contracts'
-import { ENGINE, type EngineOptions, type PermissionResponse, type SendOptions } from '../../../shared/features/engine'
+import { ENGINE, type EngineOptions, type PermissionResponse, type RewindOptions, type SendOptions } from '../../../shared/features/engine'
 import { interrupt, readTranscript, searchTranscripts, sendPrompt } from './api'
+import { fork, rewind, rewindPreview } from './branch'
+import { invalidateFiles, listFiles } from './files'
+import { imageDataUrl } from './images'
+import { setRewindPoint } from './points'
 import { closeAll, closeRunner, existingRunner, runnerFor, setActive, slashCommandsFor, stateOf } from './registry'
 
 export const engineFeature: Feature = {
@@ -28,10 +32,21 @@ export const engineFeature: Feature = {
     ipcMain.handle(ENGINE.setOptions, (_e, sessionId: string, patch: EngineOptions) => runnerFor(sessionId).setOptions(patch))
     ipcMain.handle(ENGINE.slashCommands, (_e, sessionId: string) => slashCommandsFor(sessionId))
     ipcMain.handle(ENGINE.state, (_e, sessionId: string) => stateOf(sessionId))
+    ipcMain.handle(ENGINE.listFiles, (_e, sessionId: string, query: string) => listFiles(sessionId, query ?? ''))
+    ipcMain.handle(ENGINE.readImage, (_e, path: string) => imageDataUrl(path))
+    ipcMain.handle(ENGINE.rewindPreview, (_e, sessionId: string, entryId: string) => rewindPreview(sessionId, entryId))
+    ipcMain.handle(ENGINE.rewind, (_e, sessionId: string, entryId: string, opts?: RewindOptions) => rewind(sessionId, entryId, opts))
+    ipcMain.handle(ENGINE.fork, (_e, sessionId: string, entryId: string) => fork(sessionId, entryId))
+
+    // Files the agent writes show up in the @mention index right away.
+    bus.on('session:file-written', ({ sessionId }: { sessionId: string }) => invalidateFiles(sessionId))
 
     // A deleted session takes its Claude Code process with it.
     bus.on('store:changed', (change: StoreChange) => {
-      if (change.collection === 'sessions' && change.id && !db('sessions').get(change.id)) closeRunner(change.id)
+      if (change.collection !== 'sessions' || !change.id || db('sessions').get(change.id)) return
+      closeRunner(change.id)
+      invalidateFiles(change.id)
+      setRewindPoint(change.id, undefined)
     })
   },
   dispose() {

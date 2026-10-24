@@ -1,7 +1,7 @@
 // Transcript persistence: one JSONL file per Hangar session in <userData>/hangar-data/engine/transcripts/.
 import { app } from 'electron'
 import { randomUUID } from 'node:crypto'
-import { appendFileSync, existsSync, mkdirSync } from 'node:fs'
+import { appendFileSync, existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { SearchHit, TranscriptEntry } from '../../../shared/features/engine'
@@ -33,6 +33,14 @@ export function makeEntry(draft: EntryDraft, ts = Date.now()): TranscriptEntry {
 export function appendEntries(sessionId: string, entries: TranscriptEntry[]): void {
   if (entries.length === 0) return
   appendFileSync(fileFor(sessionId), entries.map((e) => JSON.stringify(e)).join('\n') + '\n', 'utf8')
+}
+
+/** Replaces the whole transcript (rewind, fork copies). Atomic: tmp file + rename. */
+export function writeEntries(sessionId: string, entries: TranscriptEntry[]): void {
+  const file = fileFor(sessionId)
+  const tmp = `${file}.tmp`
+  writeFileSync(tmp, entries.map((e) => JSON.stringify(e) + '\n').join(''), 'utf8')
+  renameSync(tmp, file)
 }
 
 function parseLines(raw: string): TranscriptEntry[] {

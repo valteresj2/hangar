@@ -402,3 +402,14 @@
   opacity: 0.5;
   cursor: default;
 }
+
+.mcpActions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  max-width: 340px;
+}
+
+.recording {
+  border-color: var(--accent);
+  color: var(--accent);
+}

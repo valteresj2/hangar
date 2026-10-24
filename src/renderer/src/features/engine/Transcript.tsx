@@ -1,33 +1,13 @@
-import { memo, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { PermissionRequest, PermissionResponse, TranscriptEntry } from '@shared/features/engine'
+import { useLayoutEffect, useMemo, useRef, useState } from 'react'
+import type { PermissionRequest, PermissionResponse, RewindResult, TranscriptEntry } from '@shared/features/engine'
 import { Markdown } from './Markdown'
 import { PermissionCard, PermissionSummary, QuestionCard } from './PermissionCard'
 import { ToolCard } from './ToolCard'
 import { TASK_TOOLS } from './tools'
+import { UserMessage } from './UserMessage'
 import styles from './engine.module.css'
 
 type Of<K extends TranscriptEntry['kind']> = Extract<TranscriptEntry, { kind: K }>
-
-function basename(p: string): string {
-  return p.split(/[\\/]/).pop() ?? p
-}
-
-const UserMessage = memo(function UserMessage({ entry }: { entry: Of<'user'> }) {
-  return (
-    <div className={styles.user}>
-      {entry.text && <div className={styles.userText}>{entry.text}</div>}
-      {entry.attachments?.length ? (
-        <div className={styles.attachments}>
-          {entry.attachments.map((a) => (
-            <span key={a} className={styles.chip} title={a}>
-              📎 {basename(a)}
-            </span>
-          ))}
-        </div>
-      ) : null}
-    </div>
-  )
-})
 
 function Thinking({ text, live }: { text: string; live?: boolean }) {
   const [open, setOpen] = useState(false)
@@ -47,10 +27,15 @@ interface Props {
   streamThinking: string
   pending: PermissionRequest[]
   busy: boolean
+  sessionId: string
   onRespond(requestId: string, response: PermissionResponse): void
+  onRewound(result: RewindResult): void
+  onError(message: string): void
 }
 
-export function Transcript({ entries, streamText, streamThinking, pending, busy, onRespond }: Props) {
+export function Transcript(props: Props) {
+  const { entries, streamText, streamThinking, pending, busy, sessionId, onRespond, onRewound, onError } = props
+  const [lightbox, setLightbox] = useState<string>()
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
   const stick = useRef(true)
@@ -119,7 +104,17 @@ export function Transcript({ entries, streamText, streamThinking, pending, busy,
         {entries.map((e) => {
           switch (e.kind) {
             case 'user':
-              return <UserMessage key={e.id} entry={e} />
+              return (
+                <UserMessage
+                  key={e.id}
+                  entry={e}
+                  sessionId={sessionId}
+                  busy={busy}
+                  onRewound={onRewound}
+                  onError={onError}
+                  onOpenImage={setLightbox}
+                />
+              )
             case 'assistant':
               return <Markdown key={e.id} text={e.text} />
             case 'thinking':
@@ -179,6 +174,11 @@ export function Transcript({ entries, streamText, streamThinking, pending, busy,
         )}
         </div>
       </div>
+      {lightbox && (
+        <div className={styles.lightbox} onClick={() => setLightbox(undefined)} title="Fechar">
+          <img src={lightbox} alt="Imagem" />
+        </div>
+      )}
       {!atBottom && (
         <button className={styles.toBottom} onClick={scrollToBottom} title="Ir para o fim">
           ↓

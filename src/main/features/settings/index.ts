@@ -1,18 +1,33 @@
 // Feature "settings" — main process side. Owned by the settings agent.
-// CLI info/login, MCP servers, skills/plugins, scheduled tasks, theme, notifications and tray.
+// CLI info/login, MCP servers, skills/plugins, scheduled tasks, theme, notifications, tray and Quick Entry.
 
 import { app, dialog, ipcMain, nativeTheme } from 'electron'
 import { join } from 'node:path'
 import type { StoreChange } from '../../../shared/contracts'
-import { SETTINGS, type AppInfo, type McpAddInput, type ScheduledTaskInput } from '../../../shared/features/settings'
+import {
+  SETTINGS,
+  type AppInfo,
+  type McpAddInput,
+  type McpToggleInput,
+  type ScheduledTaskInput
+} from '../../../shared/features/settings'
 import { bus } from '../../core/bus'
 import type { Feature } from '../../core/feature'
 import { settings } from '../../core/store'
 import { authStatus, cliInfo } from './cli'
 import { claudeDir, listPlugins, listSkills } from './extensions'
-import { mcpAdd, mcpGet, mcpList, mcpRemove } from './mcp'
+import { mcpAdd, mcpGet, mcpList, mcpLog, mcpRemove, mcpSetEnabled } from './mcp'
+import {
+  applyQuickEntryShortcut,
+  hideQuickEntry,
+  onSettingsChangedForQuickEntry,
+  pickFolderForQuickEntry,
+  quickEntryStatus,
+  stopQuickEntry,
+  suspendQuickEntryShortcut
+} from './quickEntry'
 import { deleteSchedule, listSchedules, runTask, saveSchedule, startSchedules, stopSchedules, validateCron } from './schedules'
-import { showNotification, startTrayAndNotifications, stopTrayAndNotifications } from './tray'
+import { showMainAndSend, showNotification, startTrayAndNotifications, stopTrayAndNotifications } from './tray'
 
 function applyTheme(): void {
   const theme = settings().get().theme
@@ -20,7 +35,9 @@ function applyTheme(): void {
 }
 
 const onStoreChanged = (change: StoreChange) => {
-  if (change.collection === 'settings') applyTheme()
+  if (change.collection !== 'settings') return
+  applyTheme()
+  onSettingsChangedForQuickEntry()
 }
 
 export const settingsFeature: Feature = {
@@ -59,6 +76,8 @@ export const settingsFeature: Feature = {
     ipcMain.handle(SETTINGS.mcpGet, (_e, name: string, cwd?: string) => mcpGet(name, cwd))
     ipcMain.handle(SETTINGS.mcpAdd, (_e, input: McpAddInput) => mcpAdd(input))
     ipcMain.handle(SETTINGS.mcpRemove, (_e, name: string, scope?: string, cwd?: string) => mcpRemove(name, scope, cwd))
+    ipcMain.handle(SETTINGS.mcpSetEnabled, (_e, input: McpToggleInput) => mcpSetEnabled(input))
+    ipcMain.handle(SETTINGS.mcpLog, (_e, name: string, cwd?: string) => mcpLog(name, cwd))
 
     ipcMain.handle(SETTINGS.skills, () => listSkills())
     ipcMain.handle(SETTINGS.plugins, () => listPlugins())
@@ -70,12 +89,23 @@ export const settingsFeature: Feature = {
     ipcMain.handle(SETTINGS.schedulesRunNow, (_e, id: string) => runTask(id, true))
     ipcMain.handle(SETTINGS.cronValidate, (_e, expr: string) => validateCron(expr))
 
+    ipcMain.handle(SETTINGS.quickEntryStatus, () => quickEntryStatus())
+    ipcMain.handle(SETTINGS.quickEntrySuspend, (_e, suspended: boolean) => suspendQuickEntryShortcut(suspended))
+    ipcMain.handle(SETTINGS.quickEntryHide, () => hideQuickEntry())
+    ipcMain.handle(SETTINGS.quickEntryPickFolder, (_e, defaultPath?: string) => pickFolderForQuickEntry(defaultPath))
+    ipcMain.handle(SETTINGS.quickEntryDone, (_e, sessionId: string) => {
+      hideQuickEntry()
+      showMainAndSend(ctx, SETTINGS.focusSession, { sessionId })
+    })
+
     startSchedules()
     startTrayAndNotifications(ctx)
+    applyQuickEntryShortcut()
   },
   dispose() {
     bus.off('store:changed', onStoreChanged)
     stopSchedules()
+    stopQuickEntry()
     stopTrayAndNotifications()
   }
 }

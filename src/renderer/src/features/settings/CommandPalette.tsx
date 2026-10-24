@@ -4,6 +4,7 @@ import { OPEN_IMPORT_EVENT } from '@shared/features/sessions'
 import { api } from '../../core/api'
 import { useCollection } from '../../core/data'
 import { useUi } from '../../core/ui'
+import { shortcutRecorder } from './accelerator'
 import { fuzzyScore } from './fuzzy'
 import { useAppEvents } from './useAppEvents'
 import styles from './palette.module.css'
@@ -105,7 +106,7 @@ function sessionItem(s: Session): PaletteItem {
 function useGlobalShortcuts(): void {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (!e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return
+      if (shortcutRecorder.active || !e.ctrlKey || e.altKey || e.metaKey || e.shiftKey) return
       if (e.key.toLowerCase() === 'k') {
         e.preventDefault()
         ui().setPaletteOpen(!ui().paletteOpen)

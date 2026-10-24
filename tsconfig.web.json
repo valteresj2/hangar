@@ -16,5 +16,6 @@
       "@renderer/*": ["./src/renderer/src/*"]
     }
   },
+  "files": ["src/renderer/src/env.d.ts", "src/preload/index.d.ts"],
   "include": ["src/renderer/src/**/*", "src/shared/**/*", "src/preload/*.d.ts"]
 }

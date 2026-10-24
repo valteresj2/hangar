@@ -25,6 +25,16 @@ const EMPTY: ChatState = { loaded: false, entries: [], streamText: '', streamThi
 
 export function useChat(sessionId: string): ChatState {
   const [state, setState] = useState<ChatState>(EMPTY)
+  // Bumped when main rewrites the transcript (rewind), to reload it from scratch.
+  const [generation, setGeneration] = useState(0)
+
+  useEffect(
+    () =>
+      bridge.on(ENGINE.evReset, ({ sessionId: id }: { sessionId: string }) => {
+        if (id === sessionId) setGeneration((g) => g + 1)
+      }),
+    [sessionId]
+  )
 
   useEffect(() => {
     let alive = true
@@ -88,7 +98,7 @@ export function useChat(sessionId: string): ChatState {
       alive = false
       offs.forEach((off) => off())
     }
-  }, [sessionId])
+  }, [sessionId, generation])
 
   return state
 }

@@ -1,8 +1,9 @@
 // Agent SDK plumbing: lazy loading (the SDK is ESM-only), executable discovery, environment
 // and the async input queue that keeps a query in streaming-input mode.
 import { existsSync } from 'node:fs'
+import { createRequire } from 'node:module'
 import { homedir } from 'node:os'
-import { delimiter, join } from 'node:path'
+import { delimiter, join, sep } from 'node:path'
 import type { SDKUserMessage } from '@anthropic-ai/claude-agent-sdk'
 import { settings } from '../../core/store'
 import type { SlashCommandInfo } from '../../../shared/features/engine'
@@ -31,7 +32,17 @@ export function resolveClaudeExecutable(): string | undefined {
   }
   // Apps launched from the Start menu may not see the user's PATH additions.
   const native = join(homedir(), '.local', 'bin', name)
-  return existsSync(native) ? native : undefined
+  if (existsSync(native)) return native
+  // Packaged app: the SDK would resolve its bundled binary inside app.asar, which cannot be spawned.
+  try {
+    const bundled = createRequire(__filename)
+      .resolve(`@anthropic-ai/claude-agent-sdk-${process.platform}-${process.arch}/${name}`)
+      .replace(`app.asar${sep}`, `app.asar.unpacked${sep}`)
+    if (existsSync(bundled)) return bundled
+  } catch {
+    // Platform package not installed: let the SDK report it.
+  }
+  return undefined
 }
 
 /** Subprocess environment without ANTHROPIC_API_KEY, so the CLI uses the subscription login. */
