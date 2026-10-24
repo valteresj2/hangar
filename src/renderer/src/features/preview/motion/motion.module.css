@@ -1,0 +1,534 @@
+.flex {
+  flex: 1;
+}
+
+.ellipsis {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.breakAll {
+  word-break: break-all;
+  font-size: 12px;
+}
+
+.centered {
+  padding: 24px 16px;
+  text-align: center;
+}
+
+.errorBox {
+  margin: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--danger);
+  overflow: auto;
+}
+.errorBox ul {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.errorText {
+  color: var(--danger);
+  font-size: 12px;
+}
+
+.errorStrip {
+  flex-shrink: 0;
+  padding: 4px 10px;
+  font-size: 12px;
+  color: var(--danger);
+  border-bottom: 1px solid var(--border);
+}
+
+/* ---- Viewer layout ---- */
+
+.viewer {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.playerArea {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+.viewerEditing .playerArea {
+  flex: none;
+  height: 46%;
+  min-height: 220px;
+  border-bottom: 1px solid var(--border);
+}
+
+.editorArea {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.banner {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 6px 10px;
+  font-size: 12px;
+  border-bottom: 1px solid var(--warning);
+  background: color-mix(in srgb, var(--warning) 12%, transparent);
+}
+.banner :global(.btn) {
+  font-size: 12px;
+  padding: 2px 8px;
+}
+
+/* ---- Player ---- */
+
+.player {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  outline: none;
+  background: var(--bg-sunken);
+}
+.player:focus-visible {
+  box-shadow: inset 0 0 0 2px var(--accent);
+}
+.fullscreen {
+  background: #000;
+}
+
+.stage {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  padding: 8px;
+}
+.fullscreen .stage {
+  padding: 0;
+}
+
+.canvasBox {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.canvas {
+  display: block;
+  box-shadow: 0 1px 6px rgb(0 0 0 / 0.18);
+  cursor: pointer;
+}
+.canvasEditing {
+  cursor: crosshair;
+}
+
+.outline {
+  position: absolute;
+  pointer-events: none;
+  border: 2px dashed var(--accent);
+  border-radius: 3px;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.6);
+}
+
+.timeline {
+  flex-shrink: 0;
+  padding: 2px 10px 0;
+  background: var(--bg-elev);
+  border-top: 1px solid var(--border);
+}
+
+.markers {
+  position: relative;
+  height: 18px;
+}
+
+.marker {
+  position: absolute;
+  top: 2px;
+  max-width: 30%;
+  padding: 0 4px;
+  border-left: 2px solid var(--accent);
+  font-size: 10.5px;
+  line-height: 14px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.marker:hover {
+  color: var(--text);
+  background: var(--bg-hover);
+}
+
+.track {
+  position: relative;
+  height: 14px;
+  margin: 2px 0 4px;
+  border-radius: 7px;
+  background: var(--bg-sunken);
+  cursor: pointer;
+  touch-action: none;
+}
+
+.segment {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  border-right: 2px solid var(--bg-elev);
+}
+
+.progress {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--accent) 45%, transparent);
+  pointer-events: none;
+}
+
+.playhead {
+  position: absolute;
+  top: -3px;
+  bottom: -3px;
+  width: 4px;
+  margin-left: -2px;
+  border-radius: 2px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.transport {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-wrap: wrap;
+  padding: 4px 8px 6px;
+  background: var(--bg-elev);
+}
+.transport :global(.btn) {
+  font-size: 12px;
+  padding: 3px 9px;
+}
+.transport :global(.btn:disabled),
+.transport :global(.icon-btn:disabled) {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.on {
+  color: var(--accent);
+}
+
+.toggleOn {
+  border-color: var(--accent);
+  color: var(--accent);
+}
+
+.clock {
+  font-family: var(--mono);
+  font-size: 12px;
+  color: var(--text-muted);
+  margin: 0 6px;
+  white-space: nowrap;
+}
+
+.speed {
+  font-size: 12px;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+}
+
+/* ---- Editor ---- */
+
+.editor {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding-bottom: 24px;
+}
+
+.section {
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.sectionHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 6px;
+  font-size: 13px;
+}
+.sectionHead :global(.btn) {
+  font-size: 11.5px;
+  padding: 2px 8px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 6px 10px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.fieldWide {
+  grid-column: 1 / -1;
+}
+
+.fieldLabel {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.control {
+  padding: 3px 8px;
+  font-size: 12.5px;
+}
+
+.textarea {
+  resize: vertical;
+  font-family: inherit;
+}
+
+.check {
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+  font-size: 12.5px;
+  align-self: end;
+  padding-bottom: 4px;
+}
+
+.colorRow {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+}
+
+.swatch {
+  flex-shrink: 0;
+  width: 28px;
+  height: 26px;
+  padding: 1px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  cursor: pointer;
+}
+
+.list {
+  list-style: none;
+  margin: 0 0 6px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  border-radius: var(--radius-sm);
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.item:hover {
+  background: var(--bg-hover);
+}
+.itemActive,
+.itemActive:hover {
+  background: var(--bg-hover);
+  box-shadow: inset 2px 0 0 var(--accent);
+}
+
+.index {
+  width: 18px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.item .inlineInput {
+  flex: 1;
+  width: auto;
+  min-width: 0;
+  padding: 2px 6px;
+  font-size: 12.5px;
+}
+
+.item .inlineNum {
+  flex: none;
+  width: 64px;
+  padding: 2px 6px;
+  font-size: 12.5px;
+}
+
+.itemLabel {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.itemBtns {
+  display: flex;
+  gap: 1px;
+}
+
+.mini {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.mini:hover:not(:disabled) {
+  background: var(--bg-elev);
+  color: var(--text);
+}
+.mini:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+.badge {
+  flex-shrink: 0;
+  min-width: 58px;
+  padding: 0 4px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  font-size: 10px;
+  text-align: center;
+  color: var(--text-muted);
+}
+
+.hint {
+  padding: 12px 10px;
+  font-size: 12.5px;
+}
+
+.tableWrap {
+  margin-top: 8px;
+  overflow-x: auto;
+}
+
+.table {
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.table th,
+.table td {
+  padding: 2px;
+  text-align: left;
+  font-weight: 500;
+}
+
+.seriesHead {
+  display: flex;
+  gap: 2px;
+  align-items: center;
+}
+
+.table .cell {
+  width: 110px;
+  padding: 2px 6px;
+  font-size: 12px;
+}
+.table .num {
+  width: 86px;
+  text-align: right;
+}
+
+.rowBtns {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.rowBtns :global(.btn) {
+  font-size: 11.5px;
+  padding: 2px 8px;
+}
+
+/* ---- Modals (export progress, new motion) ---- */
+
+.modalBackdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  background: rgb(0 0 0 / 0.35);
+}
+
+.modal {
+  width: min(440px, 100%);
+  max-height: 100%;
+  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.25);
+}
+
+.modalRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bar {
+  height: 8px;
+  border-radius: 4px;
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.barFill {
+  height: 100%;
+  background: var(--accent);
+  transition: width 0.15s;
+}
+
+.formField {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  font-size: 12.5px;
+}
+
+.formRow {
+  display: flex;
+  gap: 10px;
+}

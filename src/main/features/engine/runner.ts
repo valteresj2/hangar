@@ -32,6 +32,7 @@ import {
 import { fromAssistantContent, parseQuestions, toolResultsFromUserContent, writtenPath, type EntryDraft } from './convert'
 import { claudeEnv, loadSdk, MessageQueue, resolveClaudeExecutable, toCommandInfo } from './sdk'
 import { isValidImage, saveImage } from './images'
+import { isMotionPath, motionCard, motionInstructions } from './motion'
 import { rewindPoint, setRewindPoint } from './points'
 import { appendEntries, makeEntry } from './transcript'
 
@@ -66,6 +67,8 @@ export class Runner {
   private toolUses = new Map<string, { name: string; input: Record<string, unknown> }>()
   /** Tools the user allowed "always" when the CLI offered no rule suggestion to persist. */
   private alwaysAllowed = new Set<string>()
+  /** *.motion.json files written or edited during the current turn. */
+  private motionWrites = new Set<string>()
   private inflight = 0
   private interrupting = false
   private stderrTail: string[] = []
@@ -128,6 +131,7 @@ export class Runner {
     if (DEFAULT_SESSION_TITLES.includes(session.title.trim()) && text.trim()) patch.title = makeTitle(text)
 
     const images = await Promise.all(pasted.map((img) => saveImage(this.sessionId, img)))
+    const motion = opts.output === 'motion'
     // Our own UUID becomes the message's id in the Claude Code session: the anchor for rewind and fork.
     const sdkUuid = randomUUID()
     this.record({
@@ -135,9 +139,12 @@ export class Runner {
       text,
       sdkUuid,
       ...(attachments.length ? { attachments } : {}),
-      ...(images.length ? { images } : {})
+      ...(images.length ? { images } : {}),
+      ...(motion ? { output: 'motion' as const } : {})
     })
-    const content = await buildContent(text, attachments, pasted)
+    // The Motion guide rides along as an extra text block only Claude sees; the runner keeps running as is.
+    const hidden = motion ? await motionInstructions(this.sessionId) : undefined
+    const content = await buildContent(text, attachments, pasted, hidden)
     this.inflight++
     this.interrupting = false
     this.setStatus('working', patch)
@@ -279,7 +286,9 @@ export class Runner {
           if (d.kind !== 'tool_result' || d.isError) continue
           const use = this.toolUses.get(d.toolUseId)
           const path = use && writtenPath(use.name, use.input)
-          if (path) bus.emit('session:file-written', { sessionId: this.sessionId, path })
+          if (!path) continue
+          bus.emit('session:file-written', { sessionId: this.sessionId, path })
+          if (isMotionPath(path)) this.motionWrites.add(path)
         }
         return
       }
@@ -338,6 +347,11 @@ export class Runner {
     const modelUsage = Object.values(m.modelUsage ?? {})
     const contextWindow = modelUsage.reduce((max, u) => Math.max(max, u.contextWindow ?? 0), 0) || undefined
     const errors = m.subtype === 'success' ? (m.is_error && m.result ? [m.result] : []) : m.errors
+    // One card per animation touched this turn, showing the file as it ended up.
+    if (this.motionWrites.size) {
+      this.record(...[...this.motionWrites].map(motionCard))
+      this.motionWrites.clear()
+    }
     this.record({
       kind: 'result',
       subtype: m.subtype,
@@ -500,8 +514,8 @@ function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-async function buildContent(text: string, attachments: string[], pasted: PastedImage[]): Promise<UserContent> {
-  if (attachments.length === 0 && pasted.length === 0) return text
+async function buildContent(text: string, attachments: string[], pasted: PastedImage[], hidden?: string): Promise<UserContent> {
+  if (attachments.length === 0 && pasted.length === 0 && !hidden) return text
   type Part =
     | { type: 'text'; text: string }
     | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
@@ -528,5 +542,6 @@ async function buildContent(text: string, attachments: string[], pasted: PastedI
   const list = referenced.map((p) => `- ${p} (${basename(p)})`).join('\n')
   const body = [text, referenced.length ? `Arquivos anexados (leia se precisar):\n${list}` : ''].filter(Boolean).join('\n\n')
   if (body) parts.push({ type: 'text', text: body })
+  if (hidden) parts.push({ type: 'text', text: hidden })
   return parts as UserContent
 }

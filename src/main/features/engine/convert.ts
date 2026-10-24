@@ -64,7 +64,7 @@ export function promptTextFromUserContent(content: unknown): string | undefined 
   const text = blocks(content)
     .filter((b) => b.type === 'text' && typeof b.text === 'string')
     .map((b) => String(b.text))
-    .filter((t) => !/^\s*<(local-command|command-|system-reminder)/.test(t) && !t.startsWith('Caveat:'))
+    .filter((t) => !/^\s*<(local-command|command-|system-reminder|hangar-output-mode)/.test(t) && !t.startsWith('Caveat:'))
     .join('\n')
     .trim()
   return text || undefined

@@ -18,6 +18,9 @@ import {
 /** Loaded images keyed by the element's `src` string. */
 export type MotionAssets = Map<string, CanvasImageSource>
 
+/** On-screen (player) or offscreen (MP4 export) 2D context. */
+export type MotionContext = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D
+
 const PALETTE = ['#c96442', '#3d6fb6', '#3d8a5a', '#b8860b', '#8a4fbf', '#d9534f']
 const DEFAULT_FONT = "'Segoe UI', Arial, sans-serif"
 
@@ -53,7 +56,7 @@ const ANIMATED: AnimatedProp[] = ['x', 'y', 'scale', 'rotation', 'opacity']
  * Draws the frame at global `time` (seconds). The canvas may be any size; the spec is scaled to fit it.
  * Callers must load images first (see loadMotionAssets); missing images draw as placeholders.
  */
-export function drawFrame(ctx: CanvasRenderingContext2D, spec: MotionSpec, time: number, assets: MotionAssets = new Map()): void {
+export function drawFrame(ctx: MotionContext, spec: MotionSpec, time: number, assets: MotionAssets = new Map()): void {
   const { width, height } = ctx.canvas
   ctx.setTransform(width / spec.width, 0, 0, height / spec.height, 0, 0)
   ctx.globalAlpha = 1
@@ -84,7 +87,7 @@ export function drawFrame(ctx: CanvasRenderingContext2D, spec: MotionSpec, time:
 }
 
 function drawScene(
-  ctx: CanvasRenderingContext2D,
+  ctx: MotionContext,
   spec: MotionSpec,
   scene: MotionScene,
   t: number,
@@ -212,7 +215,7 @@ function font(weight: number | undefined, size: number, family: string | undefin
   return `${weight ?? 400} ${size}px ${family ?? fallback ?? DEFAULT_FONT}`
 }
 
-function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number | undefined): string[] {
+function wrapLines(ctx: MotionContext, text: string, maxWidth: number | undefined): string[] {
   const out: string[] = []
   for (const paragraph of text.split('\n')) {
     if (!maxWidth) {
@@ -234,7 +237,7 @@ function wrapLines(ctx: CanvasRenderingContext2D, text: string, maxWidth: number
   return out
 }
 
-function drawText(ctx: CanvasRenderingContext2D, el: TextElement, reveal: number, specFont?: string): void {
+function drawText(ctx: MotionContext, el: TextElement, reveal: number, specFont?: string): void {
   ctx.font = font(el.fontWeight, el.fontSize, el.fontFamily, specFont)
   ctx.fillStyle = el.color
   ctx.textBaseline = 'middle'
@@ -254,7 +257,7 @@ function drawText(ctx: CanvasRenderingContext2D, el: TextElement, reveal: number
   })
 }
 
-function drawShape(ctx: CanvasRenderingContext2D, el: ShapeElement, reveal: number): void {
+function drawShape(ctx: MotionContext, el: ShapeElement, reveal: number): void {
   const w = el.width
   const h = el.height ?? el.width
   if (el.shape === 'line' || el.shape === 'arrow') {
@@ -294,7 +297,7 @@ function drawShape(ctx: CanvasRenderingContext2D, el: ShapeElement, reveal: numb
   }
 }
 
-function drawImage(ctx: CanvasRenderingContext2D, el: ImageElement, img: CanvasImageSource | undefined): void {
+function drawImage(ctx: MotionContext, el: ImageElement, img: CanvasImageSource | undefined): void {
   const { width: w, height: h } = el
   ctx.save()
   ctx.beginPath()
@@ -319,7 +322,7 @@ function formatNumber(v: number, decimals = 0, prefix = '', suffix = ''): string
   return prefix + v.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix
 }
 
-function drawChart(ctx: CanvasRenderingContext2D, el: ChartElement, local: number, specFont?: string): void {
+function drawChart(ctx: MotionContext, el: ChartElement, local: number, specFont?: string): void {
   const g = ease('easeOut', local / (el.growDuration ?? 1.2))
   const fs = el.fontSize ?? 28
   const text = el.textColor ?? '#1f1e1d'
@@ -433,7 +436,7 @@ function drawChart(ctx: CanvasRenderingContext2D, el: ChartElement, local: numbe
   })
 }
 
-function drawCounter(ctx: CanvasRenderingContext2D, el: CounterElement, local: number, specFont?: string): void {
+function drawCounter(ctx: MotionContext, el: CounterElement, local: number, specFont?: string): void {
   const g = ease('easeOut', local / (el.countDuration ?? 1.5))
   ctx.font = font(el.fontWeight ?? 700, el.fontSize, el.fontFamily, specFont)
   ctx.fillStyle = el.color

@@ -44,7 +44,8 @@ Element types:
   (left|center|right), "maxWidth" (wraps), "lineHeight".
 - shape: "shape" rect|circle|line|arrow, "width", "height" (rect/circle), "fill", "stroke", "strokeWidth", "radius".
   line/arrow are horizontal with length = width; rotate them to aim.
-- image: "src" (path relative to the .motion.json, absolute path or data: URI), "width", "height", "fit"
+- image: "src" (path relative to the .motion.json, absolute path or data: URI; prefer local files — remote https
+  images only load if the server sends CORS headers), "width", "height", "fit"
   (contain|cover), "radius".
 - chart: "chart" bar|line|pie, "width", "height", "labels": [...], "series": [{"name", "values": [...], "color"}],
   optional "growDuration" (s), "textColor", "axisColor", "fontSize", "showValues", "valuePrefix", "valueSuffix",

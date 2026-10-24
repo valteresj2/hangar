@@ -112,7 +112,11 @@ export async function rewind(sessionId: string, entryId: string, opts: RewindOpt
   assertIdle(sessionId)
   const s = sessionOf(sessionId)
   const { entries, idx, entry } = await findUserEntry(sessionId, entryId)
-  const result: RewindResult = { text: entry.text, ...(entry.attachments?.length ? { attachments: entry.attachments } : {}) }
+  const result: RewindResult = {
+    text: entry.text,
+    ...(entry.attachments?.length ? { attachments: entry.attachments } : {}),
+    ...(entry.output ? { output: entry.output } : {})
+  }
 
   if (s.sdkSessionId) {
     const chain = await chainOf(s)

@@ -563,3 +563,9 @@
 .markdown :global(img) {
   max-width: 100%;
 }
+
+.noticeText {
+  color: var(--success);
+  font-size: 12px;
+  padding: 4px 10px;
+}

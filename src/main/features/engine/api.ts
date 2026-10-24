@@ -1,10 +1,13 @@
 // Main-side API of the engine feature, used by other features. Owned by the engine agent.
-import type { TranscriptEntry } from '../../../shared/features/engine'
+import type { SendOptions, TranscriptEntry } from '../../../shared/features/engine'
 import { existingRunner, history, runnerFor } from './registry'
 import { searchEntries } from './transcript'
 
-/** Sends a prompt to the session, starting (or resuming) its Claude Code query if needed. Resolves once queued. */
-export async function sendPrompt(sessionId: string, text: string, opts?: { attachments?: string[] }): Promise<void> {
+/**
+ * Sends a prompt to the session, starting (or resuming) its Claude Code query if needed. Resolves once queued.
+ * `opts.output: 'motion'` asks for a Hangar Motion animation (the authoring guide goes along, hidden).
+ */
+export async function sendPrompt(sessionId: string, text: string, opts?: SendOptions): Promise<void> {
   await runnerFor(sessionId).send(text, opts)
 }
 

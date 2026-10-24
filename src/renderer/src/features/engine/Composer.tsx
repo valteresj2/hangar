@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { Effort, PermissionMode, Session } from '@shared/contracts'
-import { ENGINE, type EngineOptions, type SlashCommandInfo } from '@shared/features/engine'
+import { ENGINE, type EngineOptions, type OutputMode, type SlashCommandInfo } from '@shared/features/engine'
 import { bridge } from '../../core/api'
 import { useSettings } from '../../core/data'
 import { blobToImage, type ComposerImage } from './pasted'
@@ -109,6 +109,9 @@ interface Props {
   images: ComposerImage[]
   setImages(update: (i: ComposerImage[]) => ComposerImage[]): void
   draft?: ComposerDraft
+  /** "Saída": 'motion' sends every message with the Motion guide until switched back. */
+  output?: OutputMode
+  setOutput(mode: OutputMode | undefined): void
   onSend(text: string): Promise<boolean>
   onStop(): void
   onError(message: string): void
@@ -129,7 +132,7 @@ function mentionFor(path: string): string {
 }
 
 export function Composer(props: Props) {
-  const { session, busy, attachments, setAttachments, images, setImages, draft, onSend, onStop, onError } = props
+  const { session, busy, attachments, setAttachments, images, setImages, draft, output, setOutput, onSend, onStop, onError } = props
   const [text, setText] = useState('')
   const [caret, setCaret] = useState(0)
   const [commands, setCommands] = useState<SlashCommandInfo[]>([])
@@ -366,7 +369,13 @@ export function Composer(props: Props) {
           className={styles.textarea}
           rows={1}
           value={text}
-          placeholder={busy ? 'Enviar outra mensagem (fica na fila)…' : 'Responder ao Claude… (/ comandos, @ arquivos, Ctrl+V cola imagem)'}
+          placeholder={
+            busy
+              ? 'Enviar outra mensagem (fica na fila)…'
+              : output === 'motion'
+                ? 'Descreva a animação: assunto, público, duração… (Saída: Motion)'
+                : 'Responder ao Claude… (/ comandos, @ arquivos, Ctrl+V cola imagem)'
+          }
           onChange={(e) => {
             setText(e.target.value)
             setCaret(e.target.selectionStart)
@@ -389,6 +398,15 @@ export function Composer(props: Props) {
               e.target.value = ''
             }}
           />
+          <select
+            className={`${styles.select} ${output === 'motion' ? styles.selectMotion : ''}`}
+            title="Saída: Motion pede uma animação (*.motion.json) que toca no painel Artifacts"
+            value={output ?? 'default'}
+            onChange={(e) => setOutput(e.target.value === 'motion' ? 'motion' : undefined)}
+          >
+            <option value="default">🎬 Saída: Padrão</option>
+            <option value="motion">🎬 Saída: Motion</option>
+          </select>
           <OptionsBar session={session} />
           <div className={styles.spacer} />
           {busy && (

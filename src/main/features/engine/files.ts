@@ -51,7 +51,8 @@ async function walk(root: string): Promise<string[]> {
   return out
 }
 
-async function filesFor(sessionId: string): Promise<string[]> {
+/** Relative paths (forward slashes) of the files in the session folder, cached. */
+export async function filesFor(sessionId: string): Promise<string[]> {
   const s = db('sessions').get(sessionId)
   if (!s) return []
   const cwd = s.worktree?.path ?? s.cwd

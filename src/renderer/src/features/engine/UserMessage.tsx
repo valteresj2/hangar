@@ -168,6 +168,11 @@ export const UserMessage = memo(function UserMessage({ entry, sessionId, busy, o
             ))}
           </div>
         ) : null}
+        {entry.output === 'motion' && (
+          <span className={styles.motionBadge} title="Enviada com Saída: Motion">
+            🎬 Motion
+          </span>
+        )}
         {entry.text && <div className={styles.userText}>{withMentions(entry.text)}</div>}
         {entry.attachments?.length ? (
           <div className={styles.attachments}>

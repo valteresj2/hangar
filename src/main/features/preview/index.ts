@@ -12,15 +12,19 @@ import {
   flushArtifacts,
   listArtifacts,
   loadArtifacts,
+  motionAssets,
   openArtifactExternally,
   pruneSession,
   readArtifact,
   registerArtifact,
   removeArtifact,
-  revealArtifact
+  revealArtifact,
+  statArtifact,
+  writeArtifact
 } from './artifacts'
 import { startArtifactServer, stopArtifactServer } from './artifactServer'
 import { disposeBrowser, setupBrowser } from './browser'
+import { disposeExports, exportClose, exportDialog, exportOpen, exportWrite, showInFolder } from './export'
 import {
   disposeServers,
   listServers,
@@ -68,6 +72,16 @@ export const previewFeature: Feature = {
     ipcMain.handle(PREVIEW.artifactRemove, (_e, id: string) => removeArtifact(id))
     ipcMain.handle(PREVIEW.artifactReveal, (_e, id: string) => revealArtifact(id))
     ipcMain.handle(PREVIEW.artifactOpen, (_e, id: string) => openArtifactExternally(id))
+    ipcMain.handle(PREVIEW.artifactStat, (_e, id: string) => statArtifact(id))
+    ipcMain.handle(PREVIEW.artifactWrite, (_e, id: string, text: string) => writeArtifact(id, text))
+
+    // Hangar Motion
+    ipcMain.handle(PREVIEW.motionAssets, (_e, id: string, srcs: string[]) => motionAssets(id, srcs))
+    ipcMain.handle(PREVIEW.exportDialog, (_e, sessionId: string, title: string) => exportDialog(ctx.mainWindow(), sessionId, title))
+    ipcMain.handle(PREVIEW.exportOpen, (_e, path: string) => exportOpen(path))
+    ipcMain.handle(PREVIEW.exportWrite, (_e, id: string, position: number, data: Uint8Array) => exportWrite(id, position, data))
+    ipcMain.handle(PREVIEW.exportClose, (_e, id: string, commit: boolean) => exportClose(id, !!commit))
+    ipcMain.handle(PREVIEW.showInFolder, (_e, path: string) => showInFolder(path))
 
     bus.on('session:file-written', onFileWritten)
     bus.on('store:changed', onStoreChanged)
@@ -80,6 +94,7 @@ export const previewFeature: Feature = {
   },
   dispose() {
     disposeServers()
+    void disposeExports()
     stopArtifactServer()
     disposeBrowser()
     bus.removeListener('session:file-written', onFileWritten)

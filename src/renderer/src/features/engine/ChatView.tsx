@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Session } from '@shared/contracts'
-import { ENGINE, type PermissionResponse, type RewindResult, type SendOptions, type TodoItem, type TranscriptEntry } from '@shared/features/engine'
+import { ENGINE, type OutputMode, type PermissionResponse, type RewindResult, type SendOptions, type TodoItem, type TranscriptEntry } from '@shared/features/engine'
 import { bridge } from '../../core/api'
 import { useUi } from '../../core/ui'
 import { Composer, type ComposerDraft } from './Composer'
+import { useOutputMode } from './MotionCard'
 import { blobToImage, type ComposerImage } from './pasted'
 import { Transcript } from './Transcript'
 import { latestTodos } from './tools'
@@ -65,6 +66,13 @@ function Footer({ entries }: { entries: TranscriptEntry[] }) {
   )
 }
 
+const SUGGESTIONS: { icon: string; label: string; text: string; output?: OutputMode }[] = [
+  { icon: '🎬', label: 'Criar uma animação (Motion)', text: 'Crie uma animação de 20 segundos explicando ', output: 'motion' },
+  { icon: '🧭', label: 'Explicar este projeto', text: 'Explique a estrutura deste projeto e como rodá-lo.' },
+  { icon: '🐞', label: 'Procurar bugs', text: 'Procure bugs prováveis no código desta pasta e liste os mais importantes, com arquivo e linha.' },
+  { icon: '🧪', label: 'Escrever testes', text: 'Escreva testes para a parte mais importante e menos testada deste projeto.' }
+]
+
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err)
 }
@@ -78,6 +86,7 @@ export function ChatView({ session }: { session: Session }) {
   const [dragging, setDragging] = useState(false)
   const [error, setError] = useState<string>()
   const [notice, setNotice] = useState<string>()
+  const [output, setOutput] = useOutputMode(session.id)
   const busy = chat.busy || session.status === 'working' || session.status === 'waiting'
 
   useEffect(() => {
@@ -97,7 +106,8 @@ export function ChatView({ session }: { session: Session }) {
       setNotice(undefined)
       const opts: SendOptions = {
         ...(attachments.length ? { attachments } : {}),
-        ...(images.length ? { images: images.map(({ mediaType, data }) => ({ mediaType, data })) } : {})
+        ...(images.length ? { images: images.map(({ mediaType, data }) => ({ mediaType, data })) } : {}),
+        ...(output ? { output } : {})
       }
       try {
         await bridge.invoke(ENGINE.send, session.id, text, opts)
@@ -109,18 +119,32 @@ export function ChatView({ session }: { session: Session }) {
         return false
       }
     },
-    [attachments, images, session.id]
+    [attachments, images, output, session.id]
   )
+
+  const onAskFix = useCallback(
+    (text: string) => {
+      setError(undefined)
+      bridge.invoke(ENGINE.send, session.id, text, { output: 'motion' } satisfies SendOptions).catch((err) => setError(errorText(err)))
+    },
+    [session.id]
+  )
+
+  const suggest = (text: string, mode?: OutputMode) => {
+    setOutput(mode)
+    setDraft({ text, nonce: Date.now() })
+  }
 
   const onRewound = useCallback((result: RewindResult) => {
     setDraft({ text: result.text, nonce: Date.now() })
+    setOutput(result.output)
     setAttachments(result.attachments ?? [])
     setImages(
       (result.images ?? []).map((img) => ({ ...img, id: crypto.randomUUID(), url: `data:${img.mediaType};base64,${img.data}` }))
     )
     if (result.filesError) setError(`A conversa voltou, mas os arquivos não foram restaurados: ${result.filesError}`)
     else if (result.filesRestored?.length) setNotice(`Arquivos restaurados: ${result.filesRestored.map((f) => f.split(/[\\/]/).pop()).join(', ')}`)
-  }, [])
+  }, [setOutput])
 
   const onDropFiles = (list: FileList) => {
     const withPath: string[] = []
@@ -167,6 +191,14 @@ export function ChatView({ session }: { session: Session }) {
         <div className={styles.empty}>
           <div className={styles.emptyTitle}>{session.title}</div>
           <div className="muted">{session.worktree?.path ?? session.cwd}</div>
+          <div className={styles.suggestions}>
+            {SUGGESTIONS.map((s) => (
+              <button key={s.label} className={styles.suggestion} onClick={() => suggest(s.text, s.output)}>
+                <span className={styles.suggestionIcon}>{s.icon}</span>
+                {s.label}
+              </button>
+            ))}
+          </div>
         </div>
       ) : (
         <Transcript
@@ -179,6 +211,7 @@ export function ChatView({ session }: { session: Session }) {
           onRespond={onRespond}
           onRewound={onRewound}
           onError={setError}
+          onAskFix={onAskFix}
         />
       )}
       <div className={styles.bottom}>
@@ -207,6 +240,8 @@ export function ChatView({ session }: { session: Session }) {
           images={images}
           setImages={setImages}
           draft={draft}
+          output={output}
+          setOutput={setOutput}
           onSend={onSend}
           onStop={onStop}
           onError={setError}

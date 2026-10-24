@@ -1,6 +1,7 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { PermissionRequest, PermissionResponse, RewindResult, TranscriptEntry } from '@shared/features/engine'
 import { Markdown } from './Markdown'
+import { MotionCard } from './MotionCard'
 import { PermissionCard, PermissionSummary, QuestionCard } from './PermissionCard'
 import { ToolCard } from './ToolCard'
 import { TASK_TOOLS } from './tools'
@@ -31,10 +32,12 @@ interface Props {
   onRespond(requestId: string, response: PermissionResponse): void
   onRewound(result: RewindResult): void
   onError(message: string): void
+  /** Sends a Motion fix request (from an invalid animation card). */
+  onAskFix(text: string): void
 }
 
 export function Transcript(props: Props) {
-  const { entries, streamText, streamThinking, pending, busy, sessionId, onRespond, onRewound, onError } = props
+  const { entries, streamText, streamThinking, pending, busy, sessionId, onRespond, onRewound, onError, onAskFix } = props
   const [lightbox, setLightbox] = useState<string>()
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
@@ -140,6 +143,8 @@ export function Transcript(props: Props) {
                   {e.errors.join('\n')}
                 </div>
               ) : null
+            case 'motion':
+              return <MotionCard key={e.id} entry={e} busy={busy} onAskFix={onAskFix} />
             case 'system':
               return (
                 <div key={e.id} className={styles.system}>

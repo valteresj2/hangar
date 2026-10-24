@@ -1,4 +1,6 @@
 // IPC channels and payload types for the "preview" feature. Owned by the preview agent.
+import { MOTION_EXTENSION } from '../motion/spec'
+
 export const PREVIEW = {
   // Dev servers (.claude/launch.json)
   launchConfigs: 'preview:launchConfigs',
@@ -14,6 +16,15 @@ export const PREVIEW = {
   artifactRemove: 'preview:artifactRemove',
   artifactReveal: 'preview:artifactReveal',
   artifactOpen: 'preview:artifactOpen',
+  artifactStat: 'preview:artifactStat',
+  artifactWrite: 'preview:artifactWrite',
+  // Hangar Motion
+  motionAssets: 'preview:motionAssets',
+  exportDialog: 'preview:exportDialog',
+  exportOpen: 'preview:exportOpen',
+  exportWrite: 'preview:exportWrite',
+  exportClose: 'preview:exportClose',
+  showInFolder: 'preview:showInFolder',
   // Events (main -> renderer)
   serverEvent: 'preview:event:server',
   artifactsEvent: 'preview:event:artifacts',
@@ -79,7 +90,7 @@ export type ServerEvent =
 
 // ---- Artifacts ----
 
-export type ArtifactKind = 'html' | 'svg' | 'markdown' | 'mermaid'
+export type ArtifactKind = 'html' | 'svg' | 'markdown' | 'mermaid' | 'motion'
 
 export const ARTIFACT_EXTENSIONS: Record<string, ArtifactKind> = {
   '.html': 'html',
@@ -87,6 +98,14 @@ export const ARTIFACT_EXTENSIONS: Record<string, ArtifactKind> = {
   '.svg': 'svg',
   '.md': 'markdown',
   '.mermaid': 'mermaid'
+}
+
+/** Artifact kind of a file path; `*.motion.json` is checked before plain extensions. */
+export function artifactKindOf(path: string): ArtifactKind | undefined {
+  const lower = path.toLowerCase()
+  if (lower.endsWith(MOTION_EXTENSION)) return 'motion'
+  const dot = lower.lastIndexOf('.')
+  return dot < 0 ? undefined : ARTIFACT_EXTENSIONS[lower.slice(dot)]
 }
 
 export interface Artifact {
@@ -131,3 +150,17 @@ export interface DownloadEvent {
   state: 'started' | 'completed' | 'cancelled' | 'interrupted'
   savePath?: string
 }
+
+/** Result of `preview:artifactStat` (id). */
+export interface ArtifactStat {
+  exists: boolean
+  mtime: number
+}
+
+/** Result of `preview:artifactWrite` (id, text). Only motion artifacts can be written. */
+export interface ArtifactWriteResult {
+  mtime: number
+}
+
+/** Result of `preview:motionAssets` (artifactId, srcs): data: URLs keyed by the element `src`. Failed ones are missing. */
+export type MotionAssetUrls = Record<string, string>

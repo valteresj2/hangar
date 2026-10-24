@@ -46,7 +46,11 @@ export interface SendOptions {
   attachments?: string[]
   /** Images without a file (pasted or dropped from a browser), already under 5 MB. */
   images?: PastedImage[]
+  /** Special output for this turn: 'motion' hands Claude the Hangar Motion guide (hidden from the transcript). */
+  output?: OutputMode
 }
+
+export type OutputMode = 'motion'
 
 export interface PastedImage {
   mediaType: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp'
@@ -76,6 +80,8 @@ export interface RewindResult {
   text: string
   attachments?: string[]
   images?: PastedImage[]
+  /** Output mode the removed message was sent with. */
+  output?: OutputMode
   filesRestored?: string[]
   filesError?: string
 }
@@ -135,6 +141,18 @@ export type TranscriptEntry =
       images?: string[]
       /** UUID sent with the message to Claude Code; it is the message's id in the CLI session (rewind/fork point). */
       sdkUuid?: string
+      output?: OutputMode
+    })
+  | (EntryBase & {
+      kind: 'motion'
+      /** Absolute path of a *.motion.json written or edited during the turn. */
+      path: string
+      title?: string
+      /** Total seconds. */
+      duration?: number
+      scenes?: number
+      /** parseMotion errors (empty when valid). */
+      errors: string[]
     })
   | (EntryBase & { kind: 'assistant'; text: string; parentToolUseId?: string })
   | (EntryBase & { kind: 'thinking'; text: string })

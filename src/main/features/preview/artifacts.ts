@@ -1,21 +1,26 @@
-// Artifacts: HTML / SVG / Markdown / Mermaid files written during a session.
+// Artifacts: HTML / SVG / Markdown / Mermaid / Motion files written during a session.
 // Registered automatically from the engine's `session:file-written` bus event (or added by hand),
 // persisted in <userData>/hangar-data/preview/artifacts.json.
 
 import { dialog, nativeTheme, shell, type BrowserWindow } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { existsSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs'
-import { open } from 'node:fs/promises'
-import { basename, extname, isAbsolute, join, resolve } from 'node:path'
+import { open, readFile, stat } from 'node:fs/promises'
+import { basename, dirname, extname, isAbsolute, join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 import { broadcast } from '../../core/broadcast'
 import {
   ARTIFACT_EXTENSIONS,
   PREVIEW,
+  artifactKindOf,
   type Artifact,
   type ArtifactContent,
-  type ArtifactsEvent
+  type ArtifactStat,
+  type ArtifactsEvent,
+  type ArtifactWriteResult,
+  type MotionAssetUrls
 } from '../../../shared/features/preview'
+import { MOTION_EXTENSION } from '../../../shared/motion/spec'
 import { artifactUrl } from './artifactServer'
 import { previewDataDir, sessionDir } from './paths'
 
@@ -56,7 +61,7 @@ function changed(sessionId: string, artifactId?: string): void {
 }
 
 export function artifactKind(path: string) {
-  return ARTIFACT_EXTENSIONS[extname(path).toLowerCase()]
+  return artifactKindOf(path)
 }
 
 export function findArtifact(id: string): Artifact | undefined {
@@ -151,13 +156,13 @@ export async function addArtifactInteractive(win: BrowserWindow | undefined, ses
       title: 'Abrir arquivo como artifact',
       defaultPath,
       properties: ['openFile'],
-      filters: [{ name: 'Artifacts', extensions: Object.keys(ARTIFACT_EXTENSIONS).map((e) => e.slice(1)) }]
+      filters: [{ name: 'Artifacts', extensions: [MOTION_EXTENSION.slice(1), ...Object.keys(ARTIFACT_EXTENSIONS).map((e) => e.slice(1))] }]
     }
     const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
     if (res.canceled || !res.filePaths[0]) return undefined
     path = res.filePaths[0]
   }
-  if (!artifactKind(path)) throw new Error('Tipo de arquivo não suportado (use .html, .htm, .svg, .md ou .mermaid).')
+  if (!artifactKind(path)) throw new Error('Tipo de arquivo não suportado (use .html, .htm, .svg, .md, .mermaid ou .motion.json).')
   return registerArtifact(sessionId, path)
 }
 
@@ -175,4 +180,64 @@ export async function openArtifactExternally(id: string): Promise<void> {
     const err = await shell.openPath(artifact.path)
     if (err) throw new Error(err)
   }
+}
+
+export async function statArtifact(id: string): Promise<ArtifactStat> {
+  const artifact = findArtifact(id)
+  if (!artifact) return { exists: false, mtime: 0 }
+  try {
+    return { exists: true, mtime: (await stat(artifact.path)).mtimeMs }
+  } catch {
+    return { exists: false, mtime: 0 }
+  }
+}
+
+/** Saves edited text over a registered motion artifact (the only kind the UI can edit). */
+export async function writeArtifact(id: string, text: string): Promise<ArtifactWriteResult> {
+  const artifact = findArtifact(id)
+  if (!artifact) throw new Error('Artifact não encontrado.')
+  if (artifact.kind !== 'motion') throw new Error('Só arquivos .motion.json podem ser editados aqui.')
+  if (typeof text !== 'string') throw new Error('Conteúdo inválido.')
+  const tmp = `${artifact.path}.hangar-tmp`
+  writeFileSync(tmp, text, 'utf8')
+  renameSync(tmp, artifact.path)
+  return { mtime: statSync(artifact.path).mtimeMs }
+}
+
+const IMAGE_MIME: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp',
+  '.avif': 'image/avif',
+  '.ico': 'image/x-icon'
+}
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024
+
+/**
+ * Loads the image files a motion spec references as data: URLs (the app CSP cannot load file: or loopback
+ * images). `src` is relative to the .motion.json folder or absolute; only image files are read.
+ */
+export async function motionAssets(id: string, srcs: string[]): Promise<MotionAssetUrls> {
+  const artifact = findArtifact(id)
+  if (!artifact || artifact.kind !== 'motion' || !Array.isArray(srcs)) return {}
+  const out: MotionAssetUrls = {}
+  await Promise.all(
+    srcs.slice(0, 200).map(async (src) => {
+      if (typeof src !== 'string' || /^(data:|https?:)/i.test(src)) return
+      const file = resolve(dirname(artifact.path), src.replace(/^file:\/\/\/?/i, ''))
+      const mime = IMAGE_MIME[extname(file).toLowerCase()]
+      if (!mime) return
+      try {
+        if ((await stat(file)).size > MAX_IMAGE_BYTES) return
+        out[src] = `data:${mime};base64,${(await readFile(file)).toString('base64')}`
+      } catch {
+        // missing image: drawn as a placeholder
+      }
+    })
+  )
+  return out
 }
