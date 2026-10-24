@@ -15,6 +15,7 @@ import type {
 } from '@anthropic-ai/claude-agent-sdk'
 import { broadcast } from '../../core/broadcast'
 import { bus } from '../../core/bus'
+import { collectSystemAppend } from '../../core/prompts'
 import { db, settings } from '../../core/store'
 import type { PermissionMode, Session, SessionStatus } from '../../../shared/contracts'
 import {
@@ -170,7 +171,8 @@ export class Runner {
     const sdk = await loadSdk()
     const session = this.session()
     const defaults = settings().get()
-    const instructions = session.projectId ? db('projects').get(session.projectId)?.instructions?.trim() : undefined
+    const projectInstructions = session.projectId ? db('projects').get(session.projectId)?.instructions?.trim() : undefined
+    const instructions = [projectInstructions, ...collectSystemAppend(session)].filter(Boolean).join('\n\n')
     const input = new MessageQueue()
     this.stderrTail = []
 

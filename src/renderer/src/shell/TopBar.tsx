@@ -8,7 +8,8 @@ const PANEL_BUTTONS: { tab: SidePanelTab; label: string }[] = [
   { tab: 'changes', label: 'Alterações' },
   { tab: 'files', label: 'Arquivos' },
   { tab: 'browser', label: 'Navegador' },
-  { tab: 'artifacts', label: 'Artifacts' }
+  { tab: 'artifacts', label: 'Artifacts' },
+  { tab: 'harness', label: 'Harness' }
 ]
 
 export function TopBar({ session }: { session?: Session }) {

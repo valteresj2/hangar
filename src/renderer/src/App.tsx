@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { ChatView } from './features/engine'
 import { NewSessionView, Sidebar } from './features/sessions'
 import { CommandPalette, SettingsView } from './features/settings'
+import { LabView } from './features/lab'
 import { useRow, useSettings } from './core/data'
 import { useUi } from './core/ui'
 import { SidePanel } from './shell/SidePanel'
@@ -25,10 +26,11 @@ function useThemeAttribute(): void {
 
 export function App() {
   useThemeAttribute()
-  const { activeSessionId, sidebarOpen, sidePanelOpen, settingsOpen, setSettingsOpen } = useUi()
+  const { activeSessionId, sidebarOpen, sidePanelOpen, settingsOpen, setSettingsOpen, labCwd, closeLab } = useUi()
   const session = useRow('sessions', activeSessionId)
 
   if (settingsOpen) return <SettingsView onClose={() => setSettingsOpen(false)} />
+  if (labCwd) return <LabView cwd={labCwd} onClose={closeLab} />
 
   return (
     <div className={styles.app}>

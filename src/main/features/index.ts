@@ -6,6 +6,8 @@ import { terminalFeature } from './terminal'
 import { gitFeature } from './git'
 import { previewFeature } from './preview'
 import { settingsFeature } from './settings'
+import { harnessFeature } from './harness'
+import { labFeature } from './lab'
 
 export const features: Feature[] = [
   sessionsFeature,
@@ -13,5 +15,7 @@ export const features: Feature[] = [
   terminalFeature,
   gitFeature,
   previewFeature,
-  settingsFeature
+  settingsFeature,
+  harnessFeature,
+  labFeature
 ]
