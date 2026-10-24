@@ -59,6 +59,10 @@ export interface Settings {
   notifications: boolean
   recentFolders: string[]
   pinnedFolders: string[]
+  /** Closing the main window hides it to the tray instead of quitting. */
+  minimizeToTray: boolean
+  /** Electron accelerator for the global Quick Entry shortcut; empty string disables it. */
+  quickEntryShortcut: string
 }
 
 export const DEFAULT_SETTINGS: Settings = {
@@ -68,7 +72,9 @@ export const DEFAULT_SETTINGS: Settings = {
   defaultPermissionMode: 'default',
   notifications: true,
   recentFolders: [],
-  pinnedFolders: []
+  pinnedFolders: [],
+  minimizeToTray: true,
+  quickEntryShortcut: 'CommandOrControl+Alt+Space'
 }
 
 /** Collections persisted by the core store (src/main/core/store.ts). */

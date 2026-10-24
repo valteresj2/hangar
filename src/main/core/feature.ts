@@ -3,6 +3,8 @@ import type { BrowserWindow } from 'electron'
 export interface FeatureContext {
   /** Returns the main window (may be undefined before creation / after close). */
   mainWindow(): BrowserWindow | undefined
+  /** Shows and focuses the main window, recreating it if it was destroyed. */
+  showMainWindow(): BrowserWindow
 }
 
 export interface Feature {

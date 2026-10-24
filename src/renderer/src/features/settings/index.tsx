@@ -4,3 +4,8 @@
 
 export { SettingsView } from './SettingsView'
 export { CommandPalette } from './CommandPalette'
+
+/** Root view of the Quick Entry window (loaded with `#quick-entry`). Owned by the settings agent. */
+export function QuickEntry() {
+  return null
+}
