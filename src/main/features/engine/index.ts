@@ -41,9 +41,12 @@ export const engineFeature: Feature = {
     // Files the agent writes show up in the @mention index right away.
     bus.on('session:file-written', ({ sessionId }: { sessionId: string }) => invalidateFiles(sessionId))
 
-    // A deleted session takes its Claude Code process with it.
+    // A deleted session takes its Claude Code process with it; an archived one releases it (resumable later).
     bus.on('store:changed', (change: StoreChange) => {
-      if (change.collection !== 'sessions' || !change.id || db('sessions').get(change.id)) return
+      if (change.collection !== 'sessions' || !change.id) return
+      const session = db('sessions').get(change.id)
+      if (session?.archived) return closeRunner(change.id)
+      if (session) return
       closeRunner(change.id)
       invalidateFiles(change.id)
       setRewindPoint(change.id, undefined)

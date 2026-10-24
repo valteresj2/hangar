@@ -21,7 +21,10 @@ import {
 function onStoreChanged(change: StoreChange): void {
   if (change.collection !== 'sessions') return
   const sessions = db('sessions')
-  killWhere((info) => !sessions.get(info.sessionId))
+  killWhere((info) => {
+    const session = sessions.get(info.sessionId)
+    return !session || session.archived
+  })
 }
 
 export const terminalFeature: Feature = {

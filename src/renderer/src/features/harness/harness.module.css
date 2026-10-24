@@ -1,0 +1,624 @@
+/* Harness feature: side panel (components, snapshots, lessons) and the reusable tree editor. */
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  height: 100%;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px 6px;
+}
+.headerMain {
+  flex: 1;
+  min-width: 0;
+}
+.projectName {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.tabs {
+  display: flex;
+  gap: 2px;
+  padding: 0 10px;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  font-size: 13px;
+  color: var(--text-muted);
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+.tab:hover {
+  color: var(--text);
+}
+.tabActive {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+.count {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 400;
+}
+
+.tabBody {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+}
+.scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+.scrollAll {
+  overflow-y: auto;
+}
+.scrollAll > * {
+  flex-shrink: 0;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 12px;
+}
+
+.spacer {
+  flex: 1;
+}
+
+.empty {
+  padding: 16px 8px;
+  color: var(--text-muted);
+  font-size: 13px;
+  text-align: center;
+}
+.emptySm {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.hint {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.error {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  color: var(--danger);
+  font-size: 12px;
+  cursor: pointer;
+  word-break: break-word;
+}
+.notice {
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--success) 12%, transparent);
+  color: var(--success);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 6px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  font-size: 11px;
+  line-height: 17px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.st_added,
+.v_helped,
+.c_high {
+  color: var(--success);
+  border-color: color-mix(in srgb, var(--success) 45%, transparent);
+}
+.st_removed,
+.v_hurt {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+}
+.st_modified,
+.c_medium,
+.v_confounded {
+  color: var(--warning);
+  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+}
+
+/* ---------- Components editor ---------- */
+.components {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 12px 10px;
+}
+.toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.toolbar > .selectInline,
+.formRow .selectInline,
+.reflect .selectInline {
+  width: auto;
+}
+.selectInline {
+  padding: 3px 6px;
+  font-size: 12px;
+}
+.alwaysOn {
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.alwaysOnWarn {
+  color: var(--warning);
+  font-weight: 600;
+}
+
+.createRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.createRow > .input,
+.createRow > input {
+  flex: 1;
+  min-width: 0;
+}
+.createRow > span {
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.split {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+.fileList {
+  width: 190px;
+  flex-shrink: 0;
+  overflow-y: auto;
+  border-right: 1px solid var(--border);
+  background: var(--bg-sunken);
+  padding: 4px;
+}
+.group + .group {
+  margin-top: 6px;
+}
+.groupTitle {
+  padding: 4px 6px 2px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.fileItem {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 3px 6px 3px 10px;
+  border-radius: var(--radius-sm);
+  font-size: 12px;
+  text-align: left;
+}
+.fileItem:hover {
+  background: var(--bg-hover);
+}
+.fileItemActive,
+.fileItemActive:hover {
+  background: var(--bg-elev);
+  box-shadow: inset 0 0 0 1px var(--border);
+}
+.fileName {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--mono);
+}
+.dirtyDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.skipped {
+  margin-top: 8px;
+  padding: 4px 6px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.editor {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elev);
+}
+.editorHead {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 8px;
+  border-bottom: 1px solid var(--border);
+}
+.editorPath {
+  font-size: 12px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.unsaved {
+  font-size: 11px;
+  color: var(--accent);
+  white-space: nowrap;
+}
+.editorHead button:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+.code {
+  flex: 1;
+  min-height: 0;
+  resize: none;
+  border: none;
+  outline: none;
+  padding: 10px 12px;
+  background: transparent;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.55;
+  tab-size: 2;
+  white-space: pre;
+  overflow: auto;
+}
+
+/* ---------- Cards (snapshots, lessons) ---------- */
+.card {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.cardOff {
+  opacity: 0.6;
+}
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+}
+.cardMain {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.cardTitle {
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.cardActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+.cardActions button:disabled {
+  opacity: 0.5;
+}
+
+/* ---------- Diff ---------- */
+.diff {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.diffLegend {
+  display: flex;
+  gap: 12px;
+  font-size: 11px;
+}
+.addText {
+  color: var(--success);
+  font-size: 11px;
+}
+.delText {
+  color: var(--danger);
+  font-size: 11px;
+}
+.diffFile {
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.diffFileHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 4px 8px;
+  background: var(--bg-sunken);
+  text-align: left;
+}
+.chev {
+  font-size: 10px;
+  color: var(--text-muted);
+}
+.diffPath {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.diffBody {
+  max-height: 360px;
+  overflow: auto;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+.hunkHead {
+  padding: 2px 8px;
+  color: var(--text-muted);
+  background: var(--bg-sunken);
+}
+.line {
+  display: flex;
+  white-space: pre;
+  min-width: fit-content;
+}
+.lineAdd {
+  background: var(--diff-add);
+}
+.lineDel {
+  background: var(--diff-del);
+}
+.lineNo {
+  width: 38px;
+  flex-shrink: 0;
+  padding-right: 6px;
+  text-align: right;
+  color: var(--text-muted);
+  user-select: none;
+}
+.lineSign {
+  width: 14px;
+  flex-shrink: 0;
+  color: var(--text-muted);
+  user-select: none;
+}
+.lineText {
+  padding-right: 12px;
+}
+
+/* ---------- Lessons ---------- */
+.reflect {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.reflect button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.proposal {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  background: color-mix(in srgb, var(--accent) 5%, var(--bg-elev));
+}
+.proposal > button {
+  align-self: flex-end;
+}
+.sectionLabel {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+.tableWrap {
+  overflow-x: auto;
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 12px;
+}
+.table th,
+.table td {
+  padding: 4px 6px;
+  border-bottom: 1px solid var(--border);
+  text-align: left;
+  vertical-align: top;
+}
+.table th {
+  font-weight: 600;
+  color: var(--text-muted);
+}
+.raw summary {
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.raw pre {
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-sunken);
+  font-size: 11px;
+  white-space: pre-wrap;
+}
+
+.listHead {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+.toggle {
+  padding-top: 2px;
+  cursor: pointer;
+}
+.lessonText {
+  font-size: 13px;
+}
+.cue {
+  font-weight: 600;
+}
+.arrow {
+  color: var(--accent);
+}
+.c_low {
+  color: var(--text-muted);
+}
+.evidence summary {
+  font-size: 11px;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.evidence div {
+  margin-top: 4px;
+  font-size: 12px;
+  white-space: pre-wrap;
+  color: var(--text-muted);
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.field > textarea {
+  color: var(--text);
+  font-size: 13px;
+}
+.textareaSm {
+  resize: vertical;
+}
+.formRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.formRow button:disabled {
+  opacity: 0.55;
+  cursor: default;
+}
+.fieldInline {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---------- Modal ---------- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 900;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgb(0 0 0 / 0.4);
+}
+.modal {
+  width: min(440px, calc(100vw - 32px));
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  box-shadow: 0 16px 48px rgb(0 0 0 / 0.25);
+}
+.modalTitle {
+  font-size: 15px;
+  font-weight: 600;
+}
+.modalBody {
+  font-size: 13px;
+}
+.modalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+.btnDanger {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+}
+.btnDanger:hover {
+  background: var(--danger);
+  filter: brightness(1.08);
+}

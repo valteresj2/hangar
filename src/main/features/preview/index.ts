@@ -40,10 +40,12 @@ function onFileWritten(payload: { sessionId?: string; path?: string }): void {
   if (payload?.sessionId && payload.path) registerArtifact(payload.sessionId, payload.path)
 }
 
-// When a session is deleted, forget its artifacts and stop its dev servers.
+// A deleted session forgets its artifacts and stops its dev servers; an archived one only stops the servers.
 function onStoreChanged(change: StoreChange): void {
-  if (change.collection !== 'sessions' || !change.id || db('sessions').get(change.id)) return
-  pruneSession(change.id)
+  if (change.collection !== 'sessions' || !change.id) return
+  const session = db('sessions').get(change.id)
+  if (session && !session.archived) return
+  if (!session) pruneSession(change.id)
   stopSessionServers(change.id)
 }
 

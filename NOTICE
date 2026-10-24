@@ -1,0 +1,7 @@
+Hangar
+Copyright 2026 Valter Eduardo
+
+Parts of the Harness Lab (src/shared/harness.ts, src/main/features/harness, src/main/features/lab) adapt
+concepts and prompt wording from Harness² (https://github.com/google-research/harness2),
+Copyright 2026 Google LLC, licensed under the Apache License, Version 2.0
+(https://www.apache.org/licenses/LICENSE-2.0).

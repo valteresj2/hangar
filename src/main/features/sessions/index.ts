@@ -64,15 +64,22 @@ async function deleteSession(id: string, opts: DeleteSessionOptions = {}): Promi
   const session = db('sessions').get(id)
   if (!session) return { deleted: false }
   await interrupt(id).catch((err) => console.warn('[sessions] interrupt before delete failed', err))
+  // Deleting the row first makes every feature release what it holds inside the worktree (Claude Code
+  // process, terminals, dev servers); on Windows those would otherwise keep the folder locked.
+  db('sessions').delete(id)
   let worktreeError: string | undefined
   if (opts.removeWorktree && session.worktree) {
-    try {
-      await removeWorktree(session.worktree)
-    } catch (err) {
-      worktreeError = err instanceof Error ? err.message : String(err)
+    for (let attempt = 0; attempt < 5; attempt++) {
+      try {
+        await removeWorktree(session.worktree)
+        worktreeError = undefined
+        break
+      } catch (err) {
+        worktreeError = err instanceof Error ? err.message : String(err)
+        await new Promise((r) => setTimeout(r, 1000))
+      }
     }
   }
-  db('sessions').delete(id)
   return { deleted: true, worktreeError }
 }
 

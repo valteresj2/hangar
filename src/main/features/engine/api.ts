@@ -1,6 +1,6 @@
 // Main-side API of the engine feature, used by other features. Owned by the engine agent.
 import type { SendOptions, TranscriptEntry } from '../../../shared/features/engine'
-import { existingRunner, history, runnerFor } from './registry'
+import { closeRunner, existingRunner, history, runnerFor } from './registry'
 import { searchEntries } from './transcript'
 
 /**
@@ -13,6 +13,11 @@ export async function sendPrompt(sessionId: string, text: string, opts?: SendOpt
 
 export async function interrupt(sessionId: string): Promise<void> {
   await existingRunner(sessionId)?.interrupt()
+}
+
+/** Ends the session's Claude Code process (the session stays; the next prompt resumes it). */
+export async function closeSession(sessionId: string): Promise<void> {
+  closeRunner(sessionId)
 }
 
 export async function readTranscript(sessionId: string): Promise<TranscriptEntry[]> {
