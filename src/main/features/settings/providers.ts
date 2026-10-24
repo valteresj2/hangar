@@ -2,7 +2,8 @@
 //
 // Profiles (no secrets) live in <userData>/hangar-data/settings/providers.json. Each profile's secret is
 // encrypted with Electron's safeStorage (DPAPI on Windows) into providers.secrets.json and decrypted once
-// into memory, so resolveProviderLaunch() can stay synchronous. Secrets never go back to the renderer,
+// into memory, so resolveProviderLaunch() can stay synchronous. safeStorage is used through its asynchronous
+// API: loadProviders() decrypts at startup and the app waits for providersReady() before opening any window. Secrets never go back to the renderer,
 // and every error text that could contain one goes through maskSecrets().
 //
 // Variable names follow the Claude Code docs (code.claude.com/docs/en/llm-gateway-connect, /amazon-bedrock,
@@ -117,26 +118,48 @@ function writeJsonAtomic(file: string, value: unknown): void {
   renameSync(tmp, file)
 }
 
+/** Whether safeStorage can encrypt, as reported by isAsyncEncryptionAvailable() during loadProviders(). */
+let encryptionAvailable = false
+let ready: Promise<void> | undefined
+
 function ensureLoaded(): StoredProfile[] {
   if (profiles) return profiles
   profiles = readJson<StoredProfile[]>(profilesFile(), []).filter((p) => p && p.id && p.id !== SUBSCRIPTION_PROFILE_ID)
   encrypted = readJson<Record<string, string>>(secretsFile(), {})
-  secrets.clear()
-  if (safeStorage.isEncryptionAvailable()) {
-    for (const [id, data] of Object.entries(encrypted)) {
-      try {
-        secrets.set(id, safeStorage.decryptString(Buffer.from(data, 'base64')))
-      } catch {
-        // Encrypted by another Windows user or machine: reported as "não foi possível decifrar" on use.
-      }
-    }
-  }
   return profiles
 }
 
-/** Loads profiles and decrypts secrets; called at startup so the first launch doesn't pay for it. */
-export function loadProviders(): void {
+async function decryptAll(): Promise<void> {
   ensureLoaded()
+  secrets.clear()
+  encryptionAvailable = await safeStorage.isAsyncEncryptionAvailable()
+  if (!encryptionAvailable) return
+  let reEncrypted = false
+  for (const [id, data] of Object.entries(encrypted)) {
+    try {
+      const { result, shouldReEncrypt } = await safeStorage.decryptStringAsync(Buffer.from(data, 'base64'))
+      secrets.set(id, result)
+      if (shouldReEncrypt) {
+        // The OS key was rotated or upgraded: store the secret under the current one.
+        encrypted[id] = (await safeStorage.encryptStringAsync(result)).toString('base64')
+        reEncrypted = true
+      }
+    } catch {
+      // Encrypted by another Windows user or machine: reported as "não foi possível decifrar" on use.
+    }
+  }
+  if (reEncrypted) writeJsonAtomic(secretsFile(), encrypted)
+}
+
+/** Loads profiles and decrypts secrets into memory (asynchronously); called once at startup. */
+export function loadProviders(): Promise<void> {
+  ready ??= decryptAll().catch((err) => console.error('[hangar] provider secrets could not be loaded', err))
+  return ready
+}
+
+/** Resolves once secrets are in memory; the app waits for it before opening windows (sessions). */
+export function providersReady(): Promise<void> {
+  return loadProviders()
 }
 
 function persist(): void {
@@ -165,7 +188,7 @@ export function providersState(): ProvidersState {
   return {
     profiles: listProviders(),
     defaultId: defaultProviderId(),
-    encryptionAvailable: safeStorage.isEncryptionAvailable(),
+    encryptionAvailable,
     userSettingsBaseUrl: typeof base === 'string' && base ? maskSecrets(base) : undefined
   }
 }
@@ -287,15 +310,26 @@ export function deleteProvider(id: string): boolean {
   return true
 }
 
-export function setProviderSecret(id: string, secret: string): ProviderProfile {
+export async function setProviderSecret(id: string, secret: string): Promise<ProviderProfile> {
+  // Async now, so the IPC wrapper's synchronous masking no longer sees these errors: mask them here.
+  try {
+    return await storeSecret(id, secret)
+  } catch (err) {
+    throw new Error(maskSecrets(err instanceof Error ? err.message : String(err)))
+  }
+}
+
+async function storeSecret(id: string, secret: string): Promise<ProviderProfile> {
   const p = findStored(id)
   const value = secret.trim()
   if (!value) throw new Error('A chave está vazia.')
   if (/[\r\n]/.test(value)) throw new Error('A chave não pode ter quebras de linha.')
-  if (!safeStorage.isEncryptionAvailable()) {
+  await loadProviders()
+  encryptionAvailable = await safeStorage.isAsyncEncryptionAvailable()
+  if (!encryptionAvailable) {
     throw new Error('A criptografia do sistema (safeStorage/DPAPI) não está disponível, então o Hangar não salva chaves.')
   }
-  encrypted[id] = safeStorage.encryptString(value).toString('base64')
+  encrypted[id] = (await safeStorage.encryptStringAsync(value)).toString('base64')
   secrets.set(id, value)
   p.updatedAt = Date.now()
   writeJsonAtomic(profilesFile(), ensureLoaded())

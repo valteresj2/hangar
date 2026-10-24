@@ -6,8 +6,10 @@ import {
   type AdoptResult,
   type BlindCandidate,
   type CreateLabRoundInput,
+  type ExecReview,
   type LabPrepareInfo,
-  type LabRoundView
+  type LabRoundView,
+  type VariantExecReview
 } from '@shared/features/lab'
 import { bridge } from '../../core/api'
 
@@ -19,7 +21,9 @@ export const labApi = {
   candidates: (roundId: string) => bridge.invoke<BlindCandidate[]>(LAB.candidates, roundId),
   choose: (roundId: string, anonId: string, why: string) => bridge.invoke<LabRoundView>(LAB.choose, roundId, anonId, why),
   askClaude: (roundId: string) => bridge.invoke<LabRoundView>(LAB.askClaude, roundId),
-  adopt: (roundId: string, apply: boolean) => bridge.invoke<AdoptResult>(LAB.adopt, roundId, apply),
+  adopt: (roundId: string, apply: boolean, confirmExec?: string) => bridge.invoke<AdoptResult>(LAB.adopt, roundId, apply, confirmExec),
+  adoptReview: (roundId: string) => bridge.invoke<ExecReview>(LAB.adoptReview, roundId),
+  createReview: (input: CreateLabRoundInput) => bridge.invoke<VariantExecReview[]>(LAB.createReview, input),
   reflect: (roundId: string) => bridge.invoke<ReflectResult>(LAB.reflect, roundId),
   cleanup: (roundId: string) => bridge.invoke<LabRoundView>(LAB.cleanup, roundId),
   remove: (roundId: string) => bridge.invoke<void>(LAB.remove, roundId)

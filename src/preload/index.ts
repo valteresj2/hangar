@@ -1,3 +1,6 @@
+// Preload of every Hangar window. Runs sandboxed (webPreferences.sandbox: true): only the sandbox-safe Electron
+// modules (contextBridge, ipcRenderer, webUtils) and `process.platform` are available here; no Node APIs.
+// The bridge it exposes is answered by main only for our own top frame (src/main/core/ipcGuard.ts).
 import { contextBridge, ipcRenderer, webUtils } from 'electron'
 import type { HangarBridge } from '../shared/ipc'
 

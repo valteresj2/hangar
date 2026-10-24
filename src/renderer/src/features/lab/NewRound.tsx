@@ -10,8 +10,9 @@ import {
   type HarnessTree,
   type LabMode
 } from '@shared/harness'
-import type { LabPrepareInfo, LabRoundView } from '@shared/features/lab'
+import type { CreateLabRoundInput, LabPrepareInfo, LabRoundView, VariantExecReview } from '@shared/features/lab'
 import { HarnessTreeEditor } from '../harness'
+import { ExecWarning } from './ExecWarning'
 import { errorMessage, formatCost, labApi } from './labApi'
 import { treeChanges } from './treeDiff'
 import styles from './lab.module.css'
@@ -141,6 +142,7 @@ export function NewRound({
   const [quick, setQuick] = useState(false)
   const [busy, setBusy] = useState(false)
   const [roundMode, setRoundMode] = useState<LabMode>('manual')
+  const [execReviews, setExecReviews] = useState<VariantExecReview[]>()
   const [depth, setDepth] = useState(1)
   const [proposerModel, setProposerModel] = useState('')
   const [cap, setCap] = useState('')
@@ -209,11 +211,11 @@ export function NewRound({
     return { ...plan, usd }
   }, [roundMode, depth, drafts.length, history])
 
-  const submit = async () => {
+  const submit = async (confirmExec?: string) => {
     setBusy(true)
     setError(undefined)
     try {
-      const round = await labApi.create({
+      const input: CreateLabRoundInput = {
         projectCwd: cwd,
         task,
         model: model || undefined,
@@ -229,7 +231,18 @@ export function NewRound({
               tree: d.tree,
               snapshotId: d.origin === 'base' ? undefined : d.origin
             }))
-      })
+      }
+      if (!auto && confirmExec === undefined) {
+        // Variants that change hooks/scripts run that code in the round's worktrees: show it first.
+        const reviews = await labApi.createReview(input)
+        if (reviews.some((r) => r.fingerprint)) {
+          setExecReviews(reviews)
+          setBusy(false)
+          return
+        }
+      }
+      const round = await labApi.create({ ...input, ...(confirmExec ? { confirmExec } : {}) })
+      setExecReviews(undefined)
       onCreated(round.id)
     } catch (e) {
       setError(errorMessage(e))
@@ -447,11 +460,22 @@ export function NewRound({
         )
       })}
 
+      {execReviews && (
+        <ExecWarning
+          title="Variantes alteram hooks ou scripts"
+          sections={execReviews.filter((r) => r.changes.length).map((r) => ({ label: r.label, changes: r.changes }))}
+          confirmLabel="Rodar com estas mudanças"
+          busy={busy}
+          onConfirm={() => void submit(execReviews.map((r) => r.fingerprint).filter(Boolean).join(','))}
+          onCancel={() => setExecReviews(undefined)}
+        />
+      )}
+
       <div className={styles.actions}>
         <button className="btn" onClick={onCancel}>
           Cancelar
         </button>
-        <button className="btn btn-primary" disabled={!canSubmit} onClick={() => void submit()}>
+        <button className="btn btn-primary" disabled={!canSubmit || !!execReviews} onClick={() => void submit()}>
           {busy
             ? 'Preparando…'
             : auto

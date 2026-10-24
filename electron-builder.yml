@@ -32,14 +32,38 @@ asarUnpack:
 # node-pty uses N-API prebuilds; rebuilding is unnecessary and fails on this machine (see docs/agents/reports/terminal.md).
 npmRebuild: false
 
+# Electron fuses, flipped after packaging and before signing (https://www.electron.build/docs/tutorials/adding-electron-fuses).
+electronFuses:
+  runAsNode: false
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
+  enableEmbeddedAsarIntegrityValidation: true
+  enableCookieEncryption: false
+  loadBrowserProcessSpecificV8Snapshot: false
+  grantFileProtocolExtraPrivileges: true
+
+# Auto-update feed, embedded in the app as resources/app-update.yml. It must be PUBLIC: the app cannot carry a token.
+# The source repo (valteresj2/hangar) is private, so releases go to a separate public repo. CI can override the target
+# (see .github/workflows/release.yml and docs/RELEASE.md).
+publish:
+  provider: github
+  owner: valteresj2
+  repo: hangar-releases
+  releaseType: release
+
 win:
   target:
     - target: nsis
       arch: [x64]
   icon: build/icon.ico
   artifactName: ${productName}-Setup-${version}.${ext}
-  # No code signing certificate: SmartScreen will warn on first run.
   signAndEditExecutable: true
+  # Code signing is optional and driven by the environment, so local builds keep working unsigned:
+  #  - .pfx certificate: set CSC_LINK (path/URL/base64) and CSC_KEY_PASSWORD (or WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD).
+  #  - Azure Trusted Signing: CI passes win.azureSignOptions.* on the command line plus AZURE_TENANT_ID,
+  #    AZURE_CLIENT_ID and AZURE_CLIENT_SECRET (see docs/RELEASE.md). Not set here because its presence forces signing.
+  # Without either, electron-builder skips signing and SmartScreen / Smart App Control will warn or block.
 
 nsis:
   oneClick: false

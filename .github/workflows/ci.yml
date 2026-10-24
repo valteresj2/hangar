@@ -1,0 +1,60 @@
+# CI: typecheck, build, unit tests (Vitest) and end-to-end tests (Playwright + Electron) on Windows.
+# The E2E tests talk only to the fake Anthropic server in tests/mock-anthropic (a local HTTP server started by
+# the tests), with an isolated CLAUDE_CONFIG_DIR and a fake token: no secrets, no real API calls.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: windows-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Installs Electron, the Agent SDK's bundled claude.exe (used by the E2E tests) and node-pty's prebuilds.
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck (app)
+        run: npm run typecheck
+
+      - name: Typecheck (tests)
+        run: npx tsc --noEmit -p tests/tsconfig.json
+
+      - name: Build
+        run: npm run build
+
+      - name: Unit tests
+        run: npm test
+
+      # `npm run test:e2e` would build again; the build above is reused.
+      - name: End-to-end tests (mock Anthropic server)
+        run: npx playwright test
+
+      - name: Upload E2E failure artifacts (screenshots, traces)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-failures
+          path: |
+            test-results/
+            playwright-report/
+          if-no-files-found: ignore
+          retention-days: 14

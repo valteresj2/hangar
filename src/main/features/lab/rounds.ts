@@ -12,9 +12,11 @@ import {
   type AdoptResult,
   type BlindCandidate,
   type CreateLabRoundInput,
+  type ExecReview,
   type LabPrepareInfo,
   type LabRoundView,
-  type LabVariantView
+  type LabVariantView,
+  type VariantExecReview
 } from '../../../shared/features/lab'
 import {
   LAB_PARALLEL_MAX,
@@ -43,6 +45,7 @@ import {
 import { askClaude } from './select'
 import { allRounds, deleteRound, labDir, patchVariant, putRound, requireRound, toView, updateRound, type LabRoundRecord } from './store'
 import { condenseTrajectory, outcomeOf } from './transcript'
+import { execReview } from './exec'
 
 export function listRounds(projectCwd: string): LabRoundView[] {
   const key = normalize(projectCwd)
@@ -82,6 +85,13 @@ export async function createRound(input: CreateLabRoundInput): Promise<LabRoundV
   if (!(await hasHead(input.projectCwd))) throw new Error('O repositório ainda não tem commits; faça o primeiro commit antes.')
 
   const baseTree = await readHarness(input.projectCwd)
+  if (mode === 'manual') {
+    // Variants that change hooks/scripts run that code inside the round's worktrees: the user must have seen it.
+    const expected = combinedFingerprint(input.variants.map((v) => ({ label: v.label, ...execReview(baseTree, v.tree) })))
+    if (expected && input.confirmExec !== expected) {
+      throw new Error('Variantes que alteram hooks ou scripts precisam de confirmação explícita antes de rodar.')
+    }
+  }
   const common = {
     id: randomUUID().slice(0, 8),
     projectCwd: input.projectCwd,
@@ -197,10 +207,36 @@ function winnerOf(round: LabRoundRecord): LabVariantView {
 
 const nameOf = (v: LabVariantView) => v.roleLabel ?? v.label
 
-export async function adopt(roundId: string, apply: boolean): Promise<AdoptResult> {
+/** Manual-round confirmation token: the non-empty variant fingerprints, in variant order. */
+function combinedFingerprint(reviews: VariantExecReview[]): string {
+  return reviews.map((r) => r.fingerprint).filter(Boolean).join(',')
+}
+
+/** Executable changes of each manual variant against the project's current harness. */
+export async function createReview(input: CreateLabRoundInput): Promise<VariantExecReview[]> {
+  const baseTree = await readHarness(input.projectCwd)
+  return input.variants.map((v, i) => ({ label: v.label.trim() || `Variante ${i + 1}`, ...execReview(baseTree, v.tree) }))
+}
+
+/** What applying the winner would change in what runs on this machine (vs the project's harness now). */
+export async function adoptReview(roundId: string): Promise<ExecReview> {
+  const round = requireRound(roundId)
+  const winner = winnerOf(round)
+  if (isBaseVariant(winner)) return { changes: [], fingerprint: '' }
+  return execReview(await readHarness(round.projectCwd), winner.tree)
+}
+
+export async function adopt(roundId: string, apply: boolean, confirmExec?: string): Promise<AdoptResult> {
   const round = requireRound(roundId)
   const winner = winnerOf(round)
   if (isBaseVariant(winner)) return { round: toView(round), unchanged: true, applied: false }
+  if (apply) {
+    // Writing hooks/scripts into the project is code execution: only with the exact list the user confirmed.
+    const review = execReview(await readHarness(round.projectCwd), winner.tree)
+    if (review.fingerprint && confirmExec !== review.fingerprint) {
+      throw new Error('Este harness altera hooks ou scripts executáveis: confirme a lista de mudanças antes de aplicar.')
+    }
+  }
   const by = round.selection!.by === 'user' ? 'você' : 'Claude'
   const snapshot = await createSnapshot(
     round.projectCwd,

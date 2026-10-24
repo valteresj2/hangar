@@ -10,6 +10,8 @@ import { bus } from '../../core/bus'
 import type { Feature } from '../../core/feature'
 import {
   adopt,
+  adoptReview,
+  createReview,
   askClaudeToChoose,
   blindCandidates,
   cancelRound,
@@ -35,7 +37,9 @@ export const labFeature: Feature = {
     ipcMain.handle(LAB.candidates, (_e, roundId: string) => blindCandidates(roundId))
     ipcMain.handle(LAB.choose, (_e, roundId: string, anonId: string, why: string) => chooseCandidate(roundId, anonId, why))
     ipcMain.handle(LAB.askClaude, (_e, roundId: string) => askClaudeToChoose(roundId))
-    ipcMain.handle(LAB.adopt, (_e, roundId: string, apply: boolean) => adopt(roundId, apply))
+    ipcMain.handle(LAB.adopt, (_e, roundId: string, apply: boolean, confirmExec?: string) => adopt(roundId, apply, confirmExec))
+    ipcMain.handle(LAB.adoptReview, (_e, roundId: string) => adoptReview(roundId))
+    ipcMain.handle(LAB.createReview, (_e, input: CreateLabRoundInput) => createReview(input))
     ipcMain.handle(LAB.reflect, (_e, roundId: string) => reflectRound(roundId))
     ipcMain.handle(LAB.cleanup, (_e, roundId: string) => cleanup(roundId))
     ipcMain.handle(LAB.remove, (_e, roundId: string) => removeRound(roundId))

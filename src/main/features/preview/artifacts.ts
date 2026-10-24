@@ -175,7 +175,21 @@ export function revealArtifact(id: string): void {
 export async function openArtifactExternally(id: string): Promise<void> {
   const artifact = findArtifact(id)
   if (!artifact) return
-  if (artifact.kind === 'html' || artifact.kind === 'svg') await shell.openExternal(pathToFileURL(artifact.path).href)
+  if (artifact.kind === 'html' || artifact.kind === 'svg') {
+    // Agent-written pages run with file:// privileges in the system browser: ask first.
+    const { response } = await dialog.showMessageBox({
+      type: 'warning',
+      buttons: ['Abrir no navegador', 'Cancelar'],
+      defaultId: 1,
+      cancelId: 1,
+      title: 'Abrir artifact fora do Hangar',
+      message: 'Abrir este arquivo no navegador do sistema?',
+      detail: `${artifact.path}
+
+Ele foi gerado pelo agente e, fora do Hangar, roda sem o isolamento do painel Artifacts.`
+    })
+    if (response === 0) await shell.openExternal(pathToFileURL(artifact.path).href)
+  }
   else {
     const err = await shell.openPath(artifact.path)
     if (err) throw new Error(err)

@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import type { Session } from '@shared/contracts'
 import type { ReflectResult } from '@shared/harness'
-import { isBaseVariant, type LabRoundView, type LabVariantView } from '@shared/features/lab'
+import { isBaseVariant, type ExecReview, type LabRoundView, type LabVariantView } from '@shared/features/lab'
 import { useCollection } from '../../core/data'
 import { BlindSelect, DeliverableCard } from './BlindSelect'
+import { ExecWarning } from './ExecWarning'
 import { errorMessage, formatCost, formatDate, formatDuration, labApi, useTicker } from './labApi'
 import { PipelineTimeline, StagesReveal } from './Pipeline'
 import styles from './lab.module.css'
@@ -129,6 +130,8 @@ function Reveal({ round }: { round: LabRoundView }) {
   const [notice, setNotice] = useState<string>()
   const [busy, setBusy] = useState<string>()
   const [askApply, setAskApply] = useState(false)
+  /** Executable changes the winner brings; shown for explicit confirmation before applying. */
+  const [execReview, setExecReview] = useState<ExecReview>()
   const winner = round.variants.find((v) => v.id === round.selection?.variantId)
   const anonOf = Object.fromEntries(Object.entries(round.blindMap ?? {}).map(([a, v]) => [v, a]))
   const baseWon = !!winner && isBaseVariant(winner)
@@ -146,10 +149,18 @@ function Reveal({ round }: { round: LabRoundView }) {
     }
   }
 
-  const adopt = (apply: boolean) =>
+  const adopt = (apply: boolean, confirmExec?: string) =>
     run('adopt', async () => {
+      if (apply && confirmExec === undefined) {
+        const review = await labApi.adoptReview(round.id)
+        if (review.fingerprint) {
+          setExecReview(review)
+          return
+        }
+      }
       setAskApply(false)
-      const res = await labApi.adopt(round.id, apply)
+      setExecReview(undefined)
+      const res = await labApi.adopt(round.id, apply, confirmExec)
       setNotice(
         res.unchanged
           ? 'A base venceu: nada muda no projeto.'
@@ -202,7 +213,16 @@ function Reveal({ round }: { round: LabRoundView }) {
       {notice && <div className={styles.notice}>{notice}</div>}
 
       <div className={styles.actions}>
-        {askApply ? (
+        {execReview ? (
+          <ExecWarning
+            title={`O harness de ${winner ? nameOf(winner) : 'vencedor'} muda o que roda no projeto`}
+            sections={[{ changes: execReview.changes }]}
+            confirmLabel="Aplicar com estas mudanças"
+            busy={!!busy}
+            onConfirm={() => void adopt(true, execReview.fingerprint)}
+            onCancel={() => setExecReview(undefined)}
+          />
+        ) : askApply ? (
           <div className={styles.callout}>
             <p>
               Criar um snapshot com o harness de <strong>{winner && nameOf(winner)}</strong> e aplicá-lo agora no projeto? Os arquivos

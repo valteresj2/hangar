@@ -3,6 +3,7 @@ import type { Effort, PermissionMode, Settings, ThemePref } from '@shared/contra
 import type { AuthStatus, CliInfo } from '@shared/features/settings'
 import { api } from '../../../core/api'
 import { useSettings } from '../../../core/data'
+import { openDiagnostics } from '../../onboarding'
 import { settingsApi } from '../api'
 import { Card, Dot, Row, Segmented, Spinner, Switch } from '../ui'
 import { useSettingsSection } from '../SettingsView'
@@ -90,7 +91,18 @@ function CliCard({ settings }: { settings: Settings }) {
   }
 
   return (
-    <Card title="Claude Code" actions={loading ? <Spinner /> : <button className="btn" onClick={() => void refresh()}>Verificar</button>}>
+    <Card
+      title="Claude Code"
+      actions={
+        <>
+          {/* Reopens the first-run assistant on its diagnosis step (onboarding feature). */}
+          <button className="btn" title="Verifica executável, login, gateway, provedor e git" onClick={openDiagnostics}>
+            Rodar diagnóstico
+          </button>
+          {loading ? <Spinner /> : <button className="btn" onClick={() => void refresh()}>Verificar</button>}
+        </>
+      }
+    >
       <Row
         label="Executável do claude"
         hint={

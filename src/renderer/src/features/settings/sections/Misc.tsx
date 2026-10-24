@@ -1,3 +1,4 @@
+import { UpdaterPanel } from '../../updater'
 import { useEffect, useState } from 'react'
 import type { AppInfo } from '@shared/features/settings'
 import { api } from '../../../core/api'
@@ -40,6 +41,9 @@ export function AboutSection() {
   useEffect(() => void settingsApi.appInfo().then(setInfo), [])
   if (!info) return <Spinner />
   return (
+    <>
+      <UpdaterPanel />
+      
     <Card>
       <Row label="Hangar" hint="App desktop para rodar e acompanhar sessões do Claude Code.">
         <span>v{info.version}</span>
@@ -59,5 +63,6 @@ export function AboutSection() {
         </button>
       </Row>
     </Card>
+    </>
   )
 }

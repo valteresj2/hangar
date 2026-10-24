@@ -84,6 +84,10 @@ export class Runner {
   private providerErrorShown = false
   /** The turn was stopped because the provider rejected the credentials. */
   private authAbort = false
+  /** The running query was started with allowDangerouslySkipPermissions (session in bypassPermissions). */
+  private bypassAllowed = false
+  /** Close the query when the current turn ends (permission capability changed); the next message resumes. */
+  private restartAfterTurn = false
   private streamText = ''
   private streamThinking = ''
   commands: SlashCommandInfo[] = []
@@ -197,6 +201,9 @@ export class Runner {
     this.secrets = launch.secrets
     this.model = undefined
     const flagSettings: SdkSettings = { ...(launch.options.settings ?? {}), ...(session.fastMode ? { fastMode: true } : {}) }
+    const permissionMode = session.permissionMode ?? defaults.defaultPermissionMode
+    this.bypassAllowed = permissionMode === 'bypassPermissions'
+    this.restartAfterTurn = false
 
     const input = new MessageQueue()
     this.stderrTail = []
@@ -205,9 +212,10 @@ export class Runner {
       cwd: session.worktree?.path ?? session.cwd,
       model: session.model ?? launch.defaultModel ?? defaults.defaultModel,
       effort: session.effort ?? defaults.defaultEffort,
-      permissionMode: session.permissionMode ?? defaults.defaultPermissionMode,
-      // Lets the user switch to "Ignorar permissões" mid-session; the mode itself is still opt-in.
-      allowDangerouslySkipPermissions: true,
+      permissionMode,
+      // Only a session started in "Ignorar permissões" may skip them; switching into or out of that mode
+      // restarts the query (setOptions) so the capability never outlives the choice.
+      ...(this.bypassAllowed ? { allowDangerouslySkipPermissions: true } : {}),
       resume: session.sdkSessionId,
       ...(session.sdkSessionId && rewindPoint(this.sessionId) ? { resumeSessionAt: rewindPoint(this.sessionId) } : {}),
       // Checkpoints let a rewind also restore files; replayed user messages confirm our UUIDs landed.
@@ -428,6 +436,10 @@ export class Runner {
     const failed = (m.is_error && !wasInterrupt) || authAbort
     this.setStatus(failed ? 'error' : 'idle', this.host.isActive(this.sessionId) ? {} : { unread: true })
     bus.emit('session:turn-ended', { sessionId: this.sessionId, result: failed ? 'error' : 'success' })
+    if (this.restartAfterTurn) {
+      this.restartAfterTurn = false
+      this.close()
+    }
   }
 
   /**
@@ -557,9 +569,32 @@ export class Runner {
     db('sessions').patch(this.sessionId, patch)
     const q = this.q
     if (!q) return
+    // Entering or leaving "Ignorar permissões" changes whether the process may skip permissions at all:
+    // restart it (resume keeps the conversation) instead of flipping the mode in place.
+    const bypassChange =
+      patch.permissionMode !== undefined && (patch.permissionMode === 'bypassPermissions') !== this.bypassAllowed
     try {
       if (patch.model !== undefined) await q.setModel(patch.model || undefined)
-      if (patch.permissionMode !== undefined) await q.setPermissionMode(patch.permissionMode)
+      if (bypassChange) {
+        // Leaving bypass takes effect right away; the restart then drops the capability.
+        if (patch.permissionMode !== 'bypassPermissions') await q.setPermissionMode(patch.permissionMode!)
+        if (this.inflight > 0) {
+          this.restartAfterTurn = true
+          this.record({
+            kind: 'system',
+            text:
+              patch.permissionMode === 'bypassPermissions'
+                ? '"Ignorar permissões" vale a partir da próxima mensagem: o Claude Code reinicia ao fim desta rodada e retoma a conversa.'
+                : 'O Claude Code reinicia ao fim desta rodada, sem a opção de ignorar permissões.'
+          })
+        } else {
+          this.close()
+        }
+      } else if (patch.permissionMode !== undefined) {
+        await q.setPermissionMode(patch.permissionMode)
+      }
+      // Closed for a restart: the next query starts with the session's saved options.
+      if (this.q !== q) return
       if (patch.effort !== undefined) await q.applyFlagSettings({ effortLevel: patch.effort })
       if (patch.fastMode !== undefined) await q.applyFlagSettings({ fastMode: patch.fastMode })
     } catch (err) {

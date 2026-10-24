@@ -105,7 +105,9 @@ export async function createTerminal(opts: CreateTerminalOptions): Promise<Termi
     cols: Math.max(2, Math.floor(opts.cols) || 80),
     rows: Math.max(2, Math.floor(opts.rows) || 24),
     cwd,
-    env: shellEnv(shell)
+    env: shellEnv(shell),
+    // The bundled conpty.dll/OpenConsole.exe; its kill path does not fork a Node helper, so the runAsNode fuse can stay off.
+    ...(process.platform === 'win32' ? { useConptyDll: true } : {})
   })
 
   const info: TerminalInfo = {

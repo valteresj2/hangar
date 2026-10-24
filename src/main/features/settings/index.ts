@@ -105,9 +105,9 @@ export const settingsFeature: Feature = {
     // Provider errors can echo input back; never let a secret ride along in an IPC error.
     const guarded =
       <A extends unknown[], R>(fn: (...args: A) => R) =>
-      (_e: unknown, ...args: A): R => {
+      async (_e: unknown, ...args: A): Promise<Awaited<R>> => {
         try {
-          return fn(...args)
+          return await fn(...args)
         } catch (err) {
           throw new Error(maskSecrets(err instanceof Error ? err.message : String(err)))
         }

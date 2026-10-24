@@ -4,6 +4,7 @@ import { dialog, ipcMain, shell, app } from 'electron'
 import type { CollectionName, Settings } from '../../shared/contracts'
 import { CORE } from '../../shared/ipc'
 import type { FeatureContext } from './feature'
+import { openExternalLink } from './window'
 import { db, settings } from './store'
 
 export function registerCoreIpc(ctx: FeatureContext): void {
@@ -21,9 +22,7 @@ export function registerCoreIpc(ctx: FeatureContext): void {
     const res = win ? await dialog.showOpenDialog(win, { ...opts, properties: [...opts.properties] }) : await dialog.showOpenDialog({ ...opts, properties: [...opts.properties] })
     return res.canceled ? undefined : res.filePaths[0]
   })
-  ipcMain.handle(CORE.openExternal, (_e, url: string) => {
-    if (/^https?:\/\//i.test(url)) return shell.openExternal(url)
-  })
+  ipcMain.handle(CORE.openExternal, (_e, url: string) => openExternalLink(url, ctx.mainWindow()))
   ipcMain.handle(CORE.openPath, (_e, path: string) => shell.openPath(path))
   ipcMain.handle(CORE.homeDir, () => app.getPath('home'))
 }

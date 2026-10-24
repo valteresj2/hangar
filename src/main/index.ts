@@ -1,10 +1,15 @@
-import { app, BrowserWindow, nativeTheme, shell } from 'electron'
+import { app, BrowserWindow, nativeTheme } from 'electron'
+import { installIpcGuard } from './core/ipcGuard'
 import { registerCoreIpc } from './core/ipc'
 import type { FeatureContext } from './core/feature'
 import { flushAll, settings } from './core/store'
-import { isQuitting, loadRenderer, markQuitting, rendererWebPreferences } from './core/window'
+import { installWebContentsHardening, isQuitting, loadRenderer, markQuitting, rendererWebPreferences } from './core/window'
 import { features } from './features'
+import { providersReady } from './features/settings/providers'
 import { appIcon } from './features/settings/tray'
+
+// Before anything registers a handler: IPC only answers the Hangar renderer (see core/ipcGuard.ts).
+installIpcGuard()
 
 let mainWindow: BrowserWindow | undefined
 
@@ -47,11 +52,8 @@ function createWindow(): BrowserWindow {
     }
   })
 
-  // Links clicked in the app open in the system browser, never in a new Electron window.
-  win.webContents.setWindowOpenHandler(({ url }) => {
-    if (/^https?:\/\//i.test(url)) void shell.openExternal(url)
-    return { action: 'deny' }
-  })
+  // Navigation, popups (links open in the system browser) and webviews are locked down app-wide
+  // in installWebContentsHardening (core/window.ts).
 
   void loadRenderer(win)
   return win
@@ -65,6 +67,8 @@ if (process.env['CLAUDECODE']) {
   for (const key of Object.keys(process.env)) {
     if (
       key === 'CLAUDECODE' ||
+      // The host session points this at its own endpoint; the installed app would follow ~/.claude/settings.json.
+      key === 'ANTHROPIC_BASE_URL' ||
       /^CLAUDE_CODE_(ENTRYPOINT|SESSION_ID|SSE_PORT|SDK_HAS_HOST_AUTH_REFRESH|OAUTH_SCOPES|MESSAGING_.+)$/.test(key) ||
       key.startsWith('CLAUDE_AGENT_SDK_')
     ) {
@@ -81,6 +85,7 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 app.whenReady().then(async () => {
+  installWebContentsHardening()
   nativeTheme.themeSource = settings().get().theme
   registerCoreIpc(ctx)
   for (const feature of features) {
@@ -90,6 +95,8 @@ app.whenReady().then(async () => {
       console.error(`[hangar] feature "${feature.name}" failed to register`, err)
     }
   }
+  // Provider secrets are decrypted asynchronously (safeStorage); no window (so no session) opens before that.
+  await providersReady()
   createWindow()
   app.on('activate', () => ctx.showMainWindow())
 })

@@ -17,8 +17,15 @@ export const LAB = {
   choose: 'lab:choose',
   /** (roundId) → LabRoundView — headless Claude picks a candidate */
   askClaude: 'lab:askClaude',
-  /** (roundId, apply: boolean) → AdoptResult */
+  /**
+   * (roundId, apply: boolean, confirmExec?: string) → AdoptResult. Applying a harness that changes what runs
+   * (hooks, helper commands, scripts) requires `confirmExec` = the `fingerprint` of `lab:adoptReview`.
+   */
   adopt: 'lab:adopt',
+  /** (roundId) → ExecReview — executable changes the winner would bring into the project */
+  adoptReview: 'lab:adoptReview',
+  /** (input: CreateLabRoundInput) → VariantExecReview[] — executable changes of each manual variant vs the base */
+  createReview: 'lab:createReview',
   /** (roundId) → ReflectResult */
   reflect: 'lab:reflect',
   /** (roundId) → LabRoundView — removes worktrees and archives the round's sessions */
@@ -67,6 +74,31 @@ export interface CreateLabRoundInput {
   proposerModel?: string
   /** Stops the round once runs + calls cost more than this (USD). */
   costCapUsd?: number
+  /**
+   * Manual rounds whose variants change what runs (hooks, scripts): the combined `fingerprint` of
+   * `lab:createReview`, proving the user saw the list. Without it such a round is refused.
+   */
+  confirmExec?: string
+}
+
+/** One change to what a harness can execute (or allow) on the user's machine. */
+export interface ExecChange {
+  /** Harness path, e.g. `.claude/settings.json` or `.claude/skills/x/scripts/run.sh`. */
+  path: string
+  change: 'added' | 'modified' | 'removed'
+  kind: 'hook' | 'command' | 'permission' | 'env' | 'script' | 'inline-command'
+  /** What changes: the command line, permission rule, variable or file. */
+  detail: string
+}
+
+export interface ExecReview {
+  changes: ExecChange[]
+  /** Hash of `changes`; echoed back to confirm exactly this list. Empty when there is nothing to confirm. */
+  fingerprint: string
+}
+
+export interface VariantExecReview extends ExecReview {
+  label: string
 }
 
 /** One step of the automatic pipeline, aggregated so it does not reveal which run is which. */

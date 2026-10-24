@@ -1,0 +1,113 @@
+# Release: on a `v*` tag, build the Windows installer, sign it when signing secrets exist, and publish the installer,
+# its blockmap and latest.yml to the update feed. See docs/RELEASE.md for the secrets/variables to configure.
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: 'Publicar no feed de atualização (senão só gera os artefatos)'
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 60
+    env:
+      # Update feed target (repository variables). The default is the public releases repo.
+      UPDATE_PROVIDER: ${{ vars.UPDATE_PROVIDER }}
+      UPDATE_GITHUB_OWNER: ${{ vars.UPDATE_GITHUB_OWNER }}
+      UPDATE_GITHUB_REPO: ${{ vars.UPDATE_GITHUB_REPO }}
+      UPDATE_GENERIC_URL: ${{ vars.UPDATE_GENERIC_URL }}
+      UPDATE_CHANNEL: ${{ vars.UPDATE_CHANNEL }}
+      # Token that can create releases in the PUBLIC releases repo (fine-grained PAT, Contents: read & write).
+      # The default GITHUB_TOKEN cannot write to another repository.
+      GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+      # Code signing, option A: Azure Trusted Signing.
+      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+      AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
+      AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
+      AZURE_SIGNING_PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
+      AZURE_SIGNING_PUBLISHER: ${{ vars.AZURE_SIGNING_PUBLISHER }}
+      # Code signing, option B: .pfx certificate (base64 in CSC_LINK).
+      CSC_LINK: ${{ secrets.CSC_LINK }}
+      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Tag must match package.json version
+        if: startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
+          if ("v$version" -ne "${{ github.ref_name }}") {
+            Write-Error "Tag ${{ github.ref_name }} does not match package.json version $version"
+            exit 1
+          }
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Build (electron-vite)
+        run: npx electron-vite build
+
+      # Azure signing: electron-builder installs the TrustedSigning PowerShell module (Invoke-TrustedSigning) itself.
+      - name: Effective electron-builder config (publish target + signing)
+        run: node build/ci-config.cjs
+
+      - name: Package and publish
+        shell: pwsh
+        run: |
+          $publish = 'never'
+          $wantsPublish = '${{ github.event_name }}' -eq 'push' -or '${{ inputs.publish }}' -eq 'true'
+          if ($wantsPublish) {
+            if ($env:UPDATE_PROVIDER -eq 'generic') {
+              Write-Host 'Provider generic: artifacts are uploaded below; copy them to UPDATE_GENERIC_URL.'
+            } elseif (-not $env:GH_TOKEN) {
+              Write-Error 'RELEASES_TOKEN secret is missing: cannot publish to the releases repo.'
+              exit 1
+            } else {
+              $publish = 'always'
+            }
+          }
+          npx electron-builder --config release/electron-builder.ci.json --win nsis --x64 --publish $publish
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Signature status
+        shell: pwsh
+        run: |
+          Get-ChildItem release/*.exe, release/win-unpacked/Hangar.exe | ForEach-Object {
+            $sig = Get-AuthenticodeSignature $_.FullName
+            "{0}: {1} {2}" -f $_.Name, $sig.Status, $sig.SignerCertificate.Subject
+          }
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: hangar-windows-${{ github.ref_name }}
+          path: |
+            release/*.exe
+            release/*.exe.blockmap
+            release/latest.yml
+          if-no-files-found: error
+          retention-days: 30

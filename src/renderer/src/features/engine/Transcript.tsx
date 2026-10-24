@@ -147,7 +147,7 @@ export function Transcript(props: Props) {
             case 'motion':
               return <MotionCard key={e.id} entry={e} busy={busy} onAskFix={onAskFix} />
             case 'provider_error':
-              return <ProviderErrorCard key={e.id} entry={e} />
+              return <ProviderErrorCard key={e.id} entry={e} sessionId={sessionId} />
             case 'system':
               return (
                 <div key={e.id} className={styles.system}>

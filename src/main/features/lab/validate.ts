@@ -1,6 +1,7 @@
 // Validation of a proposed harness tree (the rules the proposer prompt announces).
 // Mirrors harness2's validate-before-rollout step, rewritten for the Claude Code surface.
 import { isHarnessPath, type HarnessTree } from '../../../shared/harness'
+import { execChanges } from './exec'
 
 const ALWAYS_ON_LIMIT = 20_000
 /** Paths a component may reference under .claude/ (must exist in the tree when named). */
@@ -31,6 +32,16 @@ export function validateTree(tree: HarnessTree, fallback: HarnessTree, stageId?:
     return '`harness/` came back empty -- edit the files, do not empty them all.'
   }
   const problems: string[] = []
+  // Proposals run unattended in the variants' worktrees: they may not add or change anything that executes.
+  const exec = execChanges(fallback, tree)
+  if (exec.length) {
+    problems.push(
+      `Automatic proposals may not change hooks, scripts, commands or permissions (found: ${exec
+        .slice(0, 4)
+        .map((c) => `${c.kind} in ${c.path}`)
+        .join('; ')}). Encode the improvement as instructions, skills or subagents instead.`
+    )
+  }
   const off = paths.filter((p) => !isHarnessPath(p))
   if (off.length) problems.push(`Off the harness surface: ${off.slice(0, 6).join(', ')}.`)
 
