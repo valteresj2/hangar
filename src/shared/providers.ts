@@ -42,6 +42,10 @@ export interface ProviderProfile {
   models?: ProviderModels
   /** Additional non-secret environment variables (validated names only). */
   extraEnv?: Record<string, string>
+  /** Set on profiles the app maintains itself (read-only in Settings → Provedores). */
+  managedBy?: 'platform'
+  /** Agent Hangar LLM connection this managed profile proxies (docs/platform/app-api-models.md). */
+  platformConnectionId?: number
   /** Whether an encrypted secret is stored for this profile. The secret itself never leaves main. */
   hasSecret: boolean
   createdAt: number
