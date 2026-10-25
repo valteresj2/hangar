@@ -190,10 +190,35 @@ export function getState(): PlatformState {
   }
 }
 
+const stateListeners = new Set<(state: PlatformState) => void>()
+
+/** Main-side listeners of the platform state (other features, through ./api.ts). */
+export function onStateChange(listener: (state: PlatformState) => void): () => void {
+  stateListeners.add(listener)
+  return () => stateListeners.delete(listener)
+}
+
 function emit(): PlatformState {
   const s = getState()
   broadcast(PLATFORM.evState, s)
+  for (const listener of stateListeners) {
+    try {
+      listener(s)
+    } catch (err) {
+      console.error('[platform] state listener failed', err)
+    }
+  }
   return s
+}
+
+/** The app API client of the current login (other features call member routes through ./api.ts). */
+export const apiClient = client
+
+/** Platform URL and user of the current login, when logged in. */
+export function currentLogin(): { url: string; userId: string; name: string } | undefined {
+  const t = tokens.current
+  if (!t || !connected()) return undefined
+  return { url: t.url, userId: account?.url === t.url ? account.user.id : '', name: account?.user.name ?? '' }
 }
 
 function notify(tone: PlatformNotice['tone'], message: string, desktop = false): void {

@@ -6,6 +6,7 @@ import { bridge } from '../../core/api'
 import { useCollection } from '../../core/data'
 import { useUi } from '../../core/ui'
 import { PlatformIndicator } from '../platform'
+import { WorkspaceNav } from '../workspace'
 import {
   moveToGroup,
   openSession,
@@ -442,6 +443,8 @@ export function Sidebar() {
           )}
         </div>
       </div>
+
+      <WorkspaceNav />
 
       <div className={styles.list}>
         {q ? (

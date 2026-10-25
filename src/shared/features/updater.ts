@@ -10,6 +10,8 @@ export const UPDATER = {
   install: 'updater:install',
   /** (enabled: boolean) → UpdaterState — download updates as soon as they are found. */
   setAutoDownload: 'updater:setAutoDownload',
+  /** () → boolean — manual installs: opens UpdaterState.downloadUrl in the browser (false when there is none). */
+  openDownload: 'updater:openDownload',
 
   /** main → renderer: UpdaterState after every change. */
   evState: 'updater:event:state'
@@ -24,6 +26,13 @@ export type UpdaterStatus =
   | 'downloading'
   | 'downloaded'
   | 'error'
+
+/**
+ * 'auto': electron-updater downloads and installs (Windows NSIS, Linux AppImage).
+ * 'manual': the app only reports the new version and links to its download (macOS without an Apple Developer ID,
+ * the Windows portable .exe, the Linux .deb).
+ */
+export type InstallMode = 'auto' | 'manual'
 
 export interface UpdaterProgress {
   percent: number
@@ -48,6 +57,11 @@ export interface UpdaterState {
   error?: string
   lastCheckedAt?: number
   autoDownload: boolean
+  installMode: InstallMode
+  /** installMode 'manual': why this installation cannot update itself (pt-BR). */
+  manualReason?: string
+  /** installMode 'manual' with an update available: https page to download it from. */
+  downloadUrl?: string
   /** Absolute path of the updater log file. */
   logFile: string
 }
@@ -60,6 +74,7 @@ declare module '../ipc' {
     [UPDATER.download]: () => void
     [UPDATER.install]: () => void
     [UPDATER.setAutoDownload]: (enabled: boolean) => UpdaterState
+    [UPDATER.openDownload]: () => boolean
   }
 
   interface IpcEventContract {

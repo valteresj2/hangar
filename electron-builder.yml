@@ -1,35 +1,58 @@
-# Windows installer for Hangar. Build with `npm run dist` (NSIS, x64) or `npm run pack` (unpacked dir).
+# Hangar packaging for Windows, Linux and macOS. Every target builds WITHOUT a signing certificate; signing is opt-in
+# through the environment (see build/ci-config.cjs and docs/RELEASE.md).
+#   Windows: npm run dist (NSIS + portable, x64)  ·  npm run pack (unpacked dir)
+#   Linux:   npm run dist:linux (AppImage + .deb)  ·  macOS: npm run dist:mac (dmg + zip, ad hoc signature)
+# Each OS must be built on that OS: the native modules (node-pty, the Agent SDK's claude binary) come from npm for the
+# machine running `npm ci`. CI builds every OS/arch on its own runner (.github/workflows/release.yml).
 appId: dev.hangar.app # must match app.setAppUserModelId in src/main/index.ts (notifications)
 productName: Hangar
 copyright: Copyright © 2026 Valter Eduardo
+
+# Written into the packaged package.json. desktopName is the Linux .desktop file name: Electron uses it as the window
+# app_id and as the handler name in setAsDefaultProtocolClient('hangar'), so it must match the file the .deb installs
+# (linux.syncDesktopName). homepage is required by the .deb metadata (the source repo is private).
+extraMetadata:
+  desktopName: hangar.desktop
+  homepage: https://github.com/valteresj2/hangar-releases
 
 directories:
   output: release
   buildResources: build
 
+# hangar://open/<route> deep links (handled at run time by the workspace feature). Declared here for the macOS
+# Info.plist (CFBundleURLTypes) and the Linux .desktop file (MimeType=x-scheme-handler/hangar). NSIS does not support
+# this key: the Windows installer registers the scheme in build/installer.nsh.
+protocols:
+  - name: Hangar
+    schemes: [hangar]
+
 # electron-vite bundles main/preload/renderer into out/. Production node_modules are added by electron-builder;
-# packages that only the renderer uses are already bundled, so they are left out.
+# packages that only the renderer uses are already bundled, so they are left out. The platform sections below drop
+# the native files of other platforms/architectures (${arch} is the TARGET arch; ${platform} would be the build host).
 files:
   - out/**
   - package.json
   - '!**/*.{map,pdb}'
   - '!node_modules/{react,react-dom,scheduler,react-markdown,remark-gfm,shiki,@shikijs,@xterm,diff,zustand}/**'
-  # node-pty: keep only the Windows x64 runtime (no sources, build scripts or other platforms' binaries).
+  # node-pty: runtime only (no sources or build scripts). build/ is node-gyp's output: on Linux (no prebuilds) npm ci
+  # compiles build/Release/pty.node, the only file of it that is kept.
   - '!node_modules/node-addon-api/**'
-  - '!node_modules/node-pty/{src,deps,scripts,typings,binding.gyp,build}{,/**}'
-  - '!node_modules/node-pty/prebuilds/{darwin-arm64,darwin-x64,win32-arm64}/**'
-  - '!node_modules/node-pty/third_party/conpty/*/win10-arm64/**'
+  - '!node_modules/node-pty/{src,deps,scripts,typings,binding.gyp}{,/**}'
+  - '!node_modules/node-pty/build/{config.gypi,Makefile,binding.Makefile,*.mk,node_gyp_bins,Debug}{,/**}'
+  - '!node_modules/node-pty/build/Release/{obj,obj.target,.deps,test}{,/**}'
 
 # Native/executable bits must live on disk, not inside app.asar:
-#  - node-pty: pty.node / conpty.node / conpty_console_list.node, conpty.dll, OpenConsole.exe, winpty-agent.exe and the
-#    forked console-list helper script.
-#  - Agent SDK: the platform package ships the native `claude.exe` the SDK spawns when no CLI is found.
+#  - node-pty: pty.node (+ conpty.node, conpty.dll, OpenConsole.exe, winpty-agent.exe on Windows; spawn-helper on
+#    macOS) and the forked console-list helper script.
+#  - Agent SDK: the platform package (@anthropic-ai/claude-agent-sdk-<platform>-<arch>) ships the native `claude`
+#    binary the SDK spawns when no CLI is found; src/main/features/engine/sdk.ts resolves it in app.asar.unpacked.
 asarUnpack:
   - node_modules/node-pty/**
   - node_modules/@anthropic-ai/claude-agent-sdk/**
-  - node_modules/@anthropic-ai/claude-agent-sdk-win32-x64/**
+  - node_modules/@anthropic-ai/claude-agent-sdk-*/**
 
-# node-pty uses N-API prebuilds; rebuilding is unnecessary and fails on this machine (see docs/agents/reports/terminal.md).
+# node-pty uses N-API binaries (prebuilds, or compiled by npm ci on Linux): ABI-stable across Node and Electron, so
+# no rebuild against Electron's headers (it also fails on this machine; see docs/agents/reports/terminal.md).
 npmRebuild: false
 
 # Electron fuses, flipped after packaging and before signing (https://www.electron.build/docs/tutorials/adding-electron-fuses).
@@ -52,20 +75,33 @@ publish:
   repo: hangar-releases
   releaseType: release
 
+# ---------------------------------------------------------------------------------------------------------- Windows
 win:
+  # The NSIS installer auto-updates (latest.yml). The portable .exe runs without installing and does not auto-update.
+  # arm64: `--win portable --arm64` on an arm64 runner (an arm64 NSIS would share latest.yml with x64; see RELEASE.md).
   target:
     - target: nsis
       arch: [x64]
+    - target: portable
+      arch: [x64]
   icon: build/icon.ico
-  artifactName: ${productName}-Setup-${version}.${ext}
   signAndEditExecutable: true
+  files:
+    - '!node_modules/node-pty/prebuilds/{darwin,linux}-*{,/**}'
+    - '!node_modules/node-pty/prebuilds/win32-!(${arch}){,/**}'
+    - '!node_modules/node-pty/third_party/conpty/*/win10-!(${arch}){,/**}'
+    - '!node_modules/@anthropic-ai/claude-agent-sdk-{darwin,linux}-*{,/**}'
+    - '!node_modules/@anthropic-ai/claude-agent-sdk-win32-!(${arch}){,/**}'
   # Code signing is optional and driven by the environment, so local builds keep working unsigned:
   #  - .pfx certificate: set CSC_LINK (path/URL/base64) and CSC_KEY_PASSWORD (or WIN_CSC_LINK / WIN_CSC_KEY_PASSWORD).
-  #  - Azure Trusted Signing: CI passes win.azureSignOptions.* on the command line plus AZURE_TENANT_ID,
+  #  - Azure Artifact Signing: build/ci-config.cjs adds win.azureSignOptions from AZURE_SIGNING_* plus AZURE_TENANT_ID,
   #    AZURE_CLIENT_ID and AZURE_CLIENT_SECRET (see docs/RELEASE.md). Not set here because its presence forces signing.
   # Without either, electron-builder skips signing and SmartScreen / Smart App Control will warn or block.
 
 nsis:
+  artifactName: ${productName}-Setup-${version}.${ext}
+  # Registers hangar:// for the chosen install scope (per-user or all users) and removes it on uninstall.
+  include: build/installer.nsh
   oneClick: false
   perMachine: false
   allowToChangeInstallationDirectory: true
@@ -79,3 +115,58 @@ nsis:
   installerHeaderIcon: build/icon.ico
   deleteAppDataOnUninstall: false
   runAfterFinish: true
+
+portable:
+  artifactName: ${productName}-${version}-portable-${arch}.${ext}
+
+# ------------------------------------------------------------------------------------------------------------ Linux
+linux:
+  # AppImage auto-updates (latest-linux.yml / latest-linux-arm64.yml); the .deb is installed with apt.
+  target:
+    - target: AppImage
+    - target: deb
+  icon: build/icon.png
+  category: Development
+  executableName: hangar
+  syncDesktopName: true
+  synopsis: Rode e conduza sessões do Claude Code
+  description: Hangar — app de desktop para rodar e conduzir sessões do Claude Code.
+  maintainer: Valter Eduardo <valteresj2@gmail.com>
+  artifactName: ${productName}-${version}-linux-${arch}.${ext}
+  files:
+    - '!node_modules/node-pty/{prebuilds,third_party}{,/**}'
+    - '!node_modules/@anthropic-ai/claude-agent-sdk-{darwin,win32}-*{,/**}'
+    - '!node_modules/@anthropic-ai/claude-agent-sdk-linux-*-musl{,/**}'
+    - '!node_modules/@anthropic-ai/claude-agent-sdk-linux-!(${arch}){,/**}'
+
+deb:
+  # electron-builder's default after-install script sets up chrome-sandbox and an AppArmor profile (Ubuntu 24.04+).
+  artifactName: ${name}_${version}_${arch}.${ext}
+  priority: optional
+
+# ------------------------------------------------------------------------------------------------------------ macOS
+mac:
+  # No arch here: a local build targets the Mac it runs on (the SDK binary comes from that machine's npm ci). CI builds
+  # arm64 on macos-latest and x64 on an Intel runner (--arm64 / --x64).
+  target: [dmg, zip]
+  # Generated by build/make-icons.cjs on the macOS icon grid (the .png is full-bleed, for Windows/Linux).
+  icon: build/icon.icns
+  category: public.app-category.developer-tools
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}
+  # No Apple Developer ID: ad hoc signature ("-"). Apple Silicon refuses to run unsigned code, and electron-builder
+  # does NOT fall back to ad hoc on its own (macOptions.identity docs). Ad hoc + hardened runtime breaks library
+  # validation of the pre-signed Electron frameworks, so the hardened runtime is off. No notarization (needs an Apple
+  # account). build/ci-config.cjs switches to Developer ID + hardened runtime + notarization when the secrets exist.
+  identity: '-'
+  hardenedRuntime: false
+  gatekeeperAssess: false
+  notarize: false
+  files:
+    - '!node_modules/node-pty/prebuilds/{win32,linux}-*{,/**}'
+    - '!node_modules/node-pty/prebuilds/darwin-!(${arch}){,/**}'
+    - '!node_modules/node-pty/third_party{,/**}'
+    - '!node_modules/@anthropic-ai/claude-agent-sdk-{win32,linux}-*{,/**}'
+    - '!node_modules/@anthropic-ai/claude-agent-sdk-darwin-!(${arch}){,/**}'
+
+dmg:
+  artifactName: ${productName}-${version}-mac-${arch}.${ext}

@@ -1,8 +1,11 @@
 // Auto-update controller over electron-updater.
 // Active only in the packaged app (reads resources/app-update.yml written by electron-builder from `publish`).
-// In dev, HANGAR_UPDATE_URL=<generic feed url> enables it against a test server (forceDevUpdateConfig).
+// In dev, HANGAR_UPDATE_URL=<generic feed url> enables it against a test server (forceDevUpdateConfig), and
+// HANGAR_UPDATE_INSTALL_MODE=manual simulates an installation that cannot update itself.
+// Installations that cannot install updates (see install-mode.ts) run in 'manual' mode: they still check the feed,
+// but only report the new version and open its download page.
 
-import { app } from 'electron'
+import { app, shell } from 'electron'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import type { AppUpdater, ProgressInfo, UpdateInfo } from 'electron-updater'
@@ -10,6 +13,13 @@ import { UPDATER, type UpdaterState } from '../../../shared/features/updater'
 import { broadcast } from '../../core/broadcast'
 import { markQuitting } from '../../core/window'
 import { readableUpdateError } from './errors'
+import {
+  detectInstallMode,
+  downloadUrlFor,
+  parseUpdateConfig,
+  probeInstallFacts,
+  type InstallFacts
+} from './install-mode'
 import { fileLogger, logFilePath } from './log'
 
 const FIRST_CHECK_DELAY_MS = 15_000
@@ -23,6 +33,8 @@ let updater: AppUpdater | undefined
 let state: UpdaterState
 let timers: NodeJS.Timeout[] = []
 let checking: Promise<void> | undefined
+/** Flat app-update.yml in use (provider, owner/repo or url), for the manual download link. */
+let feedConfig: Record<string, string> = {}
 
 function prefsFile(): string {
   return join(app.getPath('userData'), 'hangar-data', 'updater', 'prefs.json')
@@ -74,35 +86,52 @@ function initialState(): UpdaterState {
     currentVersion: app.getVersion(),
     channel: 'latest',
     autoDownload: readPrefs().autoDownload,
+    installMode: 'auto',
     logFile: logFilePath()
   }
 }
 
 /** Why the updater cannot run in this process, or undefined when it can. */
-function disabledReason(): string | undefined {
+function disabledReason(facts: InstallFacts): string | undefined {
   if (!app.isPackaged) {
     return process.env.HANGAR_UPDATE_URL ? undefined : 'Atualizações automáticas só funcionam no app instalado.'
   }
-  if (process.platform !== 'win32') return 'Atualizações automáticas só estão disponíveis no Windows por enquanto.'
   if (!existsSync(join(process.resourcesPath, 'app-update.yml')))
     return 'Este build não tem configuração de atualização.'
+  // On Linux only the AppImage (auto) and the .deb (manual) know how to find their update.
+  if (facts.platform === 'linux' && !process.env.APPIMAGE && facts.packageType !== 'deb') {
+    return 'Este pacote do Linux não se atualiza pelo app. Use o AppImage ou o .deb.'
+  }
   return undefined
+}
+
+function isManual(): boolean {
+  return state.installMode === 'manual'
 }
 
 function wire(u: AppUpdater): void {
   u.on('checking-for-update', () => setState({ status: 'checking', error: undefined }))
   u.on('update-available', (info: UpdateInfo) =>
     setState({
-      status: u.autoDownload ? 'downloading' : 'available',
+      status: u.autoDownload && !isManual() ? 'downloading' : 'available',
       availableVersion: info.version,
       releaseDate: info.releaseDate,
       releaseNotes: notesText(info),
+      downloadUrl: isManual()
+        ? downloadUrlFor(feedConfig, info.version, { allowLoopback: !app.isPackaged })
+        : undefined,
       progress: undefined,
       lastCheckedAt: Date.now()
     })
   )
   u.on('update-not-available', () =>
-    setState({ status: 'not-available', availableVersion: undefined, progress: undefined, lastCheckedAt: Date.now() })
+    setState({
+      status: 'not-available',
+      availableVersion: undefined,
+      downloadUrl: undefined,
+      progress: undefined,
+      lastCheckedAt: Date.now()
+    })
   )
   u.on('download-progress', (p: ProgressInfo) =>
     setState({
@@ -129,12 +158,21 @@ export function getState(): UpdaterState {
 
 export async function startUpdater(): Promise<void> {
   state = initialState()
-  const reason = disabledReason()
+  const facts = app.isPackaged
+    ? await probeInstallFacts(process.resourcesPath)
+    : { platform: process.platform, env: process.env }
+  const reason = disabledReason(facts)
   if (reason) {
-    state = { ...state, disabledReason: reason }
+    setState({ disabledReason: reason })
     fileLogger.info('updater disabled:', reason)
     return
   }
+  const mode =
+    !app.isPackaged && process.env.HANGAR_UPDATE_INSTALL_MODE === 'manual'
+      ? { mode: 'manual' as const, reason: 'Modo manual simulado (HANGAR_UPDATE_INSTALL_MODE=manual).' }
+      : detectInstallMode(facts)
+  state = { ...state, installMode: mode.mode, manualReason: mode.reason }
+  fileLogger.info(`install mode: ${mode.mode}${facts.macSignature ? ` (macOS signature: ${facts.macSignature})` : ''}`)
 
   let u: AppUpdater
   try {
@@ -147,18 +185,25 @@ export async function startUpdater(): Promise<void> {
     return
   }
   u.logger = fileLogger
-  u.autoDownload = state.autoDownload
-  u.autoInstallOnAppQuit = true
+  // Manual installs never download or install: electron-updater is only used to read the feed.
+  u.autoDownload = state.autoDownload && !isManual()
+  u.autoInstallOnAppQuit = !isManual()
   // We ship the full NSIS installer, never the web installer.
   u.disableWebInstaller = true
+  let configFile = join(process.resourcesPath, 'app-update.yml')
   if (!app.isPackaged && process.env.HANGAR_UPDATE_URL) {
     // Dev/test feed. A config file (not setFeedURL) is needed: downloads read updaterCacheDirName from it.
-    const file = join(app.getPath('userData'), 'hangar-data', 'updater', 'dev-app-update.yml')
-    mkdirSync(dirname(file), { recursive: true })
+    configFile = join(app.getPath('userData'), 'hangar-data', 'updater', 'dev-app-update.yml')
+    mkdirSync(dirname(configFile), { recursive: true })
     const url = JSON.stringify(process.env.HANGAR_UPDATE_URL)
-    writeFileSync(file, `provider: generic\nurl: ${url}\nupdaterCacheDirName: hangar-updater-dev\n`, 'utf8')
+    writeFileSync(configFile, `provider: generic\nurl: ${url}\nupdaterCacheDirName: hangar-updater-dev\n`, 'utf8')
     u.forceDevUpdateConfig = true
-    u.updateConfigPath = file
+    u.updateConfigPath = configFile
+  }
+  try {
+    feedConfig = parseUpdateConfig(readFileSync(configFile, 'utf8'))
+  } catch (err) {
+    fileLogger.warn('could not read the update config for download links', err)
   }
   wire(u)
   updater = u
@@ -188,7 +233,7 @@ export async function checkNow(): Promise<UpdaterState> {
 }
 
 export async function download(): Promise<void> {
-  if (!updater || state.status !== 'available') return
+  if (!updater || isManual() || state.status !== 'available') return
   setState({ status: 'downloading', progress: { percent: 0, transferred: 0, total: 0, bytesPerSecond: 0 } })
   try {
     await updater.downloadUpdate()
@@ -199,7 +244,7 @@ export async function download(): Promise<void> {
 }
 
 export function install(): void {
-  if (!updater || state.status !== 'downloaded') return
+  if (!updater || isManual() || state.status !== 'downloaded') return
   fileLogger.info(`quitAndInstall -> v${state.availableVersion}`)
   // Lets windows close even with "minimize to tray" on.
   markQuitting()
@@ -209,11 +254,23 @@ export function install(): void {
 
 export function setAutoDownload(enabled: boolean): UpdaterState {
   writePrefs({ autoDownload: enabled })
-  if (updater) updater.autoDownload = enabled
   setState({ autoDownload: enabled })
+  if (isManual()) return state
+  if (updater) updater.autoDownload = enabled
   // Turning it on with an update already found starts the download right away.
   if (enabled && state.status === 'available') void download()
   return state
+}
+
+/** Manual installs: opens the download page of the available version in the browser. */
+export async function openDownload(): Promise<boolean> {
+  if (!isManual() || state.status !== 'available' || !state.downloadUrl) return false
+  // Re-checked here: only https (or the loopback test feed in dev) ever reaches the browser.
+  const url = downloadUrlFor({ provider: 'generic', url: state.downloadUrl }, '', { allowLoopback: !app.isPackaged })
+  if (!url) return false
+  fileLogger.info(`opening the download page for v${state.availableVersion}: ${url}`)
+  await shell.openExternal(url)
+  return true
 }
 
 export function stopUpdater(): void {

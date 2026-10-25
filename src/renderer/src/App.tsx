@@ -4,6 +4,7 @@ import { NewSessionView, Sidebar } from './features/sessions'
 import { CommandPalette, SettingsView } from './features/settings'
 import { LabView } from './features/lab'
 import { OnboardingView } from './features/onboarding'
+import { WorkspaceView } from './features/workspace'
 import { useRow, useSettings } from './core/data'
 import { useUi } from './core/ui'
 import { SidePanel } from './shell/SidePanel'
@@ -28,6 +29,7 @@ function useThemeAttribute(): void {
 export function App() {
   useThemeAttribute()
   const { activeSessionId, sidebarOpen, sidePanelOpen, settingsOpen, setSettingsOpen, labCwd, closeLab } = useUi()
+  const workspaceView = useUi((s) => s.workspaceView)
   const session = useRow('sessions', activeSessionId)
   const appSettings = useSettings()
 
@@ -46,9 +48,15 @@ export function App() {
         <TopBar session={session} />
         <div className={styles.body}>
           <main className={styles.center}>
-            {session ? <ChatView key={session.id} session={session} /> : <NewSessionView />}
+            {workspaceView ? (
+              <WorkspaceView view={workspaceView} />
+            ) : session ? (
+              <ChatView key={session.id} session={session} />
+            ) : (
+              <NewSessionView />
+            )}
           </main>
-          {session && sidePanelOpen && <SidePanel session={session} />}
+          {!workspaceView && session && sidePanelOpen && <SidePanel session={session} />}
         </div>
       </div>
       <CommandPalette />

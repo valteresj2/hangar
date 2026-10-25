@@ -74,17 +74,19 @@ Prioridade: **P0** = MVP, **P1** = segunda onda, **P2** = depois / fora de escop
 
 ## 6. Plataforma Agent Hangar (governança)
 
-| Função                                                                                                        | Fase | Dono     |
-| ------------------------------------------------------------------------------------------------------------- | ---- | -------- |
-| Conectar à plataforma (OAuth loopback), Configurações → Plataforma, passo no onboarding, indicador na sidebar | 1    | platform |
-| Dispositivo registrado, heartbeat e revogação pelo admin (aba "App Hangar" no console)                        | 1    | platform |
-| Política do Windows (`PlatformUrl`, `Mode`) e modo híbrido/obrigatório                                        | 1    | platform |
-| Tema e tipografia do console Agent Hangar                                                                     | 1    | shell    |
-| Modelos de token sincronizados pelo admin (proxy da plataforma, seletor Assinatura × Token)                   | 1+   | platform |
-| Skills e MCP geridos pelo admin, MCP agent-hangar nas sessões                                                 | 2    | —        |
-| Políticas, auditoria, uso e orçamento, versão mínima                                                          | 3    | —        |
-| Compartilhar projetos e artefatos                                                                             | 4    | —        |
-| Agendados viram agentes da plataforma                                                                         | 5    | —        |
+| Função                                                                                                        | Fase | Dono      |
+| ------------------------------------------------------------------------------------------------------------- | ---- | --------- |
+| Conectar à plataforma (OAuth loopback), Configurações → Plataforma, passo no onboarding, indicador na sidebar | 1    | platform  |
+| Dispositivo registrado, heartbeat e revogação pelo admin (aba "App Hangar" no console)                        | 1    | platform  |
+| Política do Windows (`PlatformUrl`, `Mode`) e modo híbrido/obrigatório                                        | 1    | platform  |
+| Tema e tipografia do console Agent Hangar                                                                     | 1    | shell     |
+| Modelos de token sincronizados pelo admin (proxy da plataforma, seletor Assinatura × Token)                   | 1+   | platform  |
+| Instaladores sem certificado para Windows (NSIS e portátil), Linux (AppImage e .deb) e macOS (.dmg e .zip)    | —    | release   |
+| Workspace no Desktop: Início, Meus agentes, badges ao vivo, deep links `hangar://` (M1 do plano do portal)    | M1   | workspace |
+| Skills e MCP geridos pelo admin, MCP agent-hangar nas sessões                                                 | 2    | —         |
+| Políticas, auditoria, uso e orçamento, versão mínima                                                          | 3    | —         |
+| Compartilhar projetos e artefatos                                                                             | 4    | —         |
+| Agendados viram agentes da plataforma                                                                         | 5    | —         |
 
 ## Fora de escopo (por depender de serviços da Anthropic)
 

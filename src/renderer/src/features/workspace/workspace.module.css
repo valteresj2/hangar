@@ -1,0 +1,483 @@
+/* Workspace feature: the "Agent Hangar" section of the sidebar and the Início / Meus agentes screens, in the
+   platform's console theme. Only theme variables (light and dark come from styles.css; the sidebar is the rail). */
+
+/* ---------------------------------------------------------------- sidebar section */
+
+.nav {
+  padding: 0 6px 4px;
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.navHeader {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  height: 26px;
+  padding: 0 4px;
+  border-radius: var(--radius-sm);
+  color: var(--text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+.navHeader:hover {
+  color: var(--text-strong);
+}
+.navHeader:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: -2px;
+}
+
+.navTitle {
+  flex: 1;
+  font-family: var(--font-sign);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.navBody {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding-bottom: 4px;
+}
+
+.navItem {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 28px;
+  padding: 4px 8px;
+  border-radius: var(--radius-sm);
+  color: var(--text);
+  font-size: 13px;
+  text-align: left;
+}
+.navItem:hover {
+  background: var(--bg-hover);
+  color: var(--text-strong);
+}
+.navItemActive,
+.navItemActive:hover {
+  background: var(--bg-elev);
+  color: var(--text-strong);
+  box-shadow: inset 3px 0 0 var(--accent);
+}
+
+.navLabel {
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.navBadge {
+  min-width: 18px;
+  padding: 0 6px;
+  border-radius: 99px;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 18px;
+  text-align: center;
+}
+
+.navExternal {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+
+.navConnect {
+  margin: 2px 4px;
+  padding: 6px 10px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--accent);
+  color: var(--accent-ink);
+  font-weight: 600;
+  text-align: left;
+}
+.navConnect:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.navHint {
+  padding: 2px 8px 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.liveDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  opacity: 0.7;
+  flex-shrink: 0;
+  display: inline-block;
+}
+.liveOn {
+  background: var(--success);
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------- screens */
+
+/* The scroll container of a screen, filling App's <main>. */
+.screen {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  background: var(--bg);
+}
+
+.page {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 24px 28px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pageHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.h1 {
+  margin: 0;
+  font-family: var(--font-sign);
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.sub {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 13px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.sub b {
+  color: var(--text);
+}
+
+.headActions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.liveNote {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.small {
+  font-size: 12px;
+}
+
+.board {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.kpi {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-sm);
+}
+.kpiValue {
+  font-family: var(--font-sign);
+  font-size: 28px;
+  font-weight: 600;
+  color: var(--text-strong);
+  line-height: 1.1;
+}
+.kpiLabel {
+  margin-top: 4px;
+  color: var(--text-muted);
+  font-size: 12px;
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 900px) {
+  .board {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.card {
+  padding: 14px 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-sm);
+  min-width: 0;
+}
+
+/* "Para você decidir" with something waiting: the console's mark on the edge. */
+.attention {
+  box-shadow:
+    inset 3px 0 0 var(--accent),
+    var(--shadow-sm);
+}
+
+.warnCard {
+  background: var(--warning-bg);
+  border-color: transparent;
+  color: var(--text);
+}
+
+.errorCard {
+  background: var(--danger-bg);
+  border-color: transparent;
+}
+.errorCard p {
+  margin: 6px 0 12px;
+}
+
+.connectCard {
+  max-width: 520px;
+  margin: 40px auto 0;
+}
+.connectCard p {
+  margin: 6px 0 14px;
+}
+
+.cardHead {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.cardTitle {
+  margin: 0;
+  font-family: var(--font-sign);
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.cardAction {
+  color: var(--link);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.cardAction:hover {
+  text-decoration: underline;
+}
+
+.list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+}
+.list > li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  border-top: 1px solid var(--border-soft);
+  min-width: 0;
+}
+.list > li:first-child {
+  border-top: 0;
+}
+.list > li > :last-child:not(:first-child) {
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+/* A list row's text on one line (the rest is in the tooltip / the portal). */
+.rowText {
+  display: block;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.linkBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  color: var(--text);
+  text-align: left;
+}
+.linkBtn:hover {
+  color: var(--link);
+}
+
+.oneLine {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.chip {
+  display: inline-flex;
+  align-items: center;
+  max-width: 320px;
+  padding: 1px 8px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  font-size: 12px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.recentChip {
+  padding: 3px 10px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text);
+  font-size: 12px;
+}
+.recentChip:hover {
+  border-color: var(--accent);
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent-ink);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+
+.group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.groupTitle {
+  margin: 8px 0 0;
+  font-family: var(--font-sign);
+  font-size: 17px;
+  font-weight: 600;
+  color: var(--text-strong);
+}
+
+.agentRow .chips {
+  margin-top: 10px;
+}
+
+.agentHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.agentMain {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 8px;
+  min-width: 0;
+}
+.agentMain > div {
+  flex-basis: 100%;
+}
+
+.agentName {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--text-strong);
+  font-size: 14px;
+}
+.agentName:hover {
+  color: var(--link);
+}
+
+.kind {
+  font-family: var(--font-sign);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+}
+
+.loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 40px 0;
+  color: var(--text-muted);
+  justify-content: center;
+}
+
+.spinner {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.staleBanner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 8px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--warning-bg);
+  color: var(--text);
+  font-size: 13px;
+}

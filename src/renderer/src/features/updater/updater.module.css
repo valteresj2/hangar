@@ -93,3 +93,10 @@
   color: var(--link);
   text-decoration: underline;
 }
+
+/* Manual installs: why the app cannot update itself. */
+.manualNote {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.45;
+}

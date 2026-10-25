@@ -14,6 +14,10 @@
 //                                                   the visible models, then forwards to `upstream` (e.g.
 //                                                   tests/mock-anthropic) with the connection's own credential,
 //                                                   streaming the answer through
+//   GET  /api/me/workspace, /api/decisions,         member routes the app token may read (docs/platform/
+//        /api/org-chart?mine=1, /api/inbox          m1-contract.md); org-chart without mine=1 refuses it
+//   GET  /api/app/events                            SSE: `id:` increasing, replay after Last-Event-ID, keepalive
+//                                                   comments; addDecision()/emitEvent() publish
 //
 // Like the real platform, the heartbeat answers `revoked` for the access token of an ended grant, and a device
 // revoked by the admin cannot register again. No dependencies beyond Node.
@@ -21,6 +25,7 @@
 import { createHash, randomBytes } from 'node:crypto'
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import { mockChart, mockDecisions, mockWorkspace } from './workspace.ts'
 
 export interface MockGrant {
   id: number
@@ -95,6 +100,13 @@ export interface MockProxied {
   status: number
 }
 
+/** One event of GET /api/app/events. */
+export interface MockEvent {
+  id: number
+  type: string
+  data: Record<string, unknown>
+}
+
 export interface MockRequest {
   method: string
   path: string
@@ -124,6 +136,26 @@ export interface MockPlatform {
   /** Invalidates every device LLM key (the proxy answers 401 until the app rotates it). */
   invalidateLlmKeys(): void
   proxied: MockProxied[]
+  /** The member's data (edit freely): GET /api/me/workspace, /api/decisions, /api/org-chart?mine=1. */
+  workspace: Record<string, unknown>
+  decisions: Record<string, unknown>[]
+  chart: { nodes: Record<string, unknown>[]; agents?: unknown[]; me?: unknown }
+  /** Unread items of the inbox (GET /api/inbox → counts.unread). */
+  inboxUnread: number
+  /** Events published so far (GET /api/app/events replays those after Last-Event-ID). */
+  events: MockEvent[]
+  /** Publishes an event to every open stream. */
+  emitEvent(type: string, data: Record<string, unknown>): MockEvent
+  /** A new open decision for the person: decision.created + inbox.changed. */
+  addDecision(d: { id: number; title: string; agent?: string; kind?: string }): void
+  /** Open event streams right now. */
+  streams(): number
+  /** Closes every open event stream (the app should reconnect with Last-Event-ID). */
+  dropStreams(): void
+  /** false: GET /api/app/events answers 404 (an older platform: the app polls). */
+  setEventsEnabled(on: boolean): void
+  /** Last-Event-ID of every stream opened so far ('' when none was sent). */
+  eventResumes: string[]
   count(path: string, grantType?: string): number
   close(): Promise<void>
 }
@@ -138,6 +170,8 @@ export interface MockPlatformOptions {
   upstream?: { url: string; token: string }
   /** Initial connections (default: MOCK_CONNECTIONS, not synced). */
   connections?: MockConnection[]
+  /** Keepalive comment interval of the event stream (default 25 s, like the platform). */
+  keepaliveMs?: number
   log?: (line: string) => void
 }
 
@@ -237,6 +271,16 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
   const connections = opts.connections ?? mockConnections()
   const llmKeys = new Map<string, MockLlmKey>()
   const proxied: MockProxied[] = []
+  const events: MockEvent[] = []
+  const eventResumes: string[] = []
+  const openStreams = new Set<ServerResponse>()
+  let eventsOn = true
+  const member: Pick<MockPlatform, 'workspace' | 'decisions' | 'chart' | 'inboxUnread'> = {
+    workspace: mockWorkspace(),
+    decisions: mockDecisions(),
+    chart: mockChart(),
+    inboxUnread: 2
+  }
   let consent: 'approve' | 'deny' = 'approve'
   let base = ''
   const ttl = (opts.accessTtlS ?? 3600) * 1000
@@ -276,6 +320,15 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
       refresh_token: g.refresh,
       scope: g.scope
     }
+  }
+
+  const sse = (e: MockEvent) => `id: ${e.id}\nevent: ${e.type}\ndata: ${JSON.stringify(e.data)}\n\n`
+  const emitEvent = (type: string, data: Record<string, unknown>): MockEvent => {
+    const e = { id: (events.at(-1)?.id ?? 0) + 1, type, data }
+    events.push(e)
+    for (const r of openStreams) r.write(sse(e))
+    opts.log?.(`event ${e.id} ${type}`)
+    return e
   }
 
   const syncable = (c: MockConnection) => c.sync && c.protocol === 'anthropic'
@@ -558,6 +611,55 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
     const llm = /^\/api\/app\/llm\/(\d+)(\/.*)$/.exec(path)
     if (llm) return proxy(req, res, Number(llm[1]), llm[2], url.search)
 
+    if (req.method === 'GET' && path === '/api/me/workspace') {
+      if (!appGrant(req, res)) return
+      return json(res, 200, member.workspace)
+    }
+
+    if (req.method === 'GET' && path === '/api/decisions') {
+      if (!appGrant(req, res)) return
+      return json(res, 200, member.decisions)
+    }
+
+    if (req.method === 'GET' && path === '/api/org-chart') {
+      if (!appGrant(req, res)) return
+      // The app token reads only the person's own chart.
+      if (!['1', 'true'].includes(url.searchParams.get('mine') ?? ''))
+        return json(res, 403, { detail: 'o token do app só lê o organograma com mine=1' })
+      return json(res, 200, member.chart)
+    }
+
+    if (req.method === 'GET' && path === '/api/inbox') {
+      if (!appGrant(req, res)) return
+      const open = member.decisions.filter((d) => d.kind !== 'notice').length
+      return json(res, 200, {
+        view: url.searchParams.get('view') ?? 'all',
+        counts: { all: member.inboxUnread + 3, unread: member.inboxUnread, decisions: open, blocked: 0 },
+        items: []
+      })
+    }
+
+    if (req.method === 'GET' && path === '/api/app/events') {
+      if (!appGrant(req, res)) return
+      if (!eventsOn) return json(res, 404, { detail: 'Not Found' })
+      const last = typeof req.headers['last-event-id'] === 'string' ? req.headers['last-event-id'] : ''
+      eventResumes.push(last)
+      res.writeHead(200, {
+        'content-type': 'text/event-stream; charset=utf-8',
+        'cache-control': 'no-cache',
+        connection: 'keep-alive'
+      })
+      res.write(': conectado\n\n')
+      for (const e of events) if (e.id > Number(last || 0)) res.write(sse(e))
+      openStreams.add(res)
+      const keepalive = setInterval(() => res.write(': keepalive\n\n'), opts.keepaliveMs ?? 25_000)
+      req.on('close', () => {
+        clearInterval(keepalive)
+        openStreams.delete(res)
+      })
+      return
+    }
+
     const hb = /^\/api\/app\/devices\/([^/]+)\/heartbeat$/.exec(path)
     if (req.method === 'POST' && hb) {
       const id = decodeURIComponent(hb[1])
@@ -627,6 +729,59 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
       llmKeys.clear()
     },
     proxied,
+    get workspace() {
+      return member.workspace
+    },
+    set workspace(v) {
+      member.workspace = v
+    },
+    get decisions() {
+      return member.decisions
+    },
+    set decisions(v) {
+      member.decisions = v
+    },
+    get chart() {
+      return member.chart
+    },
+    set chart(v) {
+      member.chart = v
+    },
+    get inboxUnread() {
+      return member.inboxUnread
+    },
+    set inboxUnread(v) {
+      member.inboxUnread = v
+    },
+    events,
+    emitEvent,
+    addDecision(d) {
+      member.decisions.unshift({
+        id: d.id,
+        kind: d.kind ?? 'approval',
+        employee: 'analista-dados',
+        employee_name: d.agent ?? 'Analista de Dados',
+        employee_title: 'Analista de BI',
+        task: null,
+        question: d.title,
+        status: 'open',
+        created_at: new Date().toISOString(),
+        mine: true
+      })
+      member.inboxUnread++
+      // Like the platform, `agent` is the agent's slug.
+      emitEvent('decision.created', { id: d.id, title: d.title, agent: 'analista-dados' })
+      emitEvent('inbox.changed', { unread: member.inboxUnread })
+    },
+    streams: () => openStreams.size,
+    dropStreams() {
+      for (const r of openStreams) r.destroy()
+      openStreams.clear()
+    },
+    setEventsEnabled(on) {
+      eventsOn = on
+    },
+    eventResumes,
     count: (path, grantType) =>
       requests.filter((r) => r.path === path && (grantType === undefined || r.grantType === grantType)).length,
     close: () =>

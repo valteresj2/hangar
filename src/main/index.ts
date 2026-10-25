@@ -13,6 +13,7 @@ import {
 import { features } from './features'
 import { providersReady } from './features/settings/providers'
 import { appIcon } from './features/settings/tray'
+import { deepLinkFromArgv, handleDeepLink, registerProtocol } from './features/workspace/api'
 
 // Before anything registers a handler: IPC only answers the Hangar renderer (see core/ipcGuard.ts).
 installIpcGuard()
@@ -83,12 +84,23 @@ if (process.env['CLAUDECODE']) {
   }
 }
 
-// A second launch focuses the running instance instead of opening another one.
+// A second launch focuses the running instance instead of opening another one. On Windows/Linux a `hangar://`
+// link opened while the app runs arrives here, in the second launch's arguments.
 if (!app.requestSingleInstanceLock()) {
   app.quit()
 } else {
-  app.on('second-instance', () => ctx.showMainWindow())
+  registerProtocol()
+  app.on('second-instance', (_event, argv) => {
+    const link = deepLinkFromArgv(argv)
+    if (!link || !handleDeepLink(link)) ctx.showMainWindow()
+  })
 }
+
+// macOS delivers `hangar://` links as open-url (also before 'ready': the workspace feature keeps them).
+app.on('open-url', (event, url) => {
+  event.preventDefault()
+  handleDeepLink(url)
+})
 
 void app.whenReady().then(async () => {
   installWebContentsHardening()
@@ -104,6 +116,9 @@ void app.whenReady().then(async () => {
   // Provider secrets are decrypted asynchronously (safeStorage); no window (so no session) opens before that.
   await providersReady()
   createWindow()
+  // Launched by a `hangar://` link (Windows/Linux): the new window opens on that screen.
+  const link = deepLinkFromArgv(process.argv)
+  if (link) handleDeepLink(link)
   app.on('activate', () => ctx.showMainWindow())
 })
 

@@ -95,6 +95,51 @@ export class ApiClient {
     }
   }
 
+  /**
+   * Opens a long-lived stream (Server-Sent Events) on the platform: the response's body, or an error for any other
+   * status. Like request(), a 401 triggers one refresh and one retry. Only the wait for the headers times out.
+   */
+  async stream(path: string, headers: Record<string, string>, signal: AbortSignal): Promise<Response> {
+    const open = async (token: string) => {
+      const url = `${this.base()}${path}`
+      const headersTimeout = AbortSignal.timeout(HTTP_TIMEOUT_MS)
+      const ac = new AbortController()
+      const abort = () => ac.abort()
+      signal.addEventListener('abort', abort)
+      headersTimeout.addEventListener('abort', abort)
+      try {
+        return await this.fetchFn(url, {
+          method: 'GET',
+          headers: { ...headers, authorization: `Bearer ${token}`, accept: 'text/event-stream' },
+          signal: ac.signal
+        })
+      } catch (err) {
+        throw networkError(url, err)
+      } finally {
+        // Headers are in: from here on only the caller's signal ends the stream.
+        headersTimeout.removeEventListener('abort', abort)
+      }
+    }
+    let token = await this.tokens.accessToken()
+    let res = await open(token)
+    if (res.status === 401) {
+      await res.body?.cancel().catch(() => undefined)
+      token = (await this.tokens.refresh(token)).accessToken
+      res = await open(token)
+    }
+    if (!res.ok) {
+      let detail: string | undefined
+      try {
+        const data = (await res.json()) as { detail?: unknown }
+        detail = typeof data?.detail === 'string' ? data.detail : undefined
+      } catch {
+        detail = undefined
+      }
+      throw httpError(res.status, detail, path)
+    }
+    return res
+  }
+
   /** JSON request to the app API; a 401 triggers one refresh and one retry. */
   async request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
     let token = await this.tokens.accessToken()

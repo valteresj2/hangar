@@ -14,6 +14,8 @@ interface UiState {
   paletteOpen: boolean
   /** Full-screen Harness Lab (compare variants) for this project directory. */
   labCwd?: string
+  /** Native screen of the Agent Hangar workspace shown in the center (features/workspace); cleared by selectSession. */
+  workspaceView?: 'home' | 'agents'
   selectSession(id: string | undefined): void
   toggleSidebar(): void
   openSidePanel(tab?: SidePanelTab): void
@@ -24,6 +26,9 @@ interface UiState {
   setPaletteOpen(open: boolean): void
   openLab(cwd: string): void
   closeLab(): void
+  /** Shows a workspace screen (Início / Meus agentes) in place of the session. */
+  openWorkspace(view: 'home' | 'agents'): void
+  closeWorkspace(): void
 }
 
 export const useUi = create<UiState>((set) => ({
@@ -32,7 +37,7 @@ export const useUi = create<UiState>((set) => ({
   sidePanelTab: 'terminal',
   settingsOpen: false,
   paletteOpen: false,
-  selectSession: (id) => set({ activeSessionId: id }),
+  selectSession: (id) => set({ activeSessionId: id, workspaceView: undefined }),
   toggleSidebar: () => set((s) => ({ sidebarOpen: !s.sidebarOpen })),
   openSidePanel: (tab) => set((s) => ({ sidePanelOpen: true, sidePanelTab: tab ?? s.sidePanelTab })),
   closeSidePanel: () => set({ sidePanelOpen: false }),
@@ -40,5 +45,7 @@ export const useUi = create<UiState>((set) => ({
   openSettings: (section) => set({ settingsOpen: true, settingsSection: section }),
   setPaletteOpen: (open) => set({ paletteOpen: open }),
   openLab: (cwd) => set({ labCwd: cwd }),
-  closeLab: () => set({ labCwd: undefined })
+  closeLab: () => set({ labCwd: undefined }),
+  openWorkspace: (view) => set({ workspaceView: view, activeSessionId: undefined }),
+  closeWorkspace: () => set({ workspaceView: undefined })
 }))

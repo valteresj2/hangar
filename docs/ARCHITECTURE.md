@@ -19,7 +19,7 @@ tipados.
 ## Features
 
 Cada feature do main é um `Feature` (`src/main/core/feature.ts`) com `register(ctx)` e `dispose()`, listado em
-`src/main/features/index.ts`: sessions, engine, terminal, git, preview, settings, harness, lab, onboarding, updater, platform.
+`src/main/features/index.ts`: sessions, engine, terminal, git, preview, settings, harness, lab, onboarding, updater, platform, workspace.
 Um feature só importa de outro o seu `api.ts` (ex.: `engine/api.ts` → `sendPrompt`, `readTranscript`;
 `git/api.ts` → `createWorktree`; `harness/api.ts` → `readHarness`, `createSnapshot`, `reflect`;
 `platform/api.ts` → `canCreateSessions`, `assertCanCreateSessions` — todo ponto que cria sessão passa por eles).
@@ -82,6 +82,14 @@ proxy da plataforma — a chave da conexão nunca chega ao PC. O seletor único 
 `features/platform`) agrupa Assinatura, Modelos de token por conexão e Outros perfis, e grava `providerId` + `model`
 na sessão. Para trocar provedor/modelo de uma sessão, `engine/api.ts` expõe `switchSessionProvider`,
 `setSessionModel`, `sessionState` e `noteSession`.
+
+## Workspace (vitrine do membro)
+
+O feature `workspace` traz telas do portal da plataforma para o Desktop (plano em
+`docs/platform/portal-migration-plan.md`, contrato da M1 em `docs/platform/m1-contract.md`): seção **Agent Hangar** na
+sidebar, Início e Meus agentes nativos, badges ao vivo pelo SSE `/api/app/events` (com fallback de polling) e deep
+links `hangar://open/<rota>` (lista fechada de rotas; o registro do protocolo considera o Windows portátil e o
+AppImage). A tela ativa fica em `useUi().workspaceView`, renderizada no centro pelo `App.tsx`.
 
 ## Qualidade
 

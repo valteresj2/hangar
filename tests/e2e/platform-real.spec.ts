@@ -157,7 +157,12 @@ test('real platform: synced token models, a turn through the LLM proxy, sync off
   await page.getByRole('button', { name: 'Plataforma', exact: true }).click()
 
   try {
-    const state = await loginFromApp(hangar, portal)
+    await loginFromApp(hangar, portal)
+    // Connecting starts a models sync (and the events stream may start another): wait for it to settle.
+    await expect
+      .poll(async () => (await invoke<State>('platform:state')).models.status, { timeout: 30_000 })
+      .not.toBe('syncing')
+    const state = await invoke<State>('platform:state')
     const conn = state.models.connections.find((c) => c.name === CONNECTION)
     console.log(
       `[real] models: ${state.models.status}, ${state.models.connections.map((c) => `${c.name}(${c.models.map((m) => m.id).join(',')})`).join(' ')}`

@@ -1,5 +1,17 @@
-# Release: on a `v*` tag, build the Windows installer, sign it when signing secrets exist, and publish the installer,
-# its blockmap and latest.yml to the update feed. See docs/RELEASE.md for the secrets/variables to configure.
+# Release: on a `v*` tag (or a manual run), build Hangar for Windows, Linux and macOS, each OS/architecture on its own
+# runner, WITHOUT any signing certificate. Signing is opt-in per OS when its secrets exist. A final job gathers the
+# artifacts, merges the auto-update files and publishes them to the update feed. See docs/RELEASE.md.
+#
+#   windows-x64    windows-latest    NSIS installer (auto-update) + portable .exe
+#   windows-arm64  windows-11-arm    portable .exe                         (arm64 jobs: see the `arm64` input)
+#   linux-x64      ubuntu-latest     AppImage (auto-update) + .deb
+#   linux-arm64    ubuntu-24.04-arm  AppImage (auto-update) + .deb
+#   mac-arm64      macos-latest      .dmg + .zip, ad hoc signature
+#   mac-x64        macos-15-intel    .dmg + .zip, ad hoc signature
+#
+# Native modules come from `npm ci` on each runner: node-pty's prebuilds (Windows/macOS) or a node-gyp build (Linux,
+# no prebuilds), and the Agent SDK's optional package for that OS/CPU (@anthropic-ai/claude-agent-sdk-<os>-<arch>,
+# all of them pinned in package-lock.json). build/check-package.cjs fails the job if a piece is missing or wrong.
 name: Release
 
 on:
@@ -11,6 +23,10 @@ on:
         description: 'Publicar no feed de atualização (senão só gera os artefatos)'
         type: boolean
         default: false
+      arm64:
+        description: 'Incluir os builds arm64 de Windows (portable) e Linux'
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -20,30 +36,12 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  windows:
-    runs-on: windows-latest
-    timeout-minutes: 60
-    env:
-      # Update feed target (repository variables). The default is the public releases repo.
-      UPDATE_PROVIDER: ${{ vars.UPDATE_PROVIDER }}
-      UPDATE_GITHUB_OWNER: ${{ vars.UPDATE_GITHUB_OWNER }}
-      UPDATE_GITHUB_REPO: ${{ vars.UPDATE_GITHUB_REPO }}
-      UPDATE_GENERIC_URL: ${{ vars.UPDATE_GENERIC_URL }}
-      UPDATE_CHANNEL: ${{ vars.UPDATE_CHANNEL }}
-      # Token that can create releases in the PUBLIC releases repo (fine-grained PAT, Contents: read & write).
-      # The default GITHUB_TOKEN cannot write to another repository.
-      GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
-      # Code signing, option A: Azure Trusted Signing.
-      AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
-      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
-      AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
-      AZURE_SIGNING_ENDPOINT: ${{ vars.AZURE_SIGNING_ENDPOINT }}
-      AZURE_SIGNING_ACCOUNT: ${{ vars.AZURE_SIGNING_ACCOUNT }}
-      AZURE_SIGNING_PROFILE: ${{ vars.AZURE_SIGNING_PROFILE }}
-      AZURE_SIGNING_PUBLISHER: ${{ vars.AZURE_SIGNING_PUBLISHER }}
-      # Code signing, option B: .pfx certificate (base64 in CSC_LINK).
-      CSC_LINK: ${{ secrets.CSC_LINK }}
-      CSC_KEY_PASSWORD: ${{ secrets.CSC_KEY_PASSWORD }}
+  prepare:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    outputs:
+      version: ${{ steps.meta.outputs.version }}
+      matrix: ${{ steps.meta.outputs.matrix }}
     steps:
       - uses: actions/checkout@v4
 
@@ -52,15 +50,32 @@ jobs:
           node-version: 24
           cache: npm
 
-      - name: Tag must match package.json version
-        if: startsWith(github.ref, 'refs/tags/v')
-        shell: pwsh
+      - name: Version and build matrix
+        id: meta
+        env:
+          # Repository variable RELEASE_ARM64=false turns the arm64 jobs off for tag builds too.
+          ARM64: ${{ github.event_name == 'workflow_dispatch' && inputs.arm64 || github.event_name == 'push' && vars.RELEASE_ARM64 != 'false' }}
         run: |
-          $version = (Get-Content package.json -Raw | ConvertFrom-Json).version
-          if ("v$version" -ne "${{ github.ref_name }}") {
-            Write-Error "Tag ${{ github.ref_name }} does not match package.json version $version"
+          version=$(node -p "require('./package.json').version")
+          if [[ "$GITHUB_REF" == refs/tags/v* && "v$version" != "$GITHUB_REF_NAME" ]]; then
+            echo "::error::Tag $GITHUB_REF_NAME does not match package.json version $version"
             exit 1
-          }
+          fi
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          node -e '
+            const all = [
+              { name: "windows-x64", runner: "windows-latest", os: "win", arch: "x64", targets: "nsis portable" },
+              { name: "windows-arm64", runner: "windows-11-arm", os: "win", arch: "arm64", targets: "portable" },
+              { name: "linux-x64", runner: "ubuntu-latest", os: "linux", arch: "x64", targets: "AppImage deb" },
+              { name: "linux-arm64", runner: "ubuntu-24.04-arm", os: "linux", arch: "arm64", targets: "AppImage deb" },
+              { name: "mac-arm64", runner: "macos-latest", os: "mac", arch: "arm64", targets: "dmg zip" },
+              { name: "mac-x64", runner: "macos-15-intel", os: "mac", arch: "x64", targets: "dmg zip" }
+            ]
+            // macOS arm64 is the native Apple Silicon build, never optional.
+            const keep = all.filter((j) => process.env.ARM64 === "true" || j.arch !== "arm64" || j.os === "mac")
+            console.log(`matrix=${JSON.stringify(keep)}`)
+          ' >> "$GITHUB_OUTPUT"
+          cat "$GITHUB_OUTPUT"
 
       - name: Install dependencies
         run: npm ci
@@ -68,46 +83,188 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+  build:
+    needs: prepare
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    env:
+      # Update feed embedded in the app (repository variables; default: the public releases repo).
+      UPDATE_PROVIDER: ${{ vars.UPDATE_PROVIDER }}
+      UPDATE_GITHUB_OWNER: ${{ vars.UPDATE_GITHUB_OWNER }}
+      UPDATE_GITHUB_REPO: ${{ vars.UPDATE_GITHUB_REPO }}
+      UPDATE_GENERIC_URL: ${{ vars.UPDATE_GENERIC_URL }}
+      UPDATE_CHANNEL: ${{ vars.UPDATE_CHANNEL }}
+      # Windows signing, option A: Azure Artifact Signing (all optional; build/ci-config.cjs validates the set).
+      AZURE_TENANT_ID: ${{ matrix.os == 'win' && secrets.AZURE_TENANT_ID || '' }}
+      AZURE_CLIENT_ID: ${{ matrix.os == 'win' && secrets.AZURE_CLIENT_ID || '' }}
+      AZURE_CLIENT_SECRET: ${{ matrix.os == 'win' && secrets.AZURE_CLIENT_SECRET || '' }}
+      AZURE_SIGNING_ENDPOINT: ${{ matrix.os == 'win' && vars.AZURE_SIGNING_ENDPOINT || '' }}
+      AZURE_SIGNING_ACCOUNT: ${{ matrix.os == 'win' && vars.AZURE_SIGNING_ACCOUNT || '' }}
+      AZURE_SIGNING_PROFILE: ${{ matrix.os == 'win' && vars.AZURE_SIGNING_PROFILE || '' }}
+      AZURE_SIGNING_PUBLISHER: ${{ matrix.os == 'win' && vars.AZURE_SIGNING_PUBLISHER || '' }}
+      # Certificate for this OS (base64 in CSC_LINK): Windows .pfx (CSC_LINK) or macOS Developer ID .p12 (MAC_CSC_LINK).
+      CSC_LINK: ${{ matrix.os == 'win' && secrets.CSC_LINK || matrix.os == 'mac' && secrets.MAC_CSC_LINK || '' }}
+      CSC_KEY_PASSWORD: ${{ matrix.os == 'win' && secrets.CSC_KEY_PASSWORD || matrix.os == 'mac' && secrets.MAC_CSC_KEY_PASSWORD || '' }}
+      # macOS notarization (only with a Developer ID): app-specific password or App Store Connect API key.
+      APPLE_ID: ${{ matrix.os == 'mac' && secrets.APPLE_ID || '' }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ matrix.os == 'mac' && secrets.APPLE_APP_SPECIFIC_PASSWORD || '' }}
+      APPLE_TEAM_ID: ${{ matrix.os == 'mac' && secrets.APPLE_TEAM_ID || '' }}
+      APPLE_API_KEY_ID: ${{ matrix.os == 'mac' && secrets.APPLE_API_KEY_ID || '' }}
+      APPLE_API_ISSUER: ${{ matrix.os == 'mac' && secrets.APPLE_API_ISSUER || '' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Linux: node-pty has no prebuilds and compiles here with node-gyp (python3, make and g++ are on the runner).
+      - name: Install dependencies
+        run: npm ci
+
       - name: Build (electron-vite)
         run: npx electron-vite build
 
-      # Azure signing: electron-builder installs the TrustedSigning PowerShell module (Invoke-TrustedSigning) itself.
+      - name: Apple API key file
+        if: matrix.os == 'mac'
+        env:
+          APPLE_API_KEY_P8: ${{ secrets.APPLE_API_KEY_P8 }}
+        run: |
+          if [ -n "$APPLE_API_KEY_P8" ]; then
+            printf '%s' "$APPLE_API_KEY_P8" > "$RUNNER_TEMP/AuthKey.p8"
+            echo "APPLE_API_KEY=$RUNNER_TEMP/AuthKey.p8" >> "$GITHUB_ENV"
+          fi
+
       - name: Effective electron-builder config (publish target + signing)
         run: node build/ci-config.cjs
 
-      - name: Package and publish
-        shell: pwsh
-        run: |
-          $publish = 'never'
-          $wantsPublish = '${{ github.event_name }}' -eq 'push' -or '${{ inputs.publish }}' -eq 'true'
-          if ($wantsPublish) {
-            if ($env:UPDATE_PROVIDER -eq 'generic') {
-              Write-Host 'Provider generic: artifacts are uploaded below; copy them to UPDATE_GENERIC_URL.'
-            } elseif (-not $env:GH_TOKEN) {
-              Write-Error 'RELEASES_TOKEN secret is missing: cannot publish to the releases repo.'
-              exit 1
-            } else {
-              $publish = 'always'
-            }
-          }
-          npx electron-builder --config release/electron-builder.ci.json --win nsis --x64 --publish $publish
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      # Never publishes from here: the release job uploads everything at once, after all builds pass.
+      - name: Package (${{ matrix.targets }}, ${{ matrix.arch }})
+        shell: bash
+        run: npx electron-builder --config release/electron-builder.ci.json --${{ matrix.os }} ${{ matrix.targets }} --${{ matrix.arch }} --publish never
 
-      - name: Signature status
+      # --release also requires resources/app-update.yml, written only for auto-updating targets (not portable-only).
+      - name: Native modules in the package
+        run: node build/check-package.cjs --os ${{ matrix.os }} --arch ${{ matrix.arch }} ${{ matrix.targets != 'portable' && '--release' || '' }}
+
+      - name: Signature status (Windows)
+        if: matrix.os == 'win'
         shell: pwsh
         run: |
-          Get-ChildItem release/*.exe, release/win-unpacked/Hangar.exe | ForEach-Object {
+          $exes = @(Get-ChildItem release/*.exe) + @(Get-ChildItem release/win*-unpacked/Hangar.exe)
+          $exes | ForEach-Object {
             $sig = Get-AuthenticodeSignature $_.FullName
             "{0}: {1} {2}" -f $_.Name, $sig.Status, $sig.SignerCertificate.Subject
           }
 
+      - name: Signature and URL scheme (macOS)
+        if: matrix.os == 'mac'
+        run: |
+          app=$(ls -d release/mac*/Hangar.app | head -n1)
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -E '^(Identifier|Format|Signature|TeamIdentifier|Authority)' || true
+          codesign --verify --verbose=2 "$app/Contents/Resources/app.asar.unpacked/node_modules/@anthropic-ai/claude-agent-sdk-darwin-${{ matrix.arch }}/claude"
+          plutil -extract CFBundleURLTypes xml1 -o - "$app/Contents/Info.plist" | grep -q '<string>hangar</string>'
+          echo "CFBundleURLTypes declares hangar://"
+
+      - name: Desktop entry and URL scheme (Linux)
+        if: matrix.os == 'linux'
+        run: |
+          deb=$(ls release/*.deb | head -n1)
+          dpkg-deb --info "$deb"
+          rm -rf "$RUNNER_TEMP/deb" && dpkg-deb -x "$deb" "$RUNNER_TEMP/deb"
+          cat "$RUNNER_TEMP/deb/usr/share/applications/hangar.desktop"
+          grep -q '^MimeType=.*x-scheme-handler/hangar;' "$RUNNER_TEMP/deb/usr/share/applications/hangar.desktop"
+          grep -q '^Categories=Development;' "$RUNNER_TEMP/deb/usr/share/applications/hangar.desktop"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: hangar-windows-${{ github.ref_name }}
+          name: hangar-${{ matrix.name }}
           path: |
             release/*.exe
-            release/*.exe.blockmap
-            release/latest.yml
+            release/*.blockmap
+            release/*.yml
+            release/*.AppImage
+            release/*.deb
+            release/*.dmg
+            release/*.zip
+            !release/builder-debug.yml
           if-no-files-found: error
           retention-days: 30
+
+  release:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      VERSION: ${{ needs.prepare.outputs.version }}
+      UPDATE_PROVIDER: ${{ vars.UPDATE_PROVIDER }}
+      UPDATE_GITHUB_OWNER: ${{ vars.UPDATE_GITHUB_OWNER }}
+      UPDATE_GITHUB_REPO: ${{ vars.UPDATE_GITHUB_REPO }}
+      # Token that can create releases in the PUBLIC releases repo (fine-grained PAT, Contents: read & write).
+      # The default GITHUB_TOKEN cannot write to another repository.
+      GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+      PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # Only js-yaml is needed (build/collect-release.cjs); no native builds.
+      - name: Install dependencies
+        run: npm ci --ignore-scripts
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: hangar-*
+          path: artifacts
+
+      - name: Collect artifacts and merge update files
+        run: node build/collect-release.cjs artifacts dist && ls -la dist
+
+      - name: Upload the release set
+        uses: actions/upload-artifact@v4
+        with:
+          name: hangar-release-v${{ needs.prepare.outputs.version }}
+          path: dist/*
+          if-no-files-found: error
+          retention-days: 30
+
+      # Draft first, upload everything, then publish: installed apps never see an update file before its installer.
+      - name: Publish to the update feed
+        if: env.PUBLISH == 'true'
+        run: |
+          provider="${UPDATE_PROVIDER:-github}"
+          if [ "$provider" = "generic" ]; then
+            echo "Provider generic: copy the files of the hangar-release-v$VERSION artifact to UPDATE_GENERIC_URL."
+            exit 0
+          fi
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::RELEASES_TOKEN secret is missing: cannot publish to the releases repo."
+            exit 1
+          fi
+          repo="${UPDATE_GITHUB_OWNER:-valteresj2}/${UPDATE_GITHUB_REPO:-hangar-releases}"
+          tag="v$VERSION"
+          if state=$(gh release view "$tag" --repo "$repo" --json isDraft --jq .isDraft 2>/dev/null); then
+            if [ "$state" != "true" ]; then
+              echo "::error::Release $tag is already published in $repo; bump the version instead of overwriting it."
+              exit 1
+            fi
+          else
+            pre=""; [[ "$VERSION" == *-* ]] && pre="--prerelease"
+            gh release create "$tag" --repo "$repo" --draft $pre --title "Hangar $VERSION" \
+              --notes "Hangar $VERSION. Como instalar e abrir um app sem assinatura: veja o README deste repositório."
+          fi
+          gh release upload "$tag" dist/* --repo "$repo" --clobber
+          gh release edit "$tag" --repo "$repo" --draft=false
+          echo "Published $tag to https://github.com/$repo/releases/tag/$tag"

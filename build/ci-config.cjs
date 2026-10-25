@@ -1,6 +1,7 @@
 // Writes release/electron-builder.ci.json: electron-builder.yml plus the publish target and code signing
-// chosen through environment variables. Used by .github/workflows/release.yml; also works locally:
-//   node build/ci-config.cjs && npx electron-builder --config release/electron-builder.ci.json --win nsis --x64
+// chosen through environment variables. Used by .github/workflows/release.yml on every OS; also works locally:
+//   node build/ci-config.cjs && npx electron-builder --config release/electron-builder.ci.json --win nsis portable --x64
+// Nothing here is required: with no variables set the build is unsigned (Windows, Linux) or ad hoc signed (macOS).
 //
 // Publish target (embedded in the app as app-update.yml — must be reachable WITHOUT a token):
 //   UPDATE_PROVIDER      github (default) | generic
@@ -12,6 +13,11 @@
 // AZURE_CLIENT_ID and AZURE_CLIENT_SECRET, read by electron-builder itself):
 //   AZURE_SIGNING_ENDPOINT, AZURE_SIGNING_ACCOUNT, AZURE_SIGNING_PROFILE, AZURE_SIGNING_PUBLISHER
 // A .pfx certificate needs no config here: electron-builder picks up CSC_LINK / CSC_KEY_PASSWORD on its own.
+// macOS Developer ID (only when this runs on macOS): CSC_LINK + CSC_KEY_PASSWORD (a .p12 with the "Developer ID
+// Application" certificate) or CSC_NAME (an identity already in the keychain) replaces the ad hoc signature and turns
+// on the hardened runtime. Notarization runs when one set of Apple credentials is complete:
+//   APPLE_API_KEY (path to the .p8) + APPLE_API_KEY_ID + APPLE_API_ISSUER, or
+//   APPLE_ID + APPLE_APP_SPECIFIC_PASSWORD + APPLE_TEAM_ID
 const { mkdirSync, readFileSync, writeFileSync } = require('node:fs')
 const { join } = require('node:path')
 const yaml = require('js-yaml')
@@ -67,10 +73,31 @@ if (azureSet.length === 4) {
 } else if (azureSet.length > 0) {
   console.error('Azure Trusted Signing needs AZURE_SIGNING_ENDPOINT, _ACCOUNT, _PROFILE and _PUBLISHER together.')
   process.exit(1)
+} else if (process.platform === 'darwin') {
+  // CSC_LINK on a macOS runner is the Developer ID certificate (the workflow maps MAC_CSC_LINK into it there).
 } else if (env.CSC_LINK || env.WIN_CSC_LINK) {
-  notes.push('signing: .pfx certificate from CSC_LINK / WIN_CSC_LINK')
-} else {
-  notes.push('signing: none (unsigned build — SmartScreen / Smart App Control will warn or block)')
+  notes.push('signing (Windows): .pfx certificate from CSC_LINK / WIN_CSC_LINK')
+} else if (process.platform === 'win32') {
+  notes.push('signing (Windows): none (unsigned build — SmartScreen / Smart App Control will warn or block)')
+}
+
+if (process.platform === 'darwin') {
+  const has = (...names) => names.every((n) => env[n] && env[n].trim())
+  if (has('CSC_LINK') || has('CSC_NAME')) {
+    const entitlements = 'build/entitlements.mac.plist'
+    const mac = { ...config.mac, hardenedRuntime: true, entitlements, entitlementsInherit: entitlements }
+    delete mac.identity // let electron-builder pick the Developer ID from CSC_LINK / CSC_NAME
+    const notarize =
+      has('APPLE_API_KEY', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER') ||
+      has('APPLE_ID', 'APPLE_APP_SPECIFIC_PASSWORD', 'APPLE_TEAM_ID')
+    mac.notarize = notarize
+    config.mac = mac
+    notes.push(
+      `signing (macOS): Developer ID, hardened runtime, notarization ${notarize ? 'on' : 'off (no Apple credentials)'}`
+    )
+  } else {
+    notes.push('signing (macOS): ad hoc (no Developer ID — Gatekeeper asks the user to allow the app; no auto-install)')
+  }
 }
 
 mkdirSync(join(root, 'release'), { recursive: true })

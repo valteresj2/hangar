@@ -42,7 +42,12 @@ function StatusLine({ state }: { state: UpdaterState }) {
         </span>
       )
     case 'available':
-      return (
+      return state.installMode === 'manual' ? (
+        <span>
+          Nova versão disponível: <strong>{state.availableVersion}</strong> — baixe e instale a versão nova
+          {state.downloadUrl ? '.' : ' na página de downloads do Hangar.'}
+        </span>
+      ) : (
         <span>
           Nova versão disponível: <strong>{state.availableVersion}</strong>
         </span>
@@ -72,6 +77,7 @@ export function UpdaterPanel() {
     void fn().finally(() => setBusy(false))
   }
   const disabled = state.status === 'disabled'
+  const manual = state.installMode === 'manual'
   const progress = state.progress
 
   return (
@@ -84,7 +90,16 @@ export function UpdaterPanel() {
           </div>
         </div>
         <div className={styles.actions}>
-          {state.status === 'available' && (
+          {state.status === 'available' && manual && state.downloadUrl && (
+            <button
+              className="btn btn-primary"
+              title={state.downloadUrl}
+              onClick={() => void bridge.invoke(UPDATER.openDownload)}
+            >
+              Nova versão disponível — baixar
+            </button>
+          )}
+          {state.status === 'available' && !manual && (
             <button
               className="btn btn-primary"
               disabled={busy}
@@ -133,15 +148,19 @@ export function UpdaterPanel() {
           </details>
         )}
 
-      <label className={styles.option}>
-        <input
-          type="checkbox"
-          checked={state.autoDownload}
-          disabled={disabled}
-          onChange={(e) => void bridge.invoke(UPDATER.setAutoDownload, e.target.checked)}
-        />
-        Baixar atualizações automaticamente em segundo plano
-      </label>
+      {manual ? (
+        state.manualReason && <p className={`${styles.manualNote} muted`}>{state.manualReason}</p>
+      ) : (
+        <label className={styles.option}>
+          <input
+            type="checkbox"
+            checked={state.autoDownload}
+            disabled={disabled}
+            onChange={(e) => void bridge.invoke(UPDATER.setAutoDownload, e.target.checked)}
+          />
+          Baixar atualizações automaticamente em segundo plano
+        </label>
+      )}
 
       {state.status === 'error' && (
         <button className={`${styles.link} muted`} onClick={() => void api.openPath(state.logFile)}>
