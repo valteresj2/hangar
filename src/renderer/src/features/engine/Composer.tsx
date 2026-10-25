@@ -4,8 +4,8 @@ import { ENGINE, type EngineOptions, type OutputMode, type SlashCommandInfo } fr
 import { bridge } from '../../core/api'
 import { useSettings } from '../../core/data'
 import { SUBSCRIPTION_PROFILE_ID, type ProviderProfile } from '@shared/providers'
+import { ModelPicker, platformApi } from '../platform'
 import { blobToImage, type ComposerImage } from './pasted'
-import { modelChoices } from './providers'
 import styles from './engine.module.css'
 
 const EFFORTS: { value: Effort; label: string }[] = [
@@ -22,8 +22,6 @@ const MODES: { value: PermissionMode; label: string }[] = [
   { value: 'auto', label: 'Auto' },
   { value: 'bypassPermissions', label: 'Ignorar permissões' }
 ]
-const CUSTOM = '\u0000custom'
-
 function basename(p: string): string {
   return p.split(/[\\/]/).pop() ?? p
 }
@@ -45,13 +43,12 @@ function OptionsBar({
   const model = session.model ?? profile?.models?.default ?? settings?.defaultModel ?? 'opus'
   const effort = session.effort ?? settings?.defaultEffort ?? 'high'
   const mode = session.permissionMode ?? settings?.defaultPermissionMode ?? 'default'
-  const choices = useMemo(() => modelChoices(profile?.models), [profile?.models])
-  const [customModel, setCustomModel] = useState<string>()
 
   const apply = (patch: EngineOptions) => void bridge.invoke(ENGINE.setOptions, session.id, patch)
-  const switchProvider = (id: string) =>
-    bridge
-      .invoke(ENGINE.setProvider, session.id, id)
+  // One picker for profile + model: another profile ends the Claude Code process and the next message resumes.
+  const choose = (choice: { providerId: string; model: string }) =>
+    void platformApi
+      .chooseModel(session.id, choice)
       .catch((err: unknown) =>
         onError(
           err instanceof Error
@@ -62,62 +59,20 @@ function OptionsBar({
 
   return (
     <div className={styles.optionsBar}>
-      <select
+      <ModelPicker
         className={styles.select}
+        inputClassName={styles.modelInput}
+        profiles={providers}
+        value={{ providerId, model }}
+        onChange={choose}
+        lockProvider={busy}
+        allowCustom
         title={
           busy
-            ? 'Pare a geração para trocar de provedor'
-            : 'Provedor: trocar mantém o histórico da conversa, mas o cache de prompt recomeça'
+            ? 'Modelo (pare a geração para trocar de origem: assinatura, modelos de token ou outro perfil)'
+            : 'Modelo e origem: trocar de origem mantém o histórico da conversa, mas o cache de prompt recomeça'
         }
-        disabled={busy}
-        value={providerId}
-        onChange={(e) => void switchProvider(e.target.value)}
-      >
-        {!profile && (
-          <option value={providerId}>{providers.length ? `${providerId} (não encontrado)` : 'Provedor…'}</option>
-        )}
-        {providers.map((p) => (
-          <option key={p.id} value={p.id}>
-            ⛁ {p.name}
-          </option>
-        ))}
-      </select>
-      {customModel !== undefined ? (
-        <input
-          className={styles.modelInput}
-          value={customModel}
-          autoFocus
-          placeholder="id do modelo"
-          title="Modelo (Enter aplica, Esc volta)"
-          onChange={(e) => setCustomModel(e.target.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter' && customModel.trim()) {
-              apply({ model: customModel.trim() })
-              setCustomModel(undefined)
-            }
-            if (e.key === 'Escape') setCustomModel(undefined)
-          }}
-          onBlur={() => {
-            if (customModel.trim() && customModel.trim() !== model) apply({ model: customModel.trim() })
-            setCustomModel(undefined)
-          }}
-        />
-      ) : (
-        <select
-          className={styles.select}
-          title="Modelo"
-          value={model}
-          onChange={(e) => (e.target.value === CUSTOM ? setCustomModel('') : apply({ model: e.target.value }))}
-        >
-          {!choices.some((c) => c.value === model) && <option value={model}>{model}</option>}
-          {choices.map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
-            </option>
-          ))}
-          <option value={CUSTOM}>Outro…</option>
-        </select>
-      )}
+      />
       <select
         className={styles.select}
         title="Esforço"

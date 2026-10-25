@@ -431,6 +431,8 @@ function ProviderItem({
   const [testing, setTesting] = useState(false)
   const [error, setError] = useState<string>()
   const builtIn = profile.id === SUBSCRIPTION_PROFILE_ID
+  // Kept by the platform feature (one per synced LLM connection): read-only here.
+  const managed = profile.managedBy === 'platform'
 
   const runTest = async () => {
     setTesting(true)
@@ -462,7 +464,16 @@ function ProviderItem({
           {profile.name}
           <span className={styles.badge}>{KIND_LABEL[profile.kind]}</span>
           {isDefault && <span className={`${styles.badge} ${styles.okText}`}>padrão</span>}
-          {profile.hasSecret && <span className={styles.badge}>chave salva</span>}
+          {managed ? (
+            <span
+              className={styles.badge}
+              title="Criado e atualizado pela sincronização com a plataforma Agent Hangar (Configurações → Plataforma). A chave é a do dispositivo e não sai deste computador."
+            >
+              gerenciado pela plataforma
+            </span>
+          ) : (
+            profile.hasSecret && <span className={styles.badge}>chave salva</span>
+          )}
         </div>
         <div className={`${styles.itemSub} ${styles.path}`}>
           {builtIn
@@ -472,7 +483,10 @@ function ProviderItem({
                 profile.project,
                 profile.region,
                 profile.awsProfile && `perfil AWS ${profile.awsProfile}`,
-                profile.models?.default && `modelo ${profile.models.default}`
+                managed
+                  ? profile.models &&
+                    `${1 + (profile.models.extra?.length ?? 0)} modelo${profile.models.extra?.length ? 's' : ''} de token`
+                  : profile.models?.default && `modelo ${profile.models.default}`
               ]
                 .filter(Boolean)
                 .join(' · ') || '—'}
@@ -500,7 +514,7 @@ function ProviderItem({
             Definir como padrão
           </button>
         )}
-        {!builtIn && (
+        {!builtIn && !managed && (
           <>
             <button className="btn" onClick={onEdit}>
               Editar

@@ -29,6 +29,8 @@ export interface CreateSessionInput {
   effort?: Effort
   permissionMode?: PermissionMode
   worktree?: Worktree
+  /** Provider profile (src/shared/providers.ts); absent = settings.defaultProviderId. */
+  providerId?: string
 }
 
 /** `sessions:delete` (id, opts?) → DeleteSessionResult */

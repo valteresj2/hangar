@@ -1,6 +1,6 @@
 // Typed wrappers for the platform feature's IPC, plus a store that mirrors PlatformState from main.
 import { create } from 'zustand'
-import { PLATFORM, type PlatformConfigPatch, type PlatformState } from '@shared/features/platform'
+import { PLATFORM, type ModelChoice, type PlatformConfigPatch, type PlatformState } from '@shared/features/platform'
 import { bridge } from '../../core/api'
 
 export const platformApi = {
@@ -9,7 +9,10 @@ export const platformApi = {
   connect: () => bridge.invoke(PLATFORM.connect),
   cancelConnect: () => bridge.invoke(PLATFORM.cancelConnect),
   disconnect: () => bridge.invoke(PLATFORM.disconnect),
-  refresh: () => bridge.invoke(PLATFORM.refresh)
+  refresh: () => bridge.invoke(PLATFORM.refresh),
+  syncModels: () => bridge.invoke(PLATFORM.syncModels),
+  chooseModel: (sessionId: string, choice: ModelChoice) => bridge.invoke(PLATFORM.chooseModel, sessionId, choice),
+  setDefaultModel: (choice: ModelChoice) => bridge.invoke(PLATFORM.setDefaultModel, choice)
 }
 
 export const usePlatformStore = create<{ state?: PlatformState }>(() => ({}))

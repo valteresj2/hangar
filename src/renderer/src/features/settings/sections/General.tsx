@@ -4,7 +4,8 @@ import type { AuthStatus, CliInfo } from '@shared/features/settings'
 import { api } from '../../../core/api'
 import { useSettings } from '../../../core/data'
 import { openDiagnostics } from '../../onboarding'
-import { settingsApi } from '../api'
+import { ModelPicker, platformApi } from '../../platform'
+import { errorText, settingsApi } from '../api'
 import { Card, Dot, Row, Segmented, Spinner, Switch } from '../ui'
 import { useSettingsSection } from '../SettingsView'
 import { KIND_LABEL, useProvidersState } from './Providers'
@@ -207,6 +208,26 @@ function DefaultProviderRow() {
   )
 }
 
+/** Default provider profile + model of new sessions (one picker, like the composer's). */
+function DefaultModelPicker({ settings }: { settings: Settings }) {
+  const [error, setError] = useState<string>()
+  return (
+    <>
+      <ModelPicker
+        className={styles.select}
+        inputClassName="input"
+        value={{ providerId: settings.defaultProviderId, model: settings.defaultModel }}
+        allowCustom
+        onChange={(choice) => {
+          setError(undefined)
+          platformApi.setDefaultModel(choice).catch((err: unknown) => setError(errorText(err)))
+        }}
+      />
+      {error && <span className={styles.errorText}>{error}</span>}
+    </>
+  )
+}
+
 export function GeneralSection() {
   const settings = useSettings()
   if (!settings) return <Spinner />
@@ -239,17 +260,11 @@ export function GeneralSection() {
       <TrayQuickEntryCard settings={settings} />
 
       <Card title="Padrões de novas sessões">
-        <Row label="Modelo" hint="Alias (opus, sonnet…) ou id completo do modelo.">
-          <LazyInput
-            value={settings.defaultModel}
-            list="hangar-models"
-            onCommit={(v) => v.trim() && patch({ defaultModel: v.trim() })}
-          />
-          <datalist id="hangar-models">
-            {MODEL_SUGGESTIONS.map((m) => (
-              <option key={m} value={m} />
-            ))}
-          </datalist>
+        <Row
+          label="Modelo"
+          hint="Origem e modelo: a assinatura, os modelos de token sincronizados da plataforma ou outro perfil. “Outro modelo…” aceita um id completo."
+        >
+          <DefaultModelPicker settings={settings} />
         </Row>
         <Row label="Esforço">
           <select

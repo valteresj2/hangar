@@ -8,6 +8,12 @@
 //                                                   with reuse detection (a spent refresh token revokes the grant)
 //   POST /oauth/revoke                              RFC 7009
 //   GET  /api/app/me, POST /api/app/devices, POST /api/app/devices/:id/heartbeat
+//   GET  /api/app/models                            synced token models (docs/platform/app-api-models.md)
+//   POST /api/app/devices/:id/llm-key               generates or rotates the device's `ahl_…` key
+//   *    /api/app/llm/:connection/…                 LLM proxy: checks the device key, the connection's sync and
+//                                                   the visible models, then forwards to `upstream` (e.g.
+//                                                   tests/mock-anthropic) with the connection's own credential,
+//                                                   streaming the answer through
 //
 // Like the real platform, the heartbeat answers `revoked` for the access token of an ended grant, and a device
 // revoked by the admin cannot register again. No dependencies beyond Node.
@@ -50,6 +56,45 @@ export interface MockClient {
   softwareVersion?: string
 }
 
+export interface MockModel {
+  model_id: string
+  name: string
+  context_length?: number
+  caps?: string[]
+  price_in_per_mtok?: number
+  price_out_per_mtok?: number
+  kind?: 'text' | 'embedding'
+}
+
+/** An LLM connection of the fake platform; only `sync: true` ones reach the app. */
+export interface MockConnection {
+  id: number
+  name: string
+  provider: string
+  protocol: 'anthropic' | 'openai'
+  sync: boolean
+  hidden: string[]
+  models: MockModel[]
+}
+
+export interface MockLlmKey {
+  key: string
+  deviceId: string
+  userId: number
+  createdAt: number
+}
+
+/** A request that went through the LLM proxy. */
+export interface MockProxied {
+  connectionId: number
+  method: string
+  path: string
+  model?: string
+  deviceId: string
+  /** Status the proxy answered (its own refusal or the upstream's). */
+  status: number
+}
+
 export interface MockRequest {
   method: string
   path: string
@@ -71,6 +116,14 @@ export interface MockPlatform {
   expireAccessTokens(): void
   /** What /oauth/authorize does: approve (default) or answer access_denied. */
   setConsent(answer: 'approve' | 'deny'): void
+  /** LLM connections (edit freely: `sync`, `hidden`, `models`); the console's "Sincronizar com o Hangar desktop". */
+  connections: MockConnection[]
+  setSync(connectionId: number, sync: boolean): void
+  /** Device LLM keys in force (one per device; rotating replaces it). */
+  llmKeys: Map<string, MockLlmKey>
+  /** Invalidates every device LLM key (the proxy answers 401 until the app rotates it). */
+  invalidateLlmKeys(): void
+  proxied: MockProxied[]
   count(path: string, grantType?: string): number
   close(): Promise<void>
 }
@@ -81,6 +134,10 @@ export interface MockPlatformOptions {
   accessTtlS?: number
   /** Delay before /oauth/token answers, to make concurrent refreshes overlap. */
   tokenDelayMs?: number
+  /** Where the LLM proxy forwards (an Anthropic Messages API) and the credential it injects. */
+  upstream?: { url: string; token: string }
+  /** Initial connections (default: MOCK_CONNECTIONS, not synced). */
+  connections?: MockConnection[]
   log?: (line: string) => void
 }
 
@@ -96,6 +153,48 @@ export const MOCK_USER = {
   ]
 }
 export const MOCK_ORG = { id: 1, name: 'Acme Ltda', slug: 'acme', brand: {} }
+
+/** Default connections: an Anthropic one (two text models and an embedding) and an OpenAI one (cannot sync). */
+export function mockConnections(): MockConnection[] {
+  return [
+    {
+      id: 11,
+      name: 'Anthropic Acme',
+      provider: 'anthropic',
+      protocol: 'anthropic',
+      sync: false,
+      hidden: [],
+      models: [
+        {
+          model_id: 'claude-sonnet-4-5',
+          name: 'Claude Sonnet 4.5',
+          context_length: 200_000,
+          caps: ['tools', 'vision'],
+          price_in_per_mtok: 3,
+          price_out_per_mtok: 15
+        },
+        {
+          model_id: 'claude-haiku-4-5',
+          name: 'Claude Haiku 4.5',
+          context_length: 200_000,
+          caps: ['tools'],
+          price_in_per_mtok: 1,
+          price_out_per_mtok: 5
+        },
+        { model_id: 'voyage-3', name: 'Voyage 3', kind: 'embedding' }
+      ]
+    },
+    {
+      id: 12,
+      name: 'OpenAI Acme',
+      provider: 'openai',
+      protocol: 'openai',
+      sync: false,
+      hidden: [],
+      models: [{ model_id: 'gpt-4o', name: 'GPT-4o', context_length: 128_000 }]
+    }
+  ]
+}
 
 const LOOPBACK = new Set(['127.0.0.1', 'localhost', '[::1]'])
 const token = (prefix: string) => prefix + randomBytes(24).toString('base64url')
@@ -135,6 +234,9 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
   const grants: MockGrant[] = []
   const devices = new Map<string, MockDevice>()
   const requests: MockRequest[] = []
+  const connections = opts.connections ?? mockConnections()
+  const llmKeys = new Map<string, MockLlmKey>()
+  const proxied: MockProxied[] = []
   let consent: 'approve' | 'deny' = 'approve'
   let base = ''
   const ttl = (opts.accessTtlS ?? 3600) * 1000
@@ -174,6 +276,97 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
       refresh_token: g.refresh,
       scope: g.scope
     }
+  }
+
+  const syncable = (c: MockConnection) => c.sync && c.protocol === 'anthropic'
+  const visible = (c: MockConnection) =>
+    c.models.filter((m) => (m.kind ?? 'text') === 'text' && !c.hidden.includes(m.model_id))
+  const anthropicError = (res: ServerResponse, status: number, type: string, message: string) =>
+    json(res, status, { type: 'error', error: { type, message } })
+
+  /** The LLM proxy: device key → connection → visible model → upstream, the answer streamed back as it comes. */
+  const proxy = async (
+    req: IncomingMessage,
+    res: ServerResponse,
+    connectionId: number,
+    sub: string,
+    search: string
+  ) => {
+    const presented = bearer(req) || (typeof req.headers['x-api-key'] === 'string' ? req.headers['x-api-key'] : '')
+    const owner = llmKeys.get(presented)
+    const device = owner && devices.get(owner.deviceId)
+    const record = (status: number, model?: string) =>
+      proxied.push({
+        connectionId,
+        method: req.method ?? '',
+        path: sub,
+        model,
+        deviceId: owner?.deviceId ?? '',
+        status
+      })
+    if (!owner || device?.status !== 'active') {
+      record(401)
+      return anthropicError(res, 401, 'authentication_error', 'chave do dispositivo inválida ou revogada')
+    }
+    const c = connections.find((x) => x.id === connectionId)
+    if (!c || !syncable(c)) {
+      record(403)
+      return anthropicError(res, 403, 'permission_error', 'esta conexão não está sincronizada com o Hangar desktop')
+    }
+    if (req.method === 'GET' && sub === '/v1/models') {
+      record(200)
+      const data = visible(c).map((m) => ({
+        type: 'model',
+        id: m.model_id,
+        display_name: m.name,
+        created_at: '2025-01-01T00:00:00Z'
+      }))
+      return json(res, 200, { data, has_more: false, first_id: data[0]?.id ?? null, last_id: data.at(-1)?.id ?? null })
+    }
+    const raw = req.method === 'POST' ? await readBody(req) : ''
+    let model: string | undefined
+    if (sub.startsWith('/v1/messages')) {
+      try {
+        model = (JSON.parse(raw) as { model?: string }).model
+      } catch {
+        model = undefined
+      }
+      if (!model || !visible(c).some((m) => m.model_id === model)) {
+        record(400, model)
+        return anthropicError(
+          res,
+          400,
+          'invalid_request_error',
+          `modelo fora da lista desta conexão: ${visible(c)
+            .map((m) => m.model_id)
+            .join(', ')}`
+        )
+      }
+    }
+    if (!opts.upstream) {
+      record(502, model)
+      return anthropicError(res, 502, 'api_error', 'proxy sem upstream')
+    }
+    const headers: Record<string, string> = {
+      'content-type': 'application/json',
+      authorization: `Bearer ${opts.upstream.token}`
+    }
+    for (const h of ['anthropic-version', 'anthropic-beta']) {
+      const v = req.headers[h]
+      if (typeof v === 'string') headers[h] = v
+    }
+    const up = await fetch(`${opts.upstream.url}${sub}${search}`, {
+      method: req.method,
+      headers,
+      body: req.method === 'POST' ? raw : undefined
+    })
+    record(up.status, model)
+    res.writeHead(up.status, {
+      'content-type': up.headers.get('content-type') ?? 'application/json',
+      'cache-control': 'no-cache'
+    })
+    if (up.body) for await (const chunk of up.body) res.write(chunk)
+    res.end()
   }
 
   const routes = async (req: IncomingMessage, res: ServerResponse, rec: MockRequest): Promise<void> => {
@@ -334,6 +527,37 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
       })
     }
 
+    if (req.method === 'GET' && path === '/api/app/models') {
+      if (!appGrant(req, res)) return
+      return json(res, 200, {
+        version: JSON.stringify(connections.map((c) => [c.id, c.sync, c.hidden, c.models.length])),
+        connections: connections.filter(syncable).map((c) => ({
+          id: c.id,
+          name: c.name,
+          provider: c.provider,
+          base_path: `/api/app/llm/${c.id}`,
+          models: visible(c).map(({ kind: _kind, ...m }) => m)
+        }))
+      })
+    }
+
+    const llmKey = /^\/api\/app\/devices\/([^/]+)\/llm-key$/.exec(path)
+    if (req.method === 'POST' && llmKey) {
+      const g = appGrant(req, res)
+      if (!g) return
+      const id = decodeURIComponent(llmKey[1])
+      const d = devices.get(id)
+      if (!d || d.userId !== g.userId) return json(res, 404, { detail: 'dispositivo não registrado' })
+      if (d.status !== 'active') return json(res, 403, { detail: 'dispositivo revogado' })
+      for (const [k, v] of llmKeys) if (v.deviceId === id) llmKeys.delete(k)
+      const key = token('ahl_')
+      llmKeys.set(key, { key, deviceId: id, userId: g.userId, createdAt: Date.now() })
+      return json(res, 200, { key, prefix: key.slice(0, 8), created_at: new Date().toISOString() })
+    }
+
+    const llm = /^\/api\/app\/llm\/(\d+)(\/.*)$/.exec(path)
+    if (llm) return proxy(req, res, Number(llm[1]), llm[2], url.search)
+
     const hb = /^\/api\/app\/devices\/([^/]+)\/heartbeat$/.exec(path)
     if (req.method === 'POST' && hb) {
       const id = decodeURIComponent(hb[1])
@@ -392,6 +616,17 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
     setConsent(answer) {
       consent = answer
     },
+    connections,
+    setSync(connectionId, sync) {
+      const c = connections.find((x) => x.id === connectionId)
+      if (!c) throw new Error(`unknown connection ${connectionId}`)
+      c.sync = sync
+    },
+    llmKeys,
+    invalidateLlmKeys() {
+      llmKeys.clear()
+    },
+    proxied,
     count: (path, grantType) =>
       requests.filter((r) => r.path === path && (grantType === undefined || r.grantType === grantType)).length,
     close: () =>

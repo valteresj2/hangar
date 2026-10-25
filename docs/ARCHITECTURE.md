@@ -75,6 +75,14 @@ Windows (`HKLM`/`HKCU\Software\Policies\Hangar`: `PlatformUrl`, `Mode`). No modo
 sessão é criada. Os tokens de design do app (`src/renderer/src/theme/tokens.json`) são uma cópia dos da plataforma
 (`central/app/static/design-tokens.json`); `tests/unit/design-tokens.test.ts` mantém `styles.css` em sincronia.
 
+**Modelos de token** (`docs/platform/app-api-models.md`): o admin liga, por conexão de LLM no console, a sincronização
+com o Hangar desktop. O feature `platform` lê `GET /api/app/models`, guarda cifrada a chave `ahl_…` do dispositivo e
+mantém um **perfil de provedor gerenciado** por conexão (`managedBy: 'platform'`, somente leitura) que aponta para o
+proxy da plataforma — a chave da conexão nunca chega ao PC. O seletor único de modelo (`ModelPicker` em
+`features/platform`) agrupa Assinatura, Modelos de token por conexão e Outros perfis, e grava `providerId` + `model`
+na sessão. Para trocar provedor/modelo de uma sessão, `engine/api.ts` expõe `switchSessionProvider`,
+`setSessionModel`, `sessionState` e `noteSession`.
+
 ## Qualidade
 
 `npm run format:check` (Prettier), `npm run lint` (ESLint com type-check, incluindo a regra local

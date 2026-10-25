@@ -35,8 +35,6 @@ export function errorText(err: unknown): string {
   return raw.replace(/^Error invoking remote method '[^']+': (?:\w*Error: )?/, '')
 }
 
-export const MODEL_OPTIONS = ['opus', 'sonnet', 'haiku', 'fable']
-
 export const PERMISSION_LABELS: Record<PermissionMode, string> = {
   default: 'Perguntar',
   acceptEdits: 'Aceitar edições',

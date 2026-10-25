@@ -1,5 +1,6 @@
 // Connection to the Agent Hangar platform: effective config (Windows policy over the app's own choice), login,
-// device registration, heartbeat and logout. Every change is broadcast as PlatformState.
+// device registration, heartbeat, synced token models (./models.ts) and logout. Every change is broadcast as
+// PlatformState.
 import { app, net, Notification, powerMonitor } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { hostname, release } from 'node:os'
@@ -21,6 +22,7 @@ import type { FeatureContext } from '../../core/feature'
 import { openExternalLink } from '../../core/window'
 import { ApiClient, TokenManager } from './client'
 import { PlatformError, errorMessage, hostOf } from './errors'
+import { configureModels, dropModels, modelsView, syncModels } from './models'
 import { login, revokeTokens, type FetchFn, type TokenSet } from './oauth'
 import { normalizeUrl, parseMode, readPolicy, type Policy } from './policy'
 import { clearTokens, loadTokens, readJson, removeFile, saveTokens, writeJson } from './storage'
@@ -183,7 +185,8 @@ export function getState(): PlatformState {
     error: lastError,
     notice,
     lastHeartbeatAt,
-    canCreateSessions: config.mode !== 'required' || connected()
+    canCreateSessions: config.mode !== 'required' || connected(),
+    models: showAccount ? modelsView() : { status: 'none', connections: [] }
   }
 }
 
@@ -279,7 +282,10 @@ async function probeRevoked(t: TokenSet): Promise<boolean> {
   }
 }
 
-/** Local logout: forgets tokens and account. `revoke` also tells the platform (user-initiated logout). */
+/**
+ * Local logout: forgets tokens and account, and removes the managed provider profiles (sessions on them fall back
+ * to the subscription). `revoke` also tells the platform (user-initiated logout).
+ */
 async function dropLogin(revoke: boolean): Promise<void> {
   const t = tokens.current
   tokens.set(undefined)
@@ -289,6 +295,7 @@ async function dropLogin(revoke: boolean): Promise<void> {
   status = 'disconnected'
   lastHeartbeatAt = undefined
   stopHeartbeat()
+  await dropModels('o Hangar foi desconectado da plataforma')
   if (t && revoke) await revokeTokens(t, fetchFn)
 }
 
@@ -342,6 +349,7 @@ function sync(): Promise<void> {
       }
       status = 'connected'
       lastError = undefined
+      await syncModels()
     } catch (err) {
       await handleFailure(err)
     }
@@ -369,6 +377,13 @@ function stopHeartbeat(): void {
 
 export async function start(ctx: FeatureContext): Promise<void> {
   ctxRef = ctx
+  configureModels({
+    client,
+    fetch: fetchFn,
+    url: () => tokens.current?.url,
+    deviceId: () => device().deviceId,
+    emit
+  })
   policy = await readPolicy().catch(() => ({}))
   const stored = await loadTokens().catch(() => undefined)
   const config = effectiveConfig()
@@ -383,6 +398,9 @@ export async function start(ctx: FeatureContext): Promise<void> {
     status = 'connected'
     startHeartbeat()
     void sync()
+  } else {
+    // Not logged in: managed profiles left from an earlier login (e.g. tokens that no longer decrypt) go away.
+    await dropModels('o Hangar não está conectado à plataforma')
   }
   powerMonitor.on('resume', () => {
     if (tokens.current) void sync()
@@ -490,6 +508,17 @@ export async function disconnect(): Promise<PlatformState> {
   await dropLogin(true)
   lastError = undefined
   notice = undefined
+  return emit()
+}
+
+/** "Sincronizar agora": the synced token models only. */
+export async function syncModelsNow(): Promise<PlatformState> {
+  if (!connected()) throw new PlatformError('not_connected', 'Conecte o Hangar à plataforma primeiro.')
+  try {
+    await syncModels()
+  } catch (err) {
+    await handleFailure(err)
+  }
   return emit()
 }
 

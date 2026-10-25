@@ -1,5 +1,6 @@
 // IPC channels and payload types for the "platform" feature (connection to an Agent Hangar platform).
-// Owned by the platform agent. Contract with the platform: docs/platform/app-api-phase1.md.
+// Owned by the platform agent. Contract with the platform: docs/platform/app-api-phase1.md and
+// docs/platform/app-api-models.md (synced token models).
 
 export const PLATFORM = {
   /** () → PlatformState */
@@ -14,6 +15,15 @@ export const PLATFORM = {
   disconnect: 'platform:disconnect',
   /** () → PlatformState — reloads /api/app/me and sends a heartbeat. */
   refresh: 'platform:refresh',
+  /** () → PlatformState — fetches the synced token models now (also done on connect, every 15 min and on resume). */
+  syncModels: 'platform:syncModels',
+  /**
+   * (sessionId, choice: ModelChoice) → void — runs the session on that provider profile and model. A session that
+   * never ran just takes them; a running one switches provider like engine:setProvider (the runner restarts).
+   */
+  chooseModel: 'platform:chooseModel',
+  /** (choice: ModelChoice) → void — default provider profile and model of new sessions. */
+  setDefaultModel: 'platform:setDefaultModel',
 
   /** main → renderer: PlatformState after every change. */
   evState: 'platform:event:state'
@@ -99,7 +109,52 @@ export interface PlatformState {
   lastHeartbeatAt?: number
   /** False when mode is `required` and the app is not connected: sessions cannot be created. */
   canCreateSessions: boolean
+  /** Token models synced from the platform (GET /api/app/models), each connection as a managed provider profile. */
+  models: PlatformModels
 }
+
+/** One model of a synced connection, as the app shows it (prices in USD per 1M tokens). */
+export interface PlatformModel {
+  id: string
+  name: string
+  contextLength?: number
+  caps?: string[]
+  priceInPerMTok?: number
+  priceOutPerMTok?: number
+}
+
+/** An LLM connection of the platform synced to the app, reached through the platform's proxy. */
+export interface PlatformConnection {
+  id: number
+  name: string
+  /** Provider of the connection on the platform (anthropic, openrouter, litellm…). */
+  provider: string
+  /** Path of the connection's proxy on the platform (`/api/app/llm/<id>`). */
+  basePath: string
+  /** Managed provider profile (src/shared/providers.ts) that points at this connection's proxy. */
+  profileId: string
+  models: PlatformModel[]
+}
+
+export interface PlatformModels {
+  /** `unsupported`: the platform has no /api/app/models (older version). */
+  status: 'none' | 'syncing' | 'ok' | 'error' | 'unsupported'
+  /** Changes on the platform whenever the list changes. */
+  version?: string
+  syncedAt?: number
+  /** Readable error (pt-BR) of the last failed sync; the previous list stays in use. */
+  error?: string
+  connections: PlatformConnection[]
+}
+
+/** A provider profile + model pair, as the model picker chooses it. */
+export interface ModelChoice {
+  providerId: string
+  model: string
+}
+
+/** Id of the managed provider profile of a platform connection. */
+export const managedProfileId = (connectionId: number): string => `platform-${connectionId}`
 
 /** Message shown when a session is refused because the platform is required (main and renderer). */
 export const PLATFORM_REQUIRED_MESSAGE =
@@ -114,6 +169,9 @@ declare module '../ipc' {
     [PLATFORM.cancelConnect]: () => void
     [PLATFORM.disconnect]: () => PlatformState
     [PLATFORM.refresh]: () => PlatformState
+    [PLATFORM.syncModels]: () => PlatformState
+    [PLATFORM.chooseModel]: (sessionId: string, choice: ModelChoice) => void
+    [PLATFORM.setDefaultModel]: (choice: ModelChoice) => void
   }
 
   interface IpcEventContract {

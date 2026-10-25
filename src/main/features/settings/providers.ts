@@ -1,6 +1,7 @@
 // Provider profiles: storage, validation, launch resolution and the connection test.
 //
-// Profiles (no secrets) live in <userData>/hangar-data/settings/providers.json. Each profile's secret is
+// Profiles (no secrets) live in <userData>/hangar-data/settings/providers.json. Profiles with `managedBy: 'platform'`
+// are kept by the platform feature (syncManagedProviders) and are read-only for the user. Each profile's secret is
 // encrypted with Electron's safeStorage (DPAPI on Windows) into providers.secrets.json and decrypted once
 // into memory, so resolveProviderLaunch() can stay synchronous. safeStorage is used through its asynchronous
 // API: loadProviders() decrypts at startup and the app waits for providersReady() before opening any window. Secrets never go back to the renderer,
@@ -209,6 +210,16 @@ function findStored(id: string): StoredProfile {
   return p
 }
 
+const MANAGED_READ_ONLY =
+  'Este perfil é gerenciado pela plataforma Agent Hangar e não pode ser alterado aqui. Ele é atualizado a cada sincronização.'
+
+/** A user-editable profile (the platform-managed ones change only through syncManagedProviders). */
+function findEditable(id: string): StoredProfile {
+  const p = findStored(id)
+  if (p.managedBy) throw new Error(MANAGED_READ_ONLY)
+  return p
+}
+
 // ---- Validation ----
 
 const trimmed = (v: string | undefined) => {
@@ -306,7 +317,7 @@ function validate(input: ProviderInput, existing?: StoredProfile): StoredProfile
 export function saveProvider(input: ProviderInput): ProviderProfile {
   if (input.id === SUBSCRIPTION_PROFILE_ID) throw new Error('O perfil da assinatura não pode ser alterado.')
   const list = ensureLoaded()
-  const existing = input.id ? findStored(input.id) : undefined
+  const existing = input.id ? findEditable(input.id) : undefined
   const p = validate(input, existing)
   profiles = existing ? list.map((x) => (x.id === p.id ? p : x)) : [...list, p]
   persist()
@@ -317,15 +328,28 @@ export function deleteProvider(id: string): boolean {
   if (id === SUBSCRIPTION_PROFILE_ID) throw new Error('O perfil da assinatura não pode ser excluído.')
   const list = ensureLoaded()
   if (!list.some((p) => p.id === id)) return false
-  profiles = list.filter((p) => p.id !== id)
-  secrets.delete(id)
-  if (id in encrypted) {
-    delete encrypted[id]
-    writeJsonAtomic(secretsFile(), encrypted)
-  }
-  if (settings().get().defaultProviderId === id) settings().patch({ defaultProviderId: SUBSCRIPTION_PROFILE_ID })
+  findEditable(id)
+  removeProfiles([id])
   persist()
   return true
+}
+
+/** Drops profiles and their secrets (the caller persists the list); resets the default if it was one of them. */
+function removeProfiles(ids: string[]): boolean {
+  const gone = new Set(ids)
+  profiles = ensureLoaded().filter((p) => !gone.has(p.id))
+  let secretsChanged = false
+  for (const id of gone) {
+    secrets.delete(id)
+    if (id in encrypted) {
+      delete encrypted[id]
+      secretsChanged = true
+    }
+  }
+  if (secretsChanged) writeJsonAtomic(secretsFile(), encrypted)
+  const resetDefault = gone.has(settings().get().defaultProviderId)
+  if (resetDefault) settings().patch({ defaultProviderId: SUBSCRIPTION_PROFILE_ID })
+  return resetDefault
 }
 
 export async function setProviderSecret(id: string, secret: string): Promise<ProviderProfile> {
@@ -339,7 +363,16 @@ export async function setProviderSecret(id: string, secret: string): Promise<Pro
 }
 
 async function storeSecret(id: string, secret: string): Promise<ProviderProfile> {
-  const p = findStored(id)
+  const p = findEditable(id)
+  await encryptSecret(id, secret)
+  p.updatedAt = Date.now()
+  writeJsonAtomic(profilesFile(), ensureLoaded())
+  persistSecrets()
+  return withSecretFlag(p)
+}
+
+/** Validates, encrypts and keeps a profile's secret (in memory and in `encrypted`; the caller writes the file). */
+async function encryptSecret(id: string, secret: string): Promise<void> {
   const value = secret.trim()
   if (!value) throw new Error('A chave está vazia.')
   if (/[\r\n]/.test(value)) throw new Error('A chave não pode ter quebras de linha.')
@@ -352,14 +385,10 @@ async function storeSecret(id: string, secret: string): Promise<ProviderProfile>
   }
   encrypted[id] = (await safeStorage.encryptStringAsync(value)).toString('base64')
   secrets.set(id, value)
-  p.updatedAt = Date.now()
-  writeJsonAtomic(profilesFile(), ensureLoaded())
-  persistSecrets()
-  return withSecretFlag(p)
 }
 
 export function clearProviderSecret(id: string): ProviderProfile {
-  const p = findStored(id)
+  const p = findEditable(id)
   delete encrypted[id]
   secrets.delete(id)
   p.updatedAt = Date.now()
@@ -368,10 +397,99 @@ export function clearProviderSecret(id: string): ProviderProfile {
   return withSecretFlag(p)
 }
 
+// Managed profiles may be the default too (the model picker in Configurações → Geral sets it).
 export function setDefaultProvider(id: string): void {
   if (id !== SUBSCRIPTION_PROFILE_ID) findStored(id)
   settings().patch({ defaultProviderId: id })
   broadcast(SETTINGS.providersChanged)
+}
+
+// ---- Profiles managed by the platform feature ----
+
+/** One profile the platform feature wants (one per synced LLM connection; docs/platform/app-api-models.md). */
+export interface ManagedProfileInput {
+  id: string
+  connectionId: number
+  name: string
+  baseUrl: string
+  models: ProviderModels
+}
+
+export interface ManagedSyncResult {
+  /** Profiles that no longer exist (sessions on them must move elsewhere). */
+  removed: string[]
+  /** The default profile was one of them; the default is the subscription now. */
+  defaultReset: boolean
+}
+
+export function managedProviders(): ProviderProfile[] {
+  return ensureLoaded()
+    .filter((p) => p.managedBy === 'platform')
+    .map(withSecretFlag)
+}
+
+/** The secret of the managed profiles (the device's LLM key; every managed profile stores the same one). */
+export function managedProviderSecret(): string | undefined {
+  for (const p of ensureLoaded()) if (p.managedBy === 'platform' && secrets.has(p.id)) return secrets.get(p.id)
+  return undefined
+}
+
+/** A profile without its timestamps, to tell whether a sync changed anything. */
+const shape = (p: Omit<StoredProfile, 'createdAt' | 'updatedAt'> & Partial<StoredProfile>) =>
+  JSON.stringify({ ...p, createdAt: 0, updatedAt: 0 })
+
+/**
+ * Makes the managed profiles exactly `wanted`: creates or updates one per input and removes the other managed
+ * profiles with their secrets. `secret`, when given, becomes the secret of every wanted profile. Broadcasts only
+ * when something changed (it runs on every platform sync).
+ */
+export async function syncManagedProviders(wanted: ManagedProfileInput[], secret?: string): Promise<ManagedSyncResult> {
+  await loadProviders()
+  const now = Date.now()
+  const list = ensureLoaded()
+  let changed = false
+  const next = new Map<string, StoredProfile>()
+  for (const w of wanted) {
+    const existing = list.find((p) => p.id === w.id)
+    if (existing && !existing.managedBy) throw new Error(`O perfil ${w.id} já existe e não é gerenciado.`)
+    const p: StoredProfile = {
+      id: w.id,
+      name: w.name.trim().slice(0, 80) || `Plataforma · ${w.connectionId}`,
+      kind: 'gateway',
+      baseUrl: normalizeUrl(w.baseUrl, 'URL do proxy da plataforma'),
+      authStyle: 'bearer',
+      models: normalizeModels(w.models),
+      managedBy: 'platform',
+      platformConnectionId: w.connectionId,
+      createdAt: existing?.createdAt ?? now,
+      updatedAt: now
+    }
+    if (!p.models) delete p.models
+    if (existing && shape(existing) === shape(p)) {
+      next.set(w.id, existing)
+      continue
+    }
+    changed = true
+    next.set(w.id, p)
+  }
+  const removed = list.filter((p) => p.managedBy === 'platform' && !next.has(p.id)).map((p) => p.id)
+  // Profiles keep their place in the list; new managed ones go at the end.
+  const merged = list.filter((p) => !removed.includes(p.id)).map((p) => next.get(p.id) ?? p)
+  for (const p of next.values()) if (!merged.includes(p)) merged.push(p)
+  profiles = merged
+  const defaultReset = removed.length ? removeProfiles(removed) : false
+
+  let secretsChanged = false
+  if (secret !== undefined) {
+    for (const id of next.keys()) {
+      if (secrets.get(id) === secret.trim()) continue
+      await encryptSecret(id, secret)
+      secretsChanged = true
+    }
+    if (secretsChanged) writeJsonAtomic(secretsFile(), encrypted)
+  }
+  if (changed || removed.length || secretsChanged) persist()
+  return { removed, defaultReset }
 }
 
 // ---- Masking ----
@@ -457,7 +575,11 @@ export function resolveLaunch(profileId?: string): ProviderLaunch {
   }
   if (p.models?.opus) set.ANTHROPIC_DEFAULT_OPUS_MODEL = p.models.opus
   if (p.models?.sonnet) set.ANTHROPIC_DEFAULT_SONNET_MODEL = p.models.sonnet
-  if (p.models?.haiku) set.ANTHROPIC_DEFAULT_HAIKU_MODEL = p.models.haiku
+  if (p.models?.haiku) {
+    set.ANTHROPIC_DEFAULT_HAIKU_MODEL = p.models.haiku
+    // Background calls (titles, summaries): older Claude Code versions read this name instead.
+    set.ANTHROPIC_SMALL_FAST_MODEL = p.models.haiku
+  }
   for (const [name, value] of Object.entries(p.extraEnv ?? {})) {
     if (ENV_NAME.test(name) && !PROTECTED_VARS.has(name) && !(name in set)) set[name] = value
   }

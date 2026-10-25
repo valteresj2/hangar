@@ -1,21 +1,22 @@
 // Landing view: choose a folder (and optionally a project / isolated worktree), model and permission mode,
 // then type the first prompt. Submitting creates the session, selects it and hands the prompt to the engine.
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 import type { PermissionMode, Worktree } from '@shared/contracts'
 import { ENGINE } from '@shared/features/engine'
 import { GIT } from '@shared/features/git'
+import type { ModelChoice } from '@shared/features/platform'
 import { SESSIONS, type CreateSessionInput } from '@shared/features/sessions'
 import { api, bridge } from '../../core/api'
 import { useCollection, useSettings } from '../../core/data'
 import { useUi } from '../../core/ui'
-import { PlatformRequiredNotice, useCanCreateSessions } from '../platform'
+import { ModelPicker, PlatformRequiredNotice, platformApi, useCanCreateSessions } from '../platform'
 import { anchorBelow, ContextMenu, type MenuAnchor, type MenuItem } from './ContextMenu'
 import { SessionsOverlay } from './Dialogs'
 import { BranchIcon, FolderIcon, PinIcon } from './icons'
 import { FOCUS_NEW_SESSION_EVENT, useSessionShortcuts } from './shortcuts'
 import { useSessionsUi } from './store'
-import { errorText, MODEL_OPTIONS, PERMISSION_LABELS, samePath, shortFolder } from './util'
+import { errorText, PERMISSION_LABELS, samePath, shortFolder } from './util'
 import styles from './sessions.module.css'
 
 /** Last draft nonce applied, so remounting the view doesn't re-apply an old preset. */
@@ -41,7 +42,8 @@ export function NewSessionView() {
   const [projectId, setProjectId] = useState<string>()
   const [isRepo, setIsRepo] = useState(false)
   const [useWorktree, setUseWorktree] = useState(false)
-  const [model, setModel] = useState<string>()
+  /** Profile + model chosen here; undefined follows the defaults (Configurações → Geral). */
+  const [choice, setChoice] = useState<ModelChoice>()
   const [permissionMode, setPermissionMode] = useState<PermissionMode>()
   const [prompt, setPrompt] = useState('')
   const [busy, setBusy] = useState(false)
@@ -62,7 +64,6 @@ export function NewSessionView() {
   useEffect(() => {
     if (!settings) return
     setCwd((c) => c ?? settings.pinnedFolders[0] ?? settings.recentFolders[0])
-    setModel((m) => m ?? settings.defaultModel)
     setPermissionMode((p) => p ?? settings.defaultPermissionMode)
   }, [settings])
 
@@ -90,11 +91,6 @@ export function NewSessionView() {
   const recent = (settings?.recentFolders ?? []).filter((f) => !pinned.some((p) => samePath(p, f)))
   const isPinned = !!cwd && pinned.some((p) => samePath(p, cwd))
   const project = projects.find((p) => p.id === projectId)
-
-  const modelOptions = useMemo(() => {
-    const extra = [settings?.defaultModel, model].filter((m): m is string => !!m && !MODEL_OPTIONS.includes(m))
-    return [...MODEL_OPTIONS, ...new Set(extra)]
-  }, [settings?.defaultModel, model])
 
   const togglePin = async (folder: string) => {
     if (!settings) return
@@ -146,8 +142,10 @@ export function NewSessionView() {
     try {
       let worktree: Worktree | undefined
       if (useWorktree && isRepo) worktree = await bridge.invoke(GIT.worktreeCreate, cwd)
-      const input: CreateSessionInput = { id: nanoid(), cwd, projectId, model, permissionMode, worktree }
+      const input: CreateSessionInput = { id: nanoid(), cwd, projectId, model: choice?.model, permissionMode, worktree }
       const session = await bridge.invoke(SESSIONS.create, input)
+      // Another profile than the default (e.g. a synced token model): the session runs on it from the first turn.
+      if (choice && choice.providerId !== settings?.defaultProviderId) await platformApi.chooseModel(session.id, choice)
       setPrompt('')
       useUi.getState().selectSession(session.id)
       bridge.invoke(ENGINE.send, session.id, text).catch((err) => {
@@ -242,18 +240,13 @@ export function NewSessionView() {
             }}
           />
           <div className={styles.composerBar}>
-            <select
-              className={`input ${styles.selectSmall}`}
-              value={model ?? ''}
-              title="Modelo"
-              onChange={(e) => setModel(e.target.value)}
-            >
-              {modelOptions.map((m) => (
-                <option key={m} value={m}>
-                  {m}
-                </option>
-              ))}
-            </select>
+            {settings && (
+              <ModelPicker
+                className={`input ${styles.selectSmall}`}
+                value={choice ?? { providerId: settings.defaultProviderId, model: settings.defaultModel }}
+                onChange={setChoice}
+              />
+            )}
             <select
               className={`input ${styles.selectSmall}`}
               value={permissionMode ?? 'default'}

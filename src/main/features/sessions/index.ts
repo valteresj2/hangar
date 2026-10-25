@@ -57,6 +57,7 @@ export function createSession(input: CreateSessionInput): Session {
   if (input.projectId) session.projectId = input.projectId
   if (input.groupId) session.groupId = input.groupId
   if (input.worktree) session.worktree = input.worktree
+  if (input.providerId) session.providerId = input.providerId
   db('sessions').put(session)
   rememberFolder(input.cwd)
   return session

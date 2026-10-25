@@ -1,10 +1,13 @@
-// Root view of the Quick Entry window (#quick-entry): type a prompt, pick a folder, Enter starts a session.
+// Root view of the Quick Entry window (#quick-entry): type a prompt, pick a folder (and a model), Enter starts a
+// session.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { ENGINE } from '@shared/features/engine'
+import type { ModelChoice } from '@shared/features/platform'
 import { SESSIONS, type CreateSessionInput } from '@shared/features/sessions'
 import { SETTINGS } from '@shared/features/settings'
 import { bridge } from '../../core/api'
 import { useSettings } from '../../core/data'
+import { ModelPicker, platformApi } from '../platform'
 import { errorText, settingsApi } from './api'
 import styles from './quickEntry.module.css'
 
@@ -36,6 +39,7 @@ export function QuickEntry() {
   const [text, setText] = useState('')
   const [cwd, setCwd] = useState<string>()
   const [extraFolder, setExtraFolder] = useState<string>()
+  const [choice, setChoice] = useState<ModelChoice>()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
   const inputRef = useRef<HTMLTextAreaElement>(null)
@@ -83,8 +87,9 @@ export function QuickEntry() {
     setBusy(true)
     setError(undefined)
     try {
-      const input: CreateSessionInput = { cwd }
+      const input: CreateSessionInput = { cwd, ...(choice ? { model: choice.model } : {}) }
       const session = await bridge.invoke(SESSIONS.create, input)
+      if (choice && choice.providerId !== settings?.defaultProviderId) await platformApi.chooseModel(session.id, choice)
       await bridge.invoke(ENGINE.send, session.id, prompt)
       setText('')
       await settingsApi.quickEntryDone(session.id)
@@ -139,6 +144,13 @@ export function QuickEntry() {
           ))}
           <option value="__pick__">Escolher outra pasta…</option>
         </select>
+        {settings && (
+          <ModelPicker
+            className={styles.folder}
+            value={choice ?? { providerId: settings.defaultProviderId, model: settings.defaultModel }}
+            onChange={setChoice}
+          />
+        )}
         {error ? (
           <span className={styles.error}>{error}</span>
         ) : (

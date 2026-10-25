@@ -9,8 +9,10 @@ import {
   type TodoItem,
   type TranscriptEntry
 } from '@shared/features/engine'
+import type { ProviderProfile } from '@shared/providers'
 import { bridge } from '../../core/api'
 import { useUi } from '../../core/ui'
+import { estimateCost, formatUsd, modelOrigin, usePlatformModels } from '../platform'
 import { Composer, type ComposerDraft } from './Composer'
 import { useOutputMode } from './MotionCard'
 import { blobToImage, type ComposerImage } from './pasted'
@@ -48,7 +50,8 @@ function formatTokens(n: number): string {
   return n >= 1000 ? `${(n / 1000).toFixed(n >= 100_000 ? 0 : 1)}k` : String(n)
 }
 
-function Footer({ entries }: { entries: TranscriptEntry[] }) {
+function Footer({ entries, providers }: { entries: TranscriptEntry[]; providers: ProviderProfile[] }) {
+  const models = usePlatformModels()
   const last = useMemo(() => {
     for (let i = entries.length - 1; i >= 0; i--) {
       const e = entries[i]
@@ -59,26 +62,45 @@ function Footer({ entries }: { entries: TranscriptEntry[] }) {
   if (!last) return null
   const pct =
     last.contextTokens && last.contextWindow ? Math.round((last.contextTokens / last.contextWindow) * 100) : undefined
+  // Origin: "Assinatura", "Token · <conexão>" (synced token models) or the profile's name.
+  const origin = last.providerKind
+    ? modelOrigin(last.providerId, last.providerName, last.model, providers, models)
+    : undefined
+  // Token models: this turn at the platform's prices (the official cost is the platform's).
+  const tokenCost = origin?.connection
+    ? estimateCost(origin.model, {
+        input: last.inputTokens + last.cacheReadTokens + last.cacheCreationTokens,
+        output: last.outputTokens
+      })
+    : undefined
   // Claude Code prices tokens at Anthropic list prices; a key, gateway or cloud account bills its own way.
   const estimated = !!last.providerKind && last.providerKind !== 'subscription'
   return (
     <div className={styles.footer}>
-      {(last.model || last.providerName) && (
-        <span className={styles.footerModel} title="Modelo e perfil de provedor da última rodada">
-          {[last.model, last.providerName].filter(Boolean).join(' · ')}
+      {(last.model || origin) && (
+        <span className={styles.footerModel} title="Modelo e origem da última rodada">
+          {[last.model, origin?.label].filter(Boolean).join(' · ')}
         </span>
       )}
       <span title="Duração da última rodada">{(last.durationMs / 1000).toFixed(1)} s</span>
-      <span
-        title={
-          estimated
-            ? 'Estimativa pelos preços de lista da Anthropic; o provedor pode cobrar diferente'
-            : 'Custo estimado acumulado desta execução'
-        }
-      >
-        US$ {last.costUsd.toFixed(4)}
-        {estimated ? ' (estimado)' : ''}
-      </span>
+      {tokenCost !== undefined ? (
+        <span title="Custo desta rodada pelos preços da plataforma (entrada e saída por 1M tokens); o custo oficial é o da plataforma">
+          US$ {formatUsd(tokenCost)} (estimado)
+        </span>
+      ) : (
+        <span
+          title={
+            origin?.connection
+              ? 'Estimativa pelos preços de lista da Anthropic; o custo oficial é o da plataforma'
+              : estimated
+                ? 'Estimativa pelos preços de lista da Anthropic; o provedor pode cobrar diferente'
+                : 'Custo estimado acumulado desta execução'
+          }
+        >
+          US$ {last.costUsd.toFixed(4)}
+          {estimated ? ' (estimado)' : ''}
+        </span>
+      )}
       <span title="Tokens da última rodada (entrada + cache / saída)">
         {formatTokens(last.inputTokens + last.cacheReadTokens + last.cacheCreationTokens)} ↑ ·{' '}
         {formatTokens(last.outputTokens)} ↓
@@ -307,7 +329,7 @@ export function ChatView({ session }: { session: Session }) {
           onStop={onStop}
           onError={setError}
         />
-        <Footer entries={chat.entries} />
+        <Footer entries={chat.entries} providers={providers} />
       </div>
       {dragging && <div className={styles.dropHint}>Solte para anexar</div>}
     </div>

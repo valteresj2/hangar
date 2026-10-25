@@ -1,4 +1,5 @@
-// Settings → Plataforma: URL and mode (locked when set by Windows policy), connection state, account, device.
+// Settings → Plataforma: URL and mode (locked when set by Windows policy), connection state, account, synced token
+// models, device.
 import { useState } from 'react'
 import {
   PLATFORM_MODES,
@@ -8,6 +9,7 @@ import {
 } from '@shared/features/platform'
 import { Card, Row, Segmented, Spinner, formatDateTime } from '../settings/ui'
 import { MODE_LABEL, platformApi, runAction, statusLabel, usePlatform } from './api'
+import { formatContext, priceLabel } from './models'
 import { Avatar, ConnectButtons, StatusDot, UrlField } from './parts'
 import styles from './platform.module.css'
 
@@ -166,6 +168,69 @@ const ROLE_LABEL: Record<string, string> = {
   viewer: 'Leitor'
 }
 
+function ModelsCard({ state }: { state: PlatformState }) {
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string>()
+  const { models } = state
+  if (state.status !== 'connected' && state.status !== 'error') return null
+  const count = models.connections.reduce((n, c) => n + c.models.length, 0)
+  const sync = async () => {
+    setBusy(true)
+    setError(await runAction(() => platformApi.syncModels()))
+    setBusy(false)
+  }
+  const syncing = busy || models.status === 'syncing'
+  return (
+    <Card title="Modelos de token">
+      <Row
+        label={
+          models.status === 'unsupported'
+            ? 'Esta plataforma ainda não sincroniza modelos com o app'
+            : models.connections.length
+              ? `${models.connections.length} ${models.connections.length === 1 ? 'conexão sincronizada' : 'conexões sincronizadas'} · ${count} ${count === 1 ? 'modelo' : 'modelos'}`
+              : 'Nenhuma conexão sincronizada'
+        }
+        hint={
+          models.syncedAt
+            ? `Última sincronização: ${formatDateTime(models.syncedAt)}. A chave das conexões fica na plataforma; o Hangar usa uma chave própria deste dispositivo.`
+            : 'O admin escolhe em Console → Provedores de LLM quais conexões vão para o Hangar.'
+        }
+      >
+        {syncing && <Spinner />}
+        <button className="btn" disabled={syncing} onClick={() => void sync()}>
+          Sincronizar agora
+        </button>
+      </Row>
+      {models.connections.map((c) => (
+        <Row
+          key={c.id}
+          label={c.name}
+          hint={`${c.provider} · aparece no seletor de modelo como “Modelos de token · ${c.name}”`}
+        >
+          <span className={styles.teams}>
+            {c.models.map((m) => (
+              <span
+                key={m.id}
+                className={styles.badge}
+                title={[
+                  m.id,
+                  formatContext(m.contextLength) && `${formatContext(m.contextLength)} de contexto`,
+                  priceLabel(m)
+                ]
+                  .filter(Boolean)
+                  .join(' · ')}
+              >
+                {m.name}
+              </span>
+            ))}
+          </span>
+        </Row>
+      ))}
+      {(error ?? models.error) && <div className={styles.errorRow}>{error ?? models.error}</div>}
+    </Card>
+  )
+}
+
 const DEVICE_STATUS = { active: 'Registrado', revoked: 'Revogado', unregistered: 'Não registrado' } as const
 
 function DeviceCard({ state }: { state: PlatformState }) {
@@ -202,6 +267,7 @@ export function PlatformSection() {
       <NoticeBanner state={state} />
       <ConnectionCard state={state} />
       {state.status !== 'off' && <AccountCard state={state} />}
+      <ModelsCard state={state} />
       {state.status !== 'off' && <DeviceCard state={state} />}
     </>
   )
