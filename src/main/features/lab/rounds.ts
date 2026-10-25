@@ -56,6 +56,7 @@ import {
 } from './store'
 import { condenseTrajectory, outcomeOf } from './transcript'
 import { execReview } from './exec'
+import { assertCanCreateSessions } from '../platform/api'
 
 export function listRounds(projectCwd: string): LabRoundView[] {
   const key = normalize(projectCwd)
@@ -79,6 +80,8 @@ export async function prepare(projectCwd: string): Promise<LabPrepareInfo> {
 // ── Creating and running ───────────────────────────────────────────────────
 
 export async function createRound(input: CreateLabRoundInput): Promise<LabRoundView> {
+  // Mode "required" without a platform connection: refuse before any worktree or session exists.
+  assertCanCreateSessions()
   const task = input.task.trim()
   if (!task) throw new Error('Descreva a tarefa da rodada.')
   const mode = input.mode ?? 'manual'

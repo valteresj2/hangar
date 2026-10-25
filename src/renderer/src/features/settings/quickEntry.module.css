@@ -27,7 +27,7 @@
   justify-content: center;
   width: 18px;
   height: 18px;
-  border-radius: 5px;
+  border-radius: var(--radius-sm);
   background: var(--accent);
   color: var(--accent-text);
   font-size: 11px;
@@ -80,7 +80,8 @@
   outline: none;
 }
 .folder:focus {
-  border-color: var(--accent);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--focus-halo);
 }
 
 .hint {

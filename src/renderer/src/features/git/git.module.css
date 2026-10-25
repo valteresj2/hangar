@@ -46,8 +46,10 @@
   color: var(--text-muted);
 }
 .emptyTitle {
+  font-family: var(--font-sign);
   font-weight: 600;
-  font-size: 14px;
+  font-size: 18px;
+  letter-spacing: 0.01em;
 }
 
 .notice {
@@ -80,7 +82,7 @@
   background: var(--bg-hover);
 }
 .branchIcon {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .branchName {
   overflow: hidden;
@@ -98,7 +100,7 @@
   background: var(--bg-elev);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 18%);
+  box-shadow: var(--shadow-pop);
 }
 .popoverList {
   max-height: 300px;
@@ -134,7 +136,7 @@
 .popoverPlus {
   width: 14px;
   flex-shrink: 0;
-  color: var(--accent);
+  color: var(--accent-ink);
   text-align: center;
 }
 .popoverEmpty {
@@ -166,7 +168,7 @@
   align-items: flex-start;
   gap: 8px;
   padding: 6px 10px;
-  background: var(--diff-del);
+  background: var(--danger-bg);
   color: var(--danger);
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
@@ -223,10 +225,11 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-family: var(--font-sign);
+  font-size: 12px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.06em;
   color: var(--text-muted);
 }
 .groupToggle:hover {
@@ -257,7 +260,7 @@
   color: var(--text-muted);
 }
 .linkBtn:hover:not(:disabled) {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .fileRow {
@@ -273,7 +276,8 @@
 }
 .fileRowActive,
 .fileRowActive:hover {
-  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .fileName {
   white-space: nowrap;
@@ -337,7 +341,7 @@
   color: var(--danger);
 }
 .stR {
-  color: var(--accent);
+  color: var(--notice);
 }
 
 /* Diff / viewer area */
@@ -475,7 +479,7 @@ td.rowDel {
   background: var(--bg-hover);
 }
 .logHash {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 12px;
 }
 .logSubject {

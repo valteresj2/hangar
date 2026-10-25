@@ -18,6 +18,7 @@ import type { Feature, FeatureContext } from '../../core/feature'
 import { db, settings } from '../../core/store'
 import { interrupt, readTranscript } from '../engine/api'
 import { removeWorktree } from '../git/api'
+import { assertCanCreateSessions } from '../platform/api'
 import { importCliSessions, listCliSessions } from './cli'
 import { transcriptToMarkdown } from './markdown'
 import { handle } from '../../core/handle'
@@ -115,7 +116,11 @@ async function exportMarkdown(ctx: FeatureContext, id: string): Promise<string |
 export const sessionsFeature: Feature = {
   name: 'sessions',
   register(ctx) {
-    handle(SESSIONS.create, (_e, input: CreateSessionInput) => createSession(input))
+    handle(SESSIONS.create, (_e, input: CreateSessionInput) => {
+      // Mode `required` without a platform connection: no new sessions (docs/platform/app-api-phase1.md §7).
+      assertCanCreateSessions()
+      return createSession(input)
+    })
     handle(SESSIONS.delete, (_e, id: string, opts?: DeleteSessionOptions) => deleteSession(id, opts))
     handle(SESSIONS.exportMarkdown, (_e, id: string) => exportMarkdown(ctx, id))
     handle(SESSIONS.listCli, () => listCliSessions())

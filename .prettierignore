@@ -11,3 +11,4 @@ playwright-report
 
 # Agent briefs and reports: hand-written Markdown with wide tables
 docs/agents/**
+graphify-out

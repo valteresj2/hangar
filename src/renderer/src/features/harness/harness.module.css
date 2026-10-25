@@ -46,7 +46,8 @@
   padding: 6px 10px;
   font-size: 13px;
   color: var(--text-muted);
-  border-bottom: 2px solid transparent;
+  font-weight: 500;
+  border-bottom: 3px solid transparent;
   margin-bottom: -1px;
 }
 .tab:hover {
@@ -115,7 +116,7 @@
 .error {
   padding: 6px 10px;
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--danger) 12%, transparent);
+  background: var(--danger-bg);
   color: var(--danger);
   font-size: 12px;
   cursor: pointer;
@@ -124,18 +125,21 @@
 .notice {
   padding: 6px 10px;
   border-radius: var(--radius-sm);
-  background: color-mix(in srgb, var(--success) 12%, transparent);
+  background: var(--success-bg);
   color: var(--success);
   font-size: 12px;
   cursor: pointer;
 }
 
+/* Pills, as the console's signals: go / stop / hold on their own tints. */
 .badge {
   display: inline-block;
-  padding: 0 6px;
-  border-radius: 10px;
+  padding: 0 8px;
+  border-radius: 99px;
   border: 1px solid var(--border);
+  background: var(--bg-sunken);
   font-size: 11px;
+  font-weight: 500;
   line-height: 17px;
   color: var(--text-muted);
   white-space: nowrap;
@@ -144,18 +148,21 @@
 .v_helped,
 .c_high {
   color: var(--success);
-  border-color: color-mix(in srgb, var(--success) 45%, transparent);
+  background: var(--success-bg);
+  border-color: transparent;
 }
 .st_removed,
 .v_hurt {
   color: var(--danger);
-  border-color: color-mix(in srgb, var(--danger) 45%, transparent);
+  background: var(--danger-bg);
+  border-color: transparent;
 }
 .st_modified,
 .c_medium,
 .v_confounded {
   color: var(--warning);
-  border-color: color-mix(in srgb, var(--warning) 45%, transparent);
+  background: var(--warning-bg);
+  border-color: transparent;
 }
 
 /* ---------- Components editor ---------- */
@@ -248,8 +255,8 @@
 }
 .fileItemActive,
 .fileItemActive:hover {
-  background: var(--bg-elev);
-  box-shadow: inset 0 0 0 1px var(--border);
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .fileName {
   flex: 1;
@@ -296,7 +303,7 @@
 }
 .unsaved {
   font-size: 11px;
-  color: var(--accent);
+  color: var(--accent-ink);
   white-space: nowrap;
 }
 .editorHead button:disabled {
@@ -463,7 +470,8 @@
   padding: 10px;
   border: 1px solid var(--accent);
   border-radius: var(--radius);
-  background: color-mix(in srgb, var(--accent) 5%, var(--bg-elev));
+  background: linear-gradient(90deg, var(--accent) 0 4px, var(--bg-elev) 4px);
+  padding-left: 14px;
 }
 .proposal > button {
   align-self: flex-end;
@@ -526,7 +534,7 @@
   font-weight: 600;
 }
 .arrow {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .c_low {
   color: var(--text-muted);
@@ -588,7 +596,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgb(0 0 0 / 0.4);
+  background: var(--scrim);
 }
 .modal {
   width: min(440px, calc(100vw - 32px));
@@ -596,14 +604,16 @@
   flex-direction: column;
   gap: 12px;
   padding: 18px;
-  border-radius: 12px;
+  border-radius: var(--radius);
   border: 1px solid var(--border);
   background: var(--bg-elev);
-  box-shadow: 0 16px 48px rgb(0 0 0 / 0.25);
+  box-shadow: var(--shadow-modal);
 }
 .modalTitle {
-  font-size: 15px;
+  font-family: var(--font-sign);
+  font-size: 18px;
   font-weight: 600;
+  letter-spacing: 0.01em;
 }
 .modalBody {
   font-size: 13px;
@@ -616,7 +626,7 @@
 .btnDanger {
   background: var(--danger);
   border-color: var(--danger);
-  color: #fff;
+  color: var(--on-status);
 }
 .btnDanger:hover {
   background: var(--danger);

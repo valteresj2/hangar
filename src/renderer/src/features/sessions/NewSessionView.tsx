@@ -9,6 +9,7 @@ import { SESSIONS, type CreateSessionInput } from '@shared/features/sessions'
 import { api, bridge } from '../../core/api'
 import { useCollection, useSettings } from '../../core/data'
 import { useUi } from '../../core/ui'
+import { PlatformRequiredNotice, useCanCreateSessions } from '../platform'
 import { anchorBelow, ContextMenu, type MenuAnchor, type MenuItem } from './ContextMenu'
 import { SessionsOverlay } from './Dialogs'
 import { BranchIcon, FolderIcon, PinIcon } from './icons'
@@ -34,6 +35,7 @@ export function NewSessionView() {
   const projects = useCollection('projects')
   const draft = useSessionsUi((s) => s.draft)
   const showToast = useSessionsUi((s) => s.showToast)
+  const canCreate = useCanCreateSessions()
 
   const [cwd, setCwd] = useState<string>()
   const [projectId, setProjectId] = useState<string>()
@@ -134,7 +136,7 @@ export function NewSessionView() {
 
   const submit = async () => {
     const text = prompt.trim()
-    if (!text || busy) return
+    if (!text || busy || !canCreate) return
     if (!cwd) {
       setError('Escolha uma pasta para a sessão.')
       return
@@ -218,6 +220,7 @@ export function NewSessionView() {
         </div>
         {cwd && <div className={styles.fullPath}>{cwd}</div>}
 
+        <PlatformRequiredNotice />
         <div className={styles.composer}>
           <textarea
             ref={textRef}
@@ -264,7 +267,11 @@ export function NewSessionView() {
               ))}
             </select>
             <div className={styles.spacer} />
-            <button className="btn btn-primary" disabled={!prompt.trim() || !cwd || busy} onClick={() => void submit()}>
+            <button
+              className="btn btn-primary"
+              disabled={!prompt.trim() || !cwd || busy || !canCreate}
+              onClick={() => void submit()}
+            >
               {busy ? (useWorktree ? 'Criando worktree…' : 'Iniciando…') : 'Iniciar'}
             </button>
           </div>

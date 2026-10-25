@@ -7,3 +7,4 @@ release/
 .env
 test-results/
 playwright-report/
+graphify-out/

@@ -50,6 +50,7 @@
 .tabActive {
   background: var(--bg-sunken);
   color: var(--text);
+  box-shadow: inset 0 -3px 0 var(--accent);
 }
 .tabExited .tabTitle {
   text-decoration: line-through;
@@ -65,8 +66,8 @@
 .tabInput {
   width: 120px;
   padding: 1px 4px;
-  border: 1px solid var(--accent);
-  border-radius: 3px;
+  border: 1px solid var(--focus-ring);
+  border-radius: 4px;
   background: var(--bg-elev);
   outline: none;
   font-size: 13px;
@@ -113,7 +114,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elev);
-  box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
+  box-shadow: var(--shadow-pop);
 }
 
 .menuItem {

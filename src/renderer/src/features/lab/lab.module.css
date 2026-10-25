@@ -13,10 +13,13 @@
   gap: 10px;
   padding: 0 14px;
   border-bottom: 1px solid var(--border);
+  background: var(--bg-elev);
 }
 .title {
+  font-family: var(--font-sign);
   font-weight: 600;
-  font-size: 15px;
+  font-size: 18px;
+  letter-spacing: 0.01em;
 }
 .project {
   color: var(--text-muted);
@@ -37,13 +40,15 @@
   min-height: 0;
 }
 
-/* Round list */
+/* Round list: a tarmac rail like the app sidebar. */
 .list {
+  composes: rail from global;
   width: 300px;
   flex-shrink: 0;
   overflow: auto;
-  border-right: 1px solid var(--border);
-  background: var(--bg-sunken);
+  border-right: 1px solid var(--tarmac-2);
+  background: var(--tarmac);
+  color: var(--text);
   padding: 10px;
   display: flex;
   flex-direction: column;
@@ -65,11 +70,13 @@
 }
 .listItem:hover {
   background: var(--bg-hover);
+  color: var(--text-strong);
 }
 .listItemActive,
 .listItemActive:hover {
   background: var(--bg-elev);
-  border-color: var(--border);
+  color: var(--text-strong);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 .listTop {
   display: flex;
@@ -120,53 +127,61 @@
 }
 .h2 {
   margin: 0;
-  font-size: 18px;
+  font-family: var(--font-sign);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 .h3 {
   margin: 4px 0 0;
-  font-size: 15px;
+  font-family: var(--font-sign);
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
 }
 .h4 {
   margin: 8px 0 4px;
   font-size: 13px;
 }
 
+/* Status pills, as the console's signals: running = info, waiting on you = hold, decided = go, failed = stop. */
 .badge {
   display: inline-block;
-  padding: 1px 8px;
+  padding: 1px 9px;
   border-radius: 999px;
   font-size: 11px;
   font-weight: 600;
-  background: var(--bg-hover);
-  color: var(--text-muted);
+  background: var(--panel-2);
+  color: var(--mute);
   white-space: nowrap;
 }
 .round_preparing,
 .round_running,
 .stRunning {
-  color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 14%, transparent);
+  color: var(--info);
+  background: var(--info-bg);
 }
 .round_selecting,
 .stWaiting {
-  color: var(--warning);
-  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--hold);
+  background: var(--hold-bg);
 }
 .round_decided,
 .stDone {
-  color: var(--success);
-  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--go);
+  background: var(--go-bg);
 }
 .round_failed,
 .stError {
-  color: var(--danger);
-  background: color-mix(in srgb, var(--danger) 14%, transparent);
+  color: var(--stop);
+  background: var(--stop-bg);
 }
 
 .error {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  background: var(--diff-del);
+  border: 1px solid var(--danger);
+  background: var(--danger-bg);
   color: var(--danger);
   white-space: pre-wrap;
   font-size: 13px;
@@ -174,7 +189,8 @@
 .notice {
   padding: 8px 12px;
   border-radius: var(--radius-sm);
-  background: var(--diff-add);
+  border: 1px solid var(--success);
+  background: var(--success-bg);
   color: var(--success);
   font-size: 13px;
 }
@@ -216,7 +232,7 @@
   border-top: 1px solid var(--border);
 }
 .linkBtn {
-  color: var(--accent);
+  color: var(--accent-ink);
   font-size: 12px;
   padding: 2px 0;
   align-self: flex-start;
@@ -324,6 +340,7 @@
 .segActive {
   background: var(--bg-hover);
   color: var(--text) !important;
+  font-weight: 600;
 }
 .quickEditor {
   display: flex;
@@ -355,7 +372,7 @@
   border-top: 1px solid var(--border);
 }
 .progressWaiting {
-  background: color-mix(in srgb, var(--warning) 10%, transparent);
+  background: var(--warning-bg);
 }
 .progressLabel {
   font-weight: 600;
@@ -483,7 +500,7 @@
 }
 .pickActive {
   border-color: var(--accent);
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
+  background: var(--accent-soft);
 }
 .whyBox {
   display: flex;
@@ -498,8 +515,8 @@
 .winner {
   padding: 12px 14px;
   border-radius: var(--radius);
-  border: 1px solid color-mix(in srgb, var(--success) 40%, var(--border));
-  background: color-mix(in srgb, var(--success) 8%, var(--bg-elev));
+  border: 1px solid var(--success);
+  background: var(--success-bg);
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -537,8 +554,11 @@
   color: var(--text-muted);
 }
 .rowWinner td {
-  background: color-mix(in srgb, var(--success) 8%, transparent);
+  background: var(--success-bg);
   font-weight: 600;
+}
+.rowWinner td:first-child {
+  box-shadow: inset 4px 0 0 var(--success);
 }
 .baseTag {
   margin-left: 6px;
@@ -608,8 +628,8 @@
   border: 2px solid var(--border);
 }
 .dot.stRunning {
-  background: var(--accent);
-  border-color: var(--accent);
+  background: var(--info);
+  border-color: var(--info);
 }
 .dot.stDone {
   background: var(--success);
@@ -693,7 +713,7 @@ button.diffChip:hover {
   padding: 12px 14px;
   border-radius: var(--radius);
   border: 1px solid color-mix(in srgb, var(--warning) 55%, var(--border));
-  background: color-mix(in srgb, var(--warning) 8%, var(--bg-elev));
+  background: var(--warning-bg);
 }
 .execWarning p {
   margin: 0;

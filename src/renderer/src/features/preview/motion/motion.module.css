@@ -83,7 +83,7 @@
   padding: 6px 10px;
   font-size: 12px;
   border-bottom: 1px solid var(--warning);
-  background: color-mix(in srgb, var(--warning) 12%, transparent);
+  background: var(--warning-bg);
 }
 .banner :global(.btn) {
   font-size: 12px;
@@ -103,6 +103,7 @@
 .player:focus-visible {
   box-shadow: inset 0 0 0 2px var(--accent);
 }
+/* Letterbox around the video in fullscreen: black regardless of theme, like any player. */
 .fullscreen {
   background: #000;
 }
@@ -128,7 +129,7 @@
 
 .canvas {
   display: block;
-  box-shadow: 0 1px 6px rgb(0 0 0 / 0.18);
+  box-shadow: var(--shadow-sm);
   cursor: pointer;
 }
 .canvasEditing {
@@ -207,7 +208,8 @@
   width: 4px;
   margin-left: -2px;
   border-radius: 2px;
-  background: var(--accent);
+  background: var(--text);
+  box-shadow: 0 0 0 1px var(--bg-elev);
   pointer-events: none;
 }
 
@@ -231,12 +233,13 @@
 }
 
 .on {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 
 .toggleOn {
   border-color: var(--accent);
-  color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--accent-ink);
 }
 
 .clock {
@@ -361,8 +364,8 @@
 }
 .itemActive,
 .itemActive:hover {
-  background: var(--bg-hover);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .index {
@@ -484,7 +487,7 @@
   align-items: center;
   justify-content: center;
   padding: 16px;
-  background: rgb(0 0 0 / 0.35);
+  background: var(--scrim);
 }
 
 .modal {
@@ -498,7 +501,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elev);
-  box-shadow: 0 12px 32px rgb(0 0 0 / 0.25);
+  box-shadow: var(--shadow-modal);
 }
 
 .modalRow {

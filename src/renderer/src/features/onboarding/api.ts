@@ -9,7 +9,7 @@ export const onboardingApi = {
   providerSummary: () => bridge.invoke(ONBOARDING.providerSummary)
 }
 
-export type OnboardingStep = 'welcome' | 'diagnose' | 'provider' | 'folder' | 'done'
+export type OnboardingStep = 'welcome' | 'platform' | 'diagnose' | 'provider' | 'folder' | 'done'
 
 /** Step the assistant opens on next time it mounts (consumed by OnboardingView). */
 export const useOnboardingNav = create<{ startStep?: OnboardingStep }>(() => ({}))

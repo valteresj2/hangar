@@ -39,8 +39,9 @@
 .errorBox {
   margin: 12px;
   padding: 10px 12px;
-  border: 1px solid var(--border);
+  border: 1px solid var(--danger);
   border-radius: var(--radius);
+  background: var(--danger-bg);
   color: var(--danger);
 }
 
@@ -80,6 +81,7 @@
 .tabActive:hover {
   background: var(--bg-elev);
   border-color: var(--border);
+  box-shadow: inset 0 3px 0 var(--accent);
   color: var(--text);
   margin-bottom: -1px;
   height: 31px;
@@ -116,7 +118,7 @@
   height: 12px;
   flex-shrink: 0;
   border: 2px solid var(--border);
-  border-top-color: var(--accent);
+  border-top-color: var(--accent-ink);
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
 }
@@ -168,7 +170,7 @@
   padding: 0 4px;
   border-radius: 8px;
   background: var(--success);
-  color: #fff;
+  color: var(--on-status);
   font-size: 10px;
   line-height: 16px;
   text-align: center;
@@ -249,7 +251,7 @@
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--bg-elev);
-  box-shadow: 0 4px 16px rgb(0 0 0 / 0.15);
+  box-shadow: var(--shadow-pop);
   font-size: 12px;
   z-index: 4;
 }
@@ -270,7 +272,7 @@
   padding: 10px 12px 12px;
   background: var(--bg-elev);
   border-bottom: 1px solid var(--border);
-  box-shadow: 0 8px 24px rgb(0 0 0 / 0.18);
+  box-shadow: var(--shadow-pop);
 }
 
 .menuHeader {
@@ -380,6 +382,7 @@
   padding: 8px 10px;
   border: 1px solid var(--warning);
   border-radius: var(--radius);
+  background: var(--warning-bg);
 }
 
 /* ---- Artifacts ---- */
@@ -428,8 +431,8 @@
 }
 .artifactItemActive,
 .artifactItemActive:hover {
-  background: var(--bg-hover);
-  box-shadow: inset 2px 0 0 var(--accent);
+  background: var(--accent-soft);
+  box-shadow: inset 3px 0 0 var(--accent);
 }
 
 .kind {
@@ -533,7 +536,7 @@
   padding-bottom: 4px;
 }
 .markdown :global(a) {
-  color: var(--accent);
+  color: var(--accent-ink);
 }
 .markdown :global(code) {
   padding: 1px 4px;

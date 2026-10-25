@@ -25,6 +25,7 @@ import { setRewindPoint } from './points'
 import { closeRunner, existingRunner, history, runnerFor } from './registry'
 import { loadSdk } from './sdk'
 import { writeEntries } from './transcript'
+import { assertCanCreateSessions } from '../platform/api'
 
 type UserEntry = Extract<TranscriptEntry, { kind: 'user' }>
 
@@ -185,6 +186,8 @@ export async function fork(sessionId: string, entryId: string): Promise<ForkResu
     if (forked.length === cut + 1) forked.forEach((m, i) => remap.set(chain[i].uuid, m.uuid))
   }
 
+  // Mode "required" without a platform connection: no new sessions from here either.
+  assertCanCreateSessions()
   const id = randomUUID()
   const copy = entries
     .slice(0, end)

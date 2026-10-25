@@ -72,6 +72,19 @@ Prioridade: **P0** = MVP, **P1** = segunda onda, **P2** = depois / fora de escop
 | Auto-update, relatório de diagnóstico, logs                                  | P2         | —        |
 | Login: usa o login existente do Claude Code CLI (assinatura) — sem API key   | P0         | engine   |
 
+## 6. Plataforma Agent Hangar (governança)
+
+| Função                                                                                                        | Fase | Dono     |
+| ------------------------------------------------------------------------------------------------------------- | ---- | -------- |
+| Conectar à plataforma (OAuth loopback), Configurações → Plataforma, passo no onboarding, indicador na sidebar | 1    | platform |
+| Dispositivo registrado, heartbeat e revogação pelo admin (aba "App Hangar" no console)                        | 1    | platform |
+| Política do Windows (`PlatformUrl`, `Mode`) e modo híbrido/obrigatório                                        | 1    | platform |
+| Tema e tipografia do console Agent Hangar                                                                     | 1    | shell    |
+| Skills e MCP geridos pelo admin, MCP agent-hangar nas sessões                                                 | 2    | —        |
+| Políticas, auditoria, uso e orçamento, versão mínima                                                          | 3    | —        |
+| Compartilhar projetos e artefatos                                                                             | 4    | —        |
+| Agendados viram agentes da plataforma                                                                         | 5    | —        |
+
 ## Fora de escopo (por depender de serviços da Anthropic)
 
 Contas/organização/billing, compartilhamento de artifacts em claude.ai, Remote Control/Dispatch entre dispositivos, sessões na nuvem, conectores OAuth hospedados, Cowork VM.

@@ -19,6 +19,8 @@ import { broadcast } from '../../core/broadcast'
 import { bus } from '../../core/bus'
 import { db, settings } from '../../core/store'
 import { sendPrompt } from '../engine/api'
+import { canCreateSessions } from '../platform/api'
+import { PLATFORM_REQUIRED_MESSAGE } from '../../../shared/features/platform'
 
 const HISTORY_LIMIT = 20
 
@@ -127,6 +129,12 @@ export async function runTask(id: string, manual: boolean): Promise<ScheduleRun>
   const now = Date.now()
   if (!existsSync(task.cwd)) {
     const run: ScheduleRun = { at: now, result: 'error', manual, error: `Pasta não encontrada: ${task.cwd}` }
+    record(id, run)
+    return run
+  }
+
+  if (!canCreateSessions()) {
+    const run: ScheduleRun = { at: now, result: 'error', manual, error: PLATFORM_REQUIRED_MESSAGE }
     record(id, run)
     return run
   }

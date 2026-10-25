@@ -19,9 +19,10 @@ tipados.
 ## Features
 
 Cada feature do main é um `Feature` (`src/main/core/feature.ts`) com `register(ctx)` e `dispose()`, listado em
-`src/main/features/index.ts`: sessions, engine, terminal, git, preview, settings, harness, lab, onboarding, updater.
+`src/main/features/index.ts`: sessions, engine, terminal, git, preview, settings, harness, lab, onboarding, updater, platform.
 Um feature só importa de outro o seu `api.ts` (ex.: `engine/api.ts` → `sendPrompt`, `readTranscript`;
-`git/api.ts` → `createWorktree`; `harness/api.ts` → `readHarness`, `createSnapshot`, `reflect`).
+`git/api.ts` → `createWorktree`; `harness/api.ts` → `readHarness`, `createSnapshot`, `reflect`;
+`platform/api.ts` → `canCreateSessions`, `assertCanCreateSessions` — todo ponto que cria sessão passa por eles).
 
 ## IPC tipado
 
@@ -65,6 +66,14 @@ está no comentário do arquivo. Use o bus para reagir a sessões; use o `api.ts
 - **De modelo** (`src/shared/providers.ts`): perfis (assinatura, Anthropic API, gateway, Bedrock, Vertex, Foundry)
   traduzidos em variáveis de ambiente do Claude Code. O segredo de cada perfil fica cifrado no main e nunca volta ao
   renderer.
+
+## Plataforma Agent Hangar
+
+O feature `platform` conecta o app à plataforma (contrato em `docs/platform/app-api-phase1.md`): login OAuth com
+loopback (RFC 8252) e PKCE, tokens cifrados com refresh rotativo, registro e heartbeat do dispositivo e a política do
+Windows (`HKLM`/`HKCU\Software\Policies\Hangar`: `PlatformUrl`, `Mode`). No modo `required` sem conexão, nenhuma
+sessão é criada. Os tokens de design do app (`src/renderer/src/theme/tokens.json`) são uma cópia dos da plataforma
+(`central/app/static/design-tokens.json`); `tests/unit/design-tokens.test.ts` mantém `styles.css` em sincronia.
 
 ## Qualidade
 

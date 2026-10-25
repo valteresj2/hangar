@@ -1,0 +1,250 @@
+/* Platform feature: Settings → Plataforma, onboarding step, sidebar indicator, "required" banner.
+   Only theme variables (light and dark come from styles.css). */
+
+.intro {
+  margin: -6px 0 16px;
+  font-size: 13px;
+}
+
+.lead {
+  color: var(--text-muted);
+  margin: 0 0 16px;
+}
+
+.urlField {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.urlField :global(.input) {
+  width: 300px;
+  font-family: var(--mono);
+  font-size: 12px;
+}
+
+.statusLine {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  background: var(--text-muted);
+}
+.ok {
+  background: var(--success);
+}
+.warn {
+  background: var(--warning);
+}
+.bad {
+  background: var(--danger);
+}
+.neutral {
+  background: var(--border);
+  box-shadow: inset 0 0 0 1px var(--text-muted);
+}
+
+.locked {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+.badge {
+  display: inline-block;
+  padding: 1px 8px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  font-size: 12px;
+}
+
+.teams {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: flex-end;
+  max-width: 420px;
+}
+
+.mono {
+  font-family: var(--mono);
+  font-size: 12px;
+  user-select: all;
+}
+
+.textBad {
+  color: var(--danger);
+}
+
+.errorRow {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+  color: var(--danger);
+  font-size: 13px;
+}
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: var(--bg-elev);
+  font-size: 13px;
+}
+.notice_info {
+  border-left: 3px solid var(--success);
+}
+.notice_warn {
+  border-left: 3px solid var(--warning);
+}
+.notice_error {
+  border-left: 3px solid var(--danger);
+}
+
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: var(--accent);
+  color: var(--accent-text);
+  font-weight: 600;
+  line-height: 1;
+}
+.avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.account {
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+.accountName {
+  display: block;
+  font-weight: 600;
+}
+.accountEmail {
+  display: block;
+  font-size: 12px;
+  font-weight: 400;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Onboarding step */
+.stepField {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+.stepLabel {
+  font-size: 13px;
+  font-weight: 500;
+}
+.stepActions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.stepCard {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+}
+
+/* Sidebar indicator */
+.indicatorWrap {
+  flex-shrink: 0;
+  padding: 4px 6px 6px;
+  border-top: 1px solid var(--border);
+}
+.indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 8px;
+  border-radius: var(--radius-sm);
+  text-align: left;
+  color: var(--text);
+}
+.indicator:hover {
+  background: var(--bg-hover);
+}
+.indicatorBlocking .indicatorTitle {
+  color: var(--danger);
+}
+.indicatorIcon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 1px dashed var(--text-muted);
+  color: var(--text-muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+.indicatorText {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+}
+.indicatorTitle {
+  font-size: 12px;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.indicatorSub {
+  font-size: 11px;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* "Required" banner (new session view) */
+.required {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  margin-bottom: 14px;
+  border: 1px solid var(--danger);
+  border-radius: var(--radius-sm);
+  background: var(--bg-elev);
+  font-size: 13px;
+}
+.required strong {
+  display: block;
+  margin-bottom: 2px;
+}

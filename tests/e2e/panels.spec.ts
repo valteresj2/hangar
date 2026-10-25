@@ -59,8 +59,8 @@ test('teste de conexão de um perfil com o mock devolvendo 401', async ({ hangar
   const token = 'mock-token-401'
   await hangar.useMockProvider({ name: 'Gateway 401', token, makeDefault: false })
   const { page } = hangar
-  await page.getByTitle('Configurações').click()
-  await page.getByRole('button', { name: 'Provedores', exact: true }).click()
+  await page.getByRole('button', { name: 'Configurações', exact: true }).click()
+  await page.getByRole('navigation').getByRole('button', { name: 'Provedores', exact: true }).click()
 
   // The profile row: the innermost block that starts with the profile name and has its own "Testar" button.
   const item = page

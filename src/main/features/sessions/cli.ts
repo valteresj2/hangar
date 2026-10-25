@@ -11,6 +11,7 @@ import { nanoid } from 'nanoid'
 import type { Session } from '../../../shared/contracts'
 import type { CliSessionInfo, ImportCliResult } from '../../../shared/features/sessions'
 import { db } from '../../core/store'
+import { assertCanCreateSessions } from '../platform/api'
 
 type ScannedSession = Omit<CliSessionInfo, 'imported'>
 
@@ -150,6 +151,8 @@ export async function listCliSessions(): Promise<CliSessionInfo[]> {
 }
 
 export async function importCliSessions(ids: string[]): Promise<ImportCliResult> {
+  // Mode "required" without a platform connection: no new sessions from here either.
+  assertCanCreateSessions()
   const wanted = new Set(ids)
   const known = importedIds()
   const available = await listCliSessions()

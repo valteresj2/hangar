@@ -1,16 +1,18 @@
-// First-run assistant: Boas-vindas → Diagnóstico → Provedor → Pasta inicial → Pronto.
+// First-run assistant: Boas-vindas → Plataforma (when not off) → Diagnóstico → Provedor → Pasta inicial → Pronto.
 // Shown full screen by App while settings.onboardingDone is false; "Pular" ends it from any step.
 import { useEffect, useState } from 'react'
 import type { ProviderSummary } from '@shared/features/onboarding'
 import { api } from '../../core/api'
 import { useSettings } from '../../core/data'
 import { useUi } from '../../core/ui'
+import { isPlatformBlocking, PlatformStep, platformStepBlocking, platformStepVisible, usePlatform } from '../platform'
 import { onboardingApi, useOnboardingNav, type OnboardingStep } from './api'
 import { DiagnosticsPanel, Spinner } from './Diagnostics'
 import styles from './onboarding.module.css'
 
 const STEPS: { id: OnboardingStep; label: string }[] = [
   { id: 'welcome', label: 'Boas-vindas' },
+  { id: 'platform', label: 'Plataforma' },
   { id: 'diagnose', label: 'Diagnóstico' },
   { id: 'provider', label: 'Provedor' },
   { id: 'folder', label: 'Pasta inicial' },
@@ -221,9 +223,22 @@ export function OnboardingView() {
     useOnboardingNav.setState({ startStep: undefined })
     return start ?? 'welcome'
   })
-  const index = STEPS.findIndex((s) => s.id === step)
-  const next = () => setStep(STEPS[Math.min(index + 1, STEPS.length - 1)].id)
-  const back = () => setStep(STEPS[Math.max(index - 1, 0)].id)
+  // The platform step only exists when the platform is not off; with mode `required` it cannot be passed
+  // (nor the assistant skipped) until the app is connected.
+  const platform = usePlatform()
+  const steps = STEPS.filter((s) => s.id !== 'platform' || platformStepVisible(platform))
+  const blocking = platformStepBlocking(platform)
+  const platformIndex = steps.findIndex((s) => s.id === 'platform')
+  const index = Math.max(
+    0,
+    steps.findIndex((s) => s.id === step)
+  )
+  const reachable = (i: number) => !blocking || platformIndex < 0 || i <= platformIndex
+  const next = () => {
+    if (reachable(index + 1)) setStep(steps[Math.min(index + 1, steps.length - 1)].id)
+  }
+  const back = () => setStep(steps[Math.max(index - 1, 0)].id)
+  const current = steps[index].id
 
   const openProviders = () => {
     useUi.getState().openSettings('providers')
@@ -232,7 +247,7 @@ export function OnboardingView() {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && !e.defaultPrevented) void finish()
+      if (e.key === 'Escape' && !e.defaultPrevented && !isPlatformBlocking()) void finish()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
@@ -245,16 +260,19 @@ export function OnboardingView() {
           <span className={styles.logo}>H</span>
           Hangar
           <span className={styles.spacer} />
-          <button className="btn" onClick={() => void finish()} title="Fecha o assistente (Esc)">
-            Pular
-          </button>
+          {!blocking && (
+            <button className="btn" onClick={() => void finish()} title="Fecha o assistente (Esc)">
+              Pular
+            </button>
+          )}
         </div>
 
         <div className={styles.steps}>
-          {STEPS.map((s, i) => (
+          {steps.map((s, i) => (
             <button
               key={s.id}
               className={`${styles.step} ${i === index ? styles.stepActive : i < index ? styles.stepDone : ''}`}
+              disabled={!reachable(i)}
               onClick={() => setStep(s.id)}
             >
               {i < index ? '✓' : i + 1} {s.label}
@@ -263,8 +281,9 @@ export function OnboardingView() {
         </div>
 
         <div className={styles.card}>
-          {step === 'welcome' && <Welcome />}
-          {step === 'diagnose' && (
+          {current === 'welcome' && <Welcome />}
+          {current === 'platform' && <PlatformStep />}
+          {current === 'diagnose' && (
             <>
               <h2>Diagnóstico</h2>
               <p className={styles.lead}>
@@ -273,9 +292,9 @@ export function OnboardingView() {
               <DiagnosticsPanel onOpenProviders={openProviders} />
             </>
           )}
-          {step === 'provider' && <ProviderStep onOpenProviders={openProviders} />}
-          {step === 'folder' && <FolderStep />}
-          {step === 'done' && <DoneStep />}
+          {current === 'provider' && <ProviderStep onOpenProviders={openProviders} />}
+          {current === 'folder' && <FolderStep />}
+          {current === 'done' && <DoneStep />}
         </div>
 
         <div className={styles.footer}>
@@ -285,13 +304,22 @@ export function OnboardingView() {
             </button>
           )}
           <span className={styles.spacer} />
-          {step === 'done' ? (
+          {current === 'done' ? (
             <button className="btn btn-primary" onClick={() => void finish()}>
               Começar a usar
             </button>
           ) : (
-            <button className="btn btn-primary" onClick={next}>
-              {step === 'welcome' ? 'Começar' : 'Próximo'}
+            <button
+              className="btn btn-primary"
+              onClick={next}
+              disabled={!reachable(index + 1)}
+              title={reachable(index + 1) ? undefined : 'Conecte à plataforma para continuar'}
+            >
+              {current === 'welcome'
+                ? 'Começar'
+                : current === 'platform' && !blocking && platform?.status !== 'connected'
+                  ? 'Pular este passo'
+                  : 'Próximo'}
             </button>
           )}
         </div>

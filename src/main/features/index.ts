@@ -10,6 +10,7 @@ import { harnessFeature } from './harness'
 import { labFeature } from './lab'
 import { onboardingFeature } from './onboarding'
 import { updaterFeature } from './updater'
+import { platformFeature } from './platform'
 
 export const features: Feature[] = [
   sessionsFeature,
@@ -21,5 +22,6 @@ export const features: Feature[] = [
   harnessFeature,
   labFeature,
   onboardingFeature,
-  updaterFeature
+  updaterFeature,
+  platformFeature
 ]

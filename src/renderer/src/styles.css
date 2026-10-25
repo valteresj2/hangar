@@ -1,43 +1,145 @@
-/* Design tokens. Features use these variables; per-feature styles go in <name>.module.css. */
+/* Packaged fonts (latin subset covers pt-BR); no network fonts. */
+@import '@fontsource/ibm-plex-sans/latin-400.css';
+@import '@fontsource/ibm-plex-sans/latin-400-italic.css';
+@import '@fontsource/ibm-plex-sans/latin-500.css';
+@import '@fontsource/ibm-plex-sans/latin-600.css';
+@import '@fontsource/ibm-plex-sans/latin-700.css';
+@import '@fontsource/ibm-plex-mono/latin-400.css';
+@import '@fontsource/ibm-plex-mono/latin-500.css';
+@import '@fontsource/ibm-plex-mono/latin-600.css';
+@import '@fontsource/barlow-semi-condensed/latin-500.css';
+@import '@fontsource/barlow-semi-condensed/latin-600.css';
+@import '@fontsource/barlow-semi-condensed/latin-700.css';
+
+/*
+ * Design tokens. Two layers:
+ * 1. Platform tokens: a verbatim copy of theme/tokens.json (the Agent Hangar console palette). Same names as the
+ *    console, except the console's --bg, which is --concrete here because --bg is an app variable.
+ * 2. App variables (--bg, --text, --accent, ...): what features use. They only point at platform tokens, so
+ *    re-skinning means changing layer 1. Per-feature styles go in <name>.module.css.
+ */
 :root {
-  --bg: #faf9f5;
-  --bg-elev: #ffffff;
-  --bg-sunken: #f0eee6;
-  --bg-hover: #ebe9e0;
-  --border: #e3e0d6;
-  --text: #1f1e1d;
-  --text-muted: #6b6a66;
-  --accent: #c96442;
-  --accent-text: #ffffff;
-  --success: #3d8a5a;
-  --warning: #b8860b;
-  --danger: #c0392b;
-  --diff-add: #e6f4ea;
-  --diff-del: #fbe9e7;
-  --radius: 8px;
-  --radius-sm: 5px;
-  --font: 'Segoe UI Variable', 'Segoe UI', system-ui, sans-serif;
-  --mono: 'Cascadia Code', 'Cascadia Mono', Consolas, monospace;
+  /* Platform tokens: light */
+  --tarmac: #1c2530;
+  --tarmac-2: #26313e;
+  --tarmac-ink: #c9d1db;
+  --tarmac-mute: #8793a1;
+  --concrete: #eceef1;
+  --panel: #ffffff;
+  --panel-2: #f6f7f9;
+  --ink: #17212c;
+  --mute: #56616e;
+  --line: #d5dae0;
+  --line-2: #e6e9ed;
+  --mark: #f4b400;
+  --mark-ink: #17212c;
+  --mark-soft: #fdf1cc;
+  --go: #1e7f46;
+  --go-bg: #e1f2e8;
+  --hold: #9a5b00;
+  --hold-bg: #fcefd6;
+  --stop: #bd3326;
+  --stop-bg: #fbe4e1;
+  --info: #2b5ba8;
+  --info-bg: #e3ecf8;
+  --code: #1c2530;
+  --code-ink: #dde3ea;
+  --r: 6px;
+  --r-lg: 10px;
+  --f-ui: 'IBM Plex Sans', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --f-sign: 'Barlow Semi Condensed', 'Arial Narrow', 'IBM Plex Sans', system-ui, sans-serif;
+  --f-mono: 'IBM Plex Mono', ui-monospace, Consolas, monospace;
+
+  /* Values the console uses inline: the primary button hover, white text on the rail, and the status colours that
+     read on the dark rail in both themes (the dark-theme go/hold/stop). --tarmac-mute-aa replaces tarmac-mute for
+     small text on the rail's hover/active row, where the console value drops under 4.5:1. */
+  --mark-hover: #ffc61a;
+  --tarmac-strong: #ffffff;
+  --tarmac-mute-aa: #9aa6b3;
+  --tarmac-go: #4cc784;
+  --tarmac-hold: #f0b454;
+  --tarmac-stop: #f07a6d;
+  --tarmac-info: #79a6ea;
+
+  /* App variables */
+  --bg: var(--panel-2);
+  --bg-elev: var(--panel);
+  --bg-sunken: var(--concrete);
+  --bg-hover: #e4e8ed;
+  --border: var(--line);
+  --border-soft: var(--line-2);
+  --text: var(--ink);
+  --text-muted: var(--mute);
+  /* Emphasised text: the active row, a hovered link-like item */
+  --text-strong: var(--ink);
+  --accent: var(--mark);
+  --accent-text: var(--mark-ink);
+  --accent-hover: var(--mark-hover);
+  --accent-soft: var(--mark-soft);
+  /* Accent used as text or an icon on a regular surface: the mark itself is too light on white. */
+  --accent-ink: #8a5a00;
+  --link: var(--info);
+  --success: var(--go);
+  --success-bg: var(--go-bg);
+  --warning: var(--hold);
+  --warning-bg: var(--hold-bg);
+  --danger: var(--stop);
+  --danger-bg: var(--stop-bg);
+  --notice: var(--info);
+  /* Text on a solid go/stop/info fill */
+  --on-status: #ffffff;
+  --diff-add: var(--go-bg);
+  --diff-del: var(--stop-bg);
+  --focus-ring: var(--ink);
+  --focus-halo: var(--mark-soft);
+  --shadow-sm: 0 1px 2px rgb(23 33 44 / 0.06);
+  --shadow-pop: 0 8px 24px rgb(23 33 44 / 0.14);
+  --shadow-modal: 0 18px 50px rgb(23 33 44 / 0.22);
+  --scrim: rgb(16 21 28 / 0.4);
+  --radius: var(--r-lg);
+  --radius-sm: var(--r);
+  --font: var(--f-ui);
+  --font-sign: var(--f-sign);
+  --mono: var(--f-mono);
   --sidebar-w: 268px;
   --topbar-h: 44px;
   color-scheme: light;
 }
 
 :root[data-theme='dark'] {
-  --bg: #1a1a19;
-  --bg-elev: #242423;
-  --bg-sunken: #141413;
-  --bg-hover: #2e2e2c;
-  --border: #353533;
-  --text: #ecebe6;
-  --text-muted: #9b9a95;
-  --accent: #d97757;
-  --accent-text: #ffffff;
-  --success: #5cb07a;
-  --warning: #d9a83a;
-  --danger: #e06c5a;
-  --diff-add: #1f3326;
-  --diff-del: #3a2220;
+  /* Platform tokens: dark (the rest are shared with light) */
+  --tarmac: #0b1016;
+  --tarmac-2: #18202a;
+  --concrete: #10151c;
+  --panel: #18202a;
+  --panel-2: #1e2733;
+  --ink: #e6eaf0;
+  --mute: #9aa6b3;
+  --line: #2c3643;
+  --line-2: #242d38;
+  --mark-soft: #3a2f0b;
+  --go: #4cc784;
+  --go-bg: #11301f;
+  --hold: #f0b454;
+  --hold-bg: #33260c;
+  --stop: #f07a6d;
+  --stop-bg: #3a1714;
+  --info: #79a6ea;
+  --info-bg: #15253d;
+  --code: #0b1016;
+  --code-ink: #cbd5e1;
+
+  /* App variables: dark surfaces step up in lightness (canvas < panel < nested) */
+  --bg: var(--concrete);
+  --bg-elev: var(--panel);
+  --bg-sunken: var(--panel-2);
+  --bg-hover: #263140;
+  --accent-ink: var(--mark);
+  --on-status: #10151c;
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.3);
+  --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.45);
+  --shadow-modal: 0 18px 50px rgb(0 0 0 / 0.55);
+  --scrim: rgb(0 0 0 / 0.55);
   color-scheme: dark;
 }
 
@@ -59,6 +161,7 @@ body {
   font-size: 14px;
   line-height: 1.5;
   overflow: hidden;
+  -webkit-font-smoothing: antialiased;
 }
 
 button {
@@ -76,10 +179,47 @@ select {
   color: inherit;
 }
 
+input[type='checkbox'],
+input[type='radio'],
+input[type='range'] {
+  accent-color: var(--tarmac);
+}
+:root[data-theme='dark'] input[type='checkbox'],
+:root[data-theme='dark'] input[type='radio'],
+:root[data-theme='dark'] input[type='range'],
+.rail input[type='checkbox'],
+.rail input[type='radio'],
+.rail input[type='range'] {
+  accent-color: var(--mark);
+}
+
 code,
 pre,
 kbd {
   font-family: var(--mono);
+}
+
+a {
+  color: var(--link);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--mark) 38%, transparent);
+}
+
+/* Visible focus for keyboard users (text fields show focus with their border instead). */
+button:focus-visible,
+a:focus-visible,
+summary:focus-visible,
+select:focus-visible,
+[tabindex]:focus-visible,
+[role='button']:focus-visible,
+[role='tab']:focus-visible,
+input[type='checkbox']:focus-visible,
+input[type='radio']:focus-visible,
+input[type='range']:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
 }
 
 ::-webkit-scrollbar {
@@ -92,28 +232,38 @@ kbd {
   border: 2px solid transparent;
   background-clip: padding-box;
 }
+::-webkit-scrollbar-thumb:hover {
+  background-color: var(--text-muted);
+}
 
 /* Shared primitives */
 .btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 10px;
+  padding: 5px 11px;
   border-radius: var(--radius-sm);
   border: 1px solid var(--border);
   background: var(--bg-elev);
+  font-weight: 500;
+  transition:
+    background-color 0.15s,
+    border-color 0.15s,
+    color 0.15s;
 }
 .btn:hover {
-  background: var(--bg-hover);
+  background: var(--bg-elev);
+  border-color: var(--text);
 }
 .btn-primary {
   background: var(--accent);
   border-color: var(--accent);
   color: var(--accent-text);
+  font-weight: 600;
 }
 .btn-primary:hover {
-  filter: brightness(1.05);
-  background: var(--accent);
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
 }
 .icon-btn {
   display: inline-flex;
@@ -137,8 +287,88 @@ kbd {
   outline: none;
 }
 .input:focus {
-  border-color: var(--accent);
+  border-color: var(--focus-ring);
+  box-shadow: 0 0 0 3px var(--focus-halo);
 }
 .muted {
   color: var(--text-muted);
+}
+
+/*
+ * .rail: the console's dark "tarmac" navigation. It re-points the app variables, so whatever a feature renders inside
+ * (session list, round list, settings sections, platform indicator) picks up the dark palette without knowing about
+ * it. Modules opt in with `composes: rail from global`. Menus and dialogs are portalled to <body> and keep the page
+ * palette.
+ */
+.rail {
+  --bg: var(--tarmac);
+  --bg-elev: var(--tarmac-2);
+  --bg-sunken: color-mix(in srgb, var(--tarmac) 70%, #000);
+  --bg-hover: var(--tarmac-2);
+  --border: color-mix(in srgb, var(--tarmac-ink) 16%, var(--tarmac));
+  --border-soft: var(--tarmac-2);
+  --text: var(--tarmac-ink);
+  --text-muted: var(--tarmac-mute-aa);
+  --text-strong: var(--tarmac-strong);
+  --accent-ink: var(--mark);
+  --link: var(--mark);
+  --focus-ring: var(--mark);
+  --focus-halo: color-mix(in srgb, var(--mark) 25%, transparent);
+  --success: var(--tarmac-go);
+  --warning: var(--tarmac-hold);
+  --danger: var(--tarmac-stop);
+  --notice: var(--tarmac-info);
+  --on-status: var(--tarmac);
+  color-scheme: dark;
+}
+
+/* Status pill, as in the console: tinted fill, coloured dot and text. */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 9px;
+  border-radius: 99px;
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.pill::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.85;
+}
+.pill-go {
+  background: var(--go-bg);
+  color: var(--go);
+  border-color: transparent;
+}
+.pill-hold {
+  background: var(--hold-bg);
+  color: var(--hold);
+  border-color: transparent;
+}
+.pill-stop {
+  background: var(--stop-bg);
+  color: var(--stop);
+  border-color: transparent;
+}
+.pill-info {
+  background: var(--info-bg);
+  color: var(--info);
+  border-color: transparent;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0s !important;
+  }
 }

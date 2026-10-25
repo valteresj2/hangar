@@ -1,6 +1,7 @@
 import type { Session, SidePanelTab } from '@shared/contracts'
 import { SessionHeader } from '../features/sessions'
 import { useUi } from '../core/ui'
+import { GearIcon, HangarLogo, SidebarIcon } from './icons'
 import styles from './shell.module.css'
 
 const PANEL_BUTTONS: { tab: SidePanelTab; label: string }[] = [
@@ -17,10 +18,22 @@ export function TopBar({ session }: { session?: Session }) {
 
   return (
     <header className={styles.topbar}>
-      <button className="icon-btn" title="Alternar sidebar (Ctrl+B)" onClick={toggleSidebar}>
-        ☰
+      <button
+        className="icon-btn"
+        title="Alternar sidebar (Ctrl+B)"
+        aria-label="Alternar sidebar"
+        onClick={toggleSidebar}
+      >
+        <SidebarIcon />
       </button>
-      <div className={styles.title}>{session ? session.title : 'Hangar'}</div>
+      {session ? (
+        <div className={styles.title}>{session.title}</div>
+      ) : (
+        <div className={`${styles.title} ${styles.brand}`}>
+          <HangarLogo />
+          Hangar
+        </div>
+      )}
       {session && <SessionHeader session={session} />}
       <div className={styles.spacer} />
       {session &&
@@ -36,8 +49,13 @@ export function TopBar({ session }: { session?: Session }) {
             </button>
           )
         })}
-      <button className="icon-btn" title="Configurações" onClick={() => setSettingsOpen(true)}>
-        ⚙
+      <button
+        className="icon-btn"
+        title="Configurações"
+        aria-label="Configurações"
+        onClick={() => setSettingsOpen(true)}
+      >
+        <GearIcon />
       </button>
     </header>
   )

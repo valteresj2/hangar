@@ -14,8 +14,8 @@ Fluxo do app (cliente público nativo):
 2. Registro dinâmico (RFC 7591), uma vez por plataforma (o app guarda o `client_id`):
    `POST {base}/oauth/register` com
    `{"client_name": "Hangar Desktop", "software_id": "hangar-desktop", "software_version": "<versão>",
-     "redirect_uris": ["http://127.0.0.1/callback"], "grant_types": ["authorization_code", "refresh_token"],
-     "response_types": ["code"], "token_endpoint_auth_method": "none", "scope": "app mcp"}`.
+  "redirect_uris": ["http://127.0.0.1/callback"], "grant_types": ["authorization_code", "refresh_token"],
+  "response_types": ["code"], "token_endpoint_auth_method": "none", "scope": "app mcp"}`.
 3. Autorização: o app sobe um servidor HTTP efêmero em `127.0.0.1:<porta aleatória>` e abre no navegador do sistema
    `GET {base}/oauth/authorize?response_type=code&client_id=…&redirect_uri=http://127.0.0.1:<porta>/callback`
    `&state=…&code_challenge=…&code_challenge_method=S256&scope=app%20mcp&resource={base}`.
@@ -24,6 +24,7 @@ Fluxo do app (cliente público nativo):
 5. Saída: `POST {base}/oauth/revoke` (token) + limpeza local.
 
 **Mudanças na plataforma:**
+
 - **Loopback com porta livre** (RFC 8252 §7.3): para redirects em `127.0.0.1`/`[::1]`/`localhost`, a comparação entre
   o `redirect_uri` do pedido e o registrado ignora a porta (esquema, host e caminho continuam exatos).
 - **Escopos `app` e `mcp`**: o grant guarda os escopos concedidos (migração). Pedido sem `scope` continua `mcp`
@@ -36,22 +37,22 @@ Fluxo do app (cliente público nativo):
 Erros: JSON `{"detail": "..."}`; 401 = token inválido/expirado (o app faz refresh e repete uma vez);
 403 = dispositivo revogado ou usuário sem acesso.
 
-| Método e rota | Corpo | Resposta |
-|---|---|---|
-| `GET /api/app/me` | — | `{user:{id,email,name,avatar_url,org_role,teams:[{id,slug,name}]}, org:{id,name,slug,brand}, platform:{version,features:{}}, design_tokens:{version}}` |
-| `POST /api/app/devices` | `{device_id (uuid gerado e guardado pelo app), name, os, os_version, app_version, channel}` | `{device:{id,device_id,name,os,app_version,status,created_at,last_seen_at}}` (idempotente por usuário+device_id) |
-| `POST /api/app/devices/{device_id}/heartbeat` | `{app_version}` | `{status:"active"|"revoked"}` |
-| `GET /api/app/design-tokens` | — | `{version, light:{token:valor…}, dark:{…}, fonts:{ui,sign,mono}, radius:{r,r_lg}}` |
+| Método e rota                                 | Corpo                                                                                       | Resposta                                                                                                                                               |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/app/me`                             | —                                                                                           | `{user:{id,email,name,avatar_url,org_role,teams:[{id,slug,name}]}, org:{id,name,slug,brand}, platform:{version,features:{}}, design_tokens:{version}}` |
+| `POST /api/app/devices`                       | `{device_id (uuid gerado e guardado pelo app), name, os, os_version, app_version, channel}` | `{device:{id,device_id,name,os,app_version,status,created_at,last_seen_at}}` (idempotente por usuário+device_id)                                       |
+| `POST /api/app/devices/{device_id}/heartbeat` | `{app_version}`                                                                             | `{status:"active"                                                                                                                                      | "revoked"}` |
+| `GET /api/app/design-tokens`                  | —                                                                                           | `{version, light:{token:valor…}, dark:{…}, fonts:{ui,sign,mono}, radius:{r,r_lg}}`                                                                     |
 
 `features` existe para o app saber o que a plataforma suporta nas próximas fases (Fase 1: objeto vazio).
 
 ## 3. Admin (`/api/app/admin`, sessão do console, `require_admin`)
 
-| Método e rota | Resposta |
-|---|---|
-| `GET /api/app/admin/overview` | `{devices_active, members_connected, versions:[{version,count}], last_seen_at, platform_url}` |
-| `GET /api/app/admin/devices` | `[{id,device_id,user:{id,email,name},name,os,os_version,app_version,channel,status,created_at,last_seen_at}]` |
-| `POST /api/app/admin/devices/{id}/revoke` | `{ok:true}` — revoga também o grant OAuth do dispositivo |
+| Método e rota                             | Resposta                                                                                                      |
+| ----------------------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `GET /api/app/admin/overview`             | `{devices_active, members_connected, versions:[{version,count}], last_seen_at, platform_url}`                 |
+| `GET /api/app/admin/devices`              | `[{id,device_id,user:{id,email,name},name,os,os_version,app_version,channel,status,created_at,last_seen_at}]` |
+| `POST /api/app/admin/devices/{id}/revoke` | `{ok:true}` — revoga também o grant OAuth do dispositivo                                                      |
 
 Auditoria: `app.device.register`, `app.device.revoke`, `app.login`.
 

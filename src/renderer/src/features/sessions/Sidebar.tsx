@@ -5,6 +5,7 @@ import { ENGINE, type SearchHit } from '@shared/features/engine'
 import { bridge } from '../../core/api'
 import { useCollection } from '../../core/data'
 import { useUi } from '../../core/ui'
+import { PlatformIndicator } from '../platform'
 import {
   moveToGroup,
   openSession,
@@ -537,6 +538,7 @@ export function Sidebar() {
       </div>
 
       <ProjectsFooter projects={projects} sessions={sessions} />
+      <PlatformIndicator />
       {menu && <ContextMenu items={menu.items} at={menu.at} onClose={() => setMenu(undefined)} />}
     </div>
   )

@@ -8,13 +8,16 @@ import { ProvidersSection } from './sections/Providers'
 import { AboutSection, ShortcutsSection } from './sections/Misc'
 import { SchedulesSection } from './sections/Schedules'
 import { SkillsSection } from './sections/Skills'
+import { PlatformSection } from '../platform'
 import styles from './settings.module.css'
 
-export type SettingsSectionId = 'general' | 'providers' | 'mcp' | 'skills' | 'schedules' | 'shortcuts' | 'about'
+export type SettingsSectionId =
+  'general' | 'providers' | 'platform' | 'mcp' | 'skills' | 'schedules' | 'shortcuts' | 'about'
 
 const SECTIONS: { id: SettingsSectionId; label: string; render: () => ReactNode }[] = [
   { id: 'general', label: 'Geral', render: () => <GeneralSection /> },
   { id: 'providers', label: 'Provedores', render: () => <ProvidersSection /> },
+  { id: 'platform', label: 'Plataforma', render: () => <PlatformSection /> },
   { id: 'mcp', label: 'Servidores MCP', render: () => <McpSection /> },
   { id: 'skills', label: 'Skills e plugins', render: () => <SkillsSection /> },
   { id: 'schedules', label: 'Tarefas agendadas', render: () => <SchedulesSection /> },
