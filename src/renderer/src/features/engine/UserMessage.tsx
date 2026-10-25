@@ -1,11 +1,5 @@
 import { memo, useEffect, useState, type ReactNode } from 'react'
-import {
-  ENGINE,
-  type ForkResult,
-  type RewindPreview,
-  type RewindResult,
-  type TranscriptEntry
-} from '@shared/features/engine'
+import { ENGINE, type RewindPreview, type RewindResult, type TranscriptEntry } from '@shared/features/engine'
 import { bridge } from '../../core/api'
 import { savedImageUrl } from './pasted'
 import styles from './engine.module.css'
@@ -70,7 +64,7 @@ function RewindPanel({
 
   useEffect(() => {
     let alive = true
-    bridge.invoke<RewindPreview>(ENGINE.rewindPreview, sessionId, entry.id).then(
+    bridge.invoke(ENGINE.rewindPreview, sessionId, entry.id).then(
       (p) => alive && setPreview(p),
       (err) =>
         alive &&
@@ -90,7 +84,7 @@ function RewindPanel({
   const confirm = async () => {
     setWorking(true)
     try {
-      const result = await bridge.invoke<RewindResult>(ENGINE.rewind, sessionId, entry.id, {
+      const result = await bridge.invoke(ENGINE.rewind, sessionId, entry.id, {
         restoreFiles: restoreFiles && files.length > 0
       })
       onDone(result)
@@ -177,7 +171,7 @@ export const UserMessage = memo(function UserMessage({
     setForking(true)
     try {
       // Main selects the new session (engine:event:select).
-      await bridge.invoke<ForkResult>(ENGINE.fork, sessionId, entry.id)
+      await bridge.invoke(ENGINE.fork, sessionId, entry.id)
     } catch (err) {
       onError(errorText(err))
     } finally {

@@ -1,18 +1,12 @@
 // Typed wrappers for the onboarding feature's IPC channels, plus the navigation store.
 import { create } from 'zustand'
-import {
-  ONBOARDING,
-  type DiagnoseOptions,
-  type DiagnosticReport,
-  type DirectFixResult,
-  type ProviderSummary
-} from '@shared/features/onboarding'
+import { ONBOARDING, type DiagnoseOptions } from '@shared/features/onboarding'
 import { api, bridge } from '../../core/api'
 
 export const onboardingApi = {
-  diagnose: (opts?: DiagnoseOptions) => bridge.invoke<DiagnosticReport>(ONBOARDING.diagnose, opts),
-  applyDirectFix: () => bridge.invoke<DirectFixResult>(ONBOARDING.applyDirectFix),
-  providerSummary: () => bridge.invoke<ProviderSummary>(ONBOARDING.providerSummary)
+  diagnose: (opts?: DiagnoseOptions) => bridge.invoke(ONBOARDING.diagnose, opts),
+  applyDirectFix: () => bridge.invoke(ONBOARDING.applyDirectFix),
+  providerSummary: () => bridge.invoke(ONBOARDING.providerSummary)
 }
 
 export type OnboardingStep = 'welcome' | 'diagnose' | 'provider' | 'folder' | 'done'

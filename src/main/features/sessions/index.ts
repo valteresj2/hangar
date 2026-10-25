@@ -2,7 +2,7 @@
 // Session/project/group CRUD goes through the generic core store; this module only handles what needs
 // main-side work: creation with defaults, deletion (with worktree cleanup), Markdown export and CLI import.
 
-import { app, dialog, ipcMain } from 'electron'
+import { app, dialog } from 'electron'
 import { writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { nanoid } from 'nanoid'
@@ -20,6 +20,7 @@ import { interrupt, readTranscript } from '../engine/api'
 import { removeWorktree } from '../git/api'
 import { importCliSessions, listCliSessions } from './cli'
 import { transcriptToMarkdown } from './markdown'
+import { handle } from '../../core/handle'
 
 const RECENT_FOLDERS_MAX = 12
 
@@ -114,10 +115,10 @@ async function exportMarkdown(ctx: FeatureContext, id: string): Promise<string |
 export const sessionsFeature: Feature = {
   name: 'sessions',
   register(ctx) {
-    ipcMain.handle(SESSIONS.create, (_e, input: CreateSessionInput) => createSession(input))
-    ipcMain.handle(SESSIONS.delete, (_e, id: string, opts?: DeleteSessionOptions) => deleteSession(id, opts))
-    ipcMain.handle(SESSIONS.exportMarkdown, (_e, id: string) => exportMarkdown(ctx, id))
-    ipcMain.handle(SESSIONS.listCli, () => listCliSessions())
-    ipcMain.handle(SESSIONS.importCli, (_e, ids: string[]) => importCliSessions(ids))
+    handle(SESSIONS.create, (_e, input: CreateSessionInput) => createSession(input))
+    handle(SESSIONS.delete, (_e, id: string, opts?: DeleteSessionOptions) => deleteSession(id, opts))
+    handle(SESSIONS.exportMarkdown, (_e, id: string) => exportMarkdown(ctx, id))
+    handle(SESSIONS.listCli, () => listCliSessions())
+    handle(SESSIONS.importCli, (_e, ids: string[]) => importCliSessions(ids))
   }
 }

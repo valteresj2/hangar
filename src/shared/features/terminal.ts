@@ -62,3 +62,22 @@ export interface TerminalExitEvent {
   /** True when the PTY was killed by Hangar (tab closed, session removed) rather than exiting by itself. */
   killed: boolean
 }
+
+// IPC contract of this feature (see src/shared/ipc.ts).
+declare module '../ipc' {
+  interface IpcInvokeContract {
+    [TERMINAL.create]: (opts: CreateTerminalOptions) => TerminalInfo
+    [TERMINAL.write]: (id: string, data: string) => void
+    [TERMINAL.resize]: (id: string, cols: number, rows: number) => void
+    [TERMINAL.kill]: (id: string) => void
+    [TERMINAL.rename]: (id: string, title: string) => void
+    [TERMINAL.list]: (sessionId?: string) => TerminalSnapshot[]
+    [TERMINAL.shells]: () => ShellInfo[]
+  }
+
+  interface IpcEventContract {
+    [TERMINAL.created]: TerminalInfo
+    [TERMINAL.data]: TerminalDataEvent
+    [TERMINAL.exit]: TerminalExitEvent
+  }
+}

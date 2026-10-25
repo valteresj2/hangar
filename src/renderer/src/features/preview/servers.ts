@@ -5,11 +5,11 @@ import { bridge } from '../../core/api'
 import { stripAnsi } from './webview'
 
 export const previewApi = {
-  launchConfigs: (sessionId: string) => bridge.invoke<LaunchConfigsResult>(PREVIEW.launchConfigs, sessionId),
-  start: (sessionId: string, name: string) => bridge.invoke<ServerInfo>(PREVIEW.start, sessionId, name),
-  stop: (serverId: string) => bridge.invoke<void>(PREVIEW.stop, serverId),
-  servers: (sessionId: string) => bridge.invoke<ServerInfo[]>(PREVIEW.servers, sessionId),
-  logs: (serverId: string) => bridge.invoke<string>(PREVIEW.logs, serverId)
+  launchConfigs: (sessionId: string) => bridge.invoke(PREVIEW.launchConfigs, sessionId),
+  start: (sessionId: string, name: string) => bridge.invoke(PREVIEW.start, sessionId, name),
+  stop: (serverId: string) => bridge.invoke(PREVIEW.stop, serverId),
+  servers: (sessionId: string) => bridge.invoke(PREVIEW.servers, sessionId),
+  logs: (serverId: string) => bridge.invoke(PREVIEW.logs, serverId)
 }
 
 /** Servers of a session, refreshed on every state change. */

@@ -85,13 +85,13 @@ export async function exportMp4({ spec, assets, path, signal, onProgress }: Expo
   const frames = Math.max(1, Math.round(totalDuration(spec) * fps))
   const config = await pickAvcConfig(width, height, fps)
 
-  const exportId = await bridge.invoke<string>(PREVIEW.exportOpen, path)
+  const exportId = await bridge.invoke(PREVIEW.exportOpen, path)
   const output = new Output({
     format: new Mp4OutputFormat({ fastStart: false }),
     target: new StreamTarget(
       new WritableStream<StreamTargetChunk>({
         // slice(): send only this view, not the whole backing buffer.
-        write: (chunk) => bridge.invoke<void>(PREVIEW.exportWrite, exportId, chunk.position, chunk.data.slice())
+        write: (chunk) => bridge.invoke(PREVIEW.exportWrite, exportId, chunk.position, chunk.data.slice())
       }),
       { chunked: true }
     )

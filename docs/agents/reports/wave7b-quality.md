@@ -63,3 +63,48 @@
 - **CI**: novo passo `Lint (ESLint, type-checked)` (`npm run lint`).
 - **Verificação**: `format:check`, `lint` (0 erros), `typecheck`, `typecheck:tests`, `npm test` (91), `build` e
   Playwright (7) passam.
+
+## Etapa 3 — IPC tipado
+
+- **Contrato** (`src/shared/ipc.ts`): `IpcInvokeContract` (canal → `(...args) => resultado`) e `IpcEventContract`
+  (evento → payload, `void` sem payload), com `InvokeChannel`, `InvokeArgs`, `InvokeResult`, `EventChannel`,
+  `EventPayload` e `EventArgs`. O core declara os seus 11 canais e 1 evento. Cada `src/shared/features/<feature>.ts`
+  ganhou um bloco `declare module '../ipc' { … }` com os seus canais (chaves computadas `[GIT.status]`). No total,
+  **147 canais de request/response e 25 eventos**, gerados a partir de um rascunho extraído dos handlers com a API do
+  compilador e revisados à mão. Todos os tipos já existiam no shared. `HangarBridge` virou o transporte cru e
+  documentado (`on` com `unknown[]`, sem `any`).
+- **Main**:
+  - `src/main/core/handle.ts` traz `handle(canal, (event, ...args) => resultado)` e
+    `sendTo(webContents, evento, ...payload)`. `handle` usa `ipcMain.handle`, então o `ipcGuard` continua
+    valendo.
+  - `broadcast(evento, ...payload)` agora é tipado: eventos `void` são enviados sem argumento.
+  - Migrei os 147 `ipcMain.handle` do core e dos 10 features (script, com ajuste dos imports de `electron`). Também
+    o `showMainAndSend` da bandeja e o `quickEntryShown`. Os `any` do core (`store:put`/`store:patch`) saíram.
+- **Renderer**:
+  - `src/renderer/src/core/api.ts` traz `bridge.invoke(canal, ...args)` e `bridge.on(evento, listener)` tipados
+    sobre `window.hangar`, mais `pathForFile`/`platform`. O `api` do store mantém os genéricos por coleção.
+  - Tirei os `<T>` explícitos de 113 chamadas: os resultados vêm do contrato.
+  - O `act(channel: string)` do `ArtifactsPanel` virou uma união de canais; o `Skills.tsx` usa `bridge.platform`.
+  - Removi os 44 imports de tipo que ficaram sem uso.
+- **Estrito nos dois lados**, conferido com arquivos-sonda temporários.
+  - Main: canal desconhecido, argumento de tipo errado, argumento a mais, resultado errado, payload de evento
+    errado e payload ausente quebram o `typecheck`.
+  - Renderer: argumento errado, argumento faltando, canal desconhecido, resultado usado com o tipo errado e
+    listener com payload errado quebram o `typecheck`.
+- **Docs**: `docs/ARCHITECTURE.md` (pastas, features, IPC tipado com exemplo, bus, provedores de system prompt e
+  de modelo, qualidade). Atualizei a lista de ouvintes no comentário de `src/main/core/bus.ts`.
+- **CI**: `Format (Prettier)` e `Lint (ESLint, type-checked)` antes do typecheck. O passo de testes usa
+  `npm run typecheck:tests`.
+
+## Bateria final
+
+`npm run format:check` ✓ · `npm run lint` ✓ (0 erros, 105 avisos: `any`/`no-unsafe-*` em JSON externo e no
+`ipcGuard`, e 7 `exhaustive-deps`) · `npm run typecheck` ✓ · `npm run typecheck:tests` ✓ · `npm test` ✓ (91) ·
+`npm run test:e2e` ✓ (build + 7 testes Playwright).
+
+## Riscos / observações
+
+- O contrato descreve o que os dois lados combinaram, mas os argumentos que chegam ao main não são validados em
+  tempo de execução, como antes. O `ipcGuard` continua sendo a barreira contra remetentes estranhos.
+- Eventos `void` agora chegam ao renderer sem argumento; antes chegavam com `undefined`. Nenhum listener usa esse
+  argumento.

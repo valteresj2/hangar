@@ -1,6 +1,6 @@
 // IPC channels and payload types for the "engine" feature. Owned by the engine agent.
 import type { Effort, PermissionMode, SessionStatus } from '../contracts'
-import type { ProviderKind } from '../providers'
+import type { ProviderKind, ProviderProfile } from '../providers'
 
 export const ENGINE = {
   /** (sessionId, text, opts?: SendOptions) → void */
@@ -271,3 +271,34 @@ export interface EngineState {
 }
 
 export const DEFAULT_SESSION_TITLES = ['Nova sessão', 'New session', '']
+
+// IPC contract of this feature (see src/shared/ipc.ts).
+declare module '../ipc' {
+  interface IpcInvokeContract {
+    [ENGINE.send]: (sessionId: string, text: string, opts?: SendOptions) => void
+    [ENGINE.interrupt]: (sessionId: string) => void
+    [ENGINE.history]: (sessionId: string) => TranscriptEntry[]
+    [ENGINE.search]: (query: string) => SearchHit[]
+    [ENGINE.respondPermission]: (sessionId: string, requestId: string, response: PermissionResponse) => void
+    [ENGINE.setActive]: (sessionId?: string) => void
+    [ENGINE.setOptions]: (sessionId: string, patch: EngineOptions) => void
+    [ENGINE.slashCommands]: (sessionId: string) => SlashCommandInfo[]
+    [ENGINE.state]: (sessionId: string) => EngineState
+    [ENGINE.listFiles]: (sessionId: string, query: string) => string[]
+    [ENGINE.readImage]: (path: string) => string | undefined
+    [ENGINE.rewindPreview]: (sessionId: string, entryId: string) => RewindPreview
+    [ENGINE.rewind]: (sessionId: string, entryId: string, opts?: RewindOptions) => RewindResult
+    [ENGINE.fork]: (sessionId: string, entryId: string) => ForkResult
+    [ENGINE.providers]: () => ProviderProfile[]
+    [ENGINE.setProvider]: (sessionId: string, providerId: string) => void
+  }
+
+  interface IpcEventContract {
+    [ENGINE.evEntry]: EntryEvent
+    [ENGINE.evDelta]: DeltaEvent
+    [ENGINE.evPermission]: PermissionEvent
+    [ENGINE.evStatus]: StatusEvent
+    [ENGINE.evReset]: { sessionId: string }
+    [ENGINE.evSelect]: { sessionId: string }
+  }
+}

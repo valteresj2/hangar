@@ -1,34 +1,23 @@
 // Typed wrappers over the lab:* channels and the rounds hook.
 import { useEffect, useState } from 'react'
-import type { ReflectResult } from '@shared/harness'
-import {
-  LAB,
-  type AdoptResult,
-  type BlindCandidate,
-  type CreateLabRoundInput,
-  type ExecReview,
-  type LabPrepareInfo,
-  type LabRoundView,
-  type VariantExecReview
-} from '@shared/features/lab'
+import { LAB, type CreateLabRoundInput, type LabRoundView } from '@shared/features/lab'
 import { bridge } from '../../core/api'
 
 export const labApi = {
-  list: (projectCwd: string) => bridge.invoke<LabRoundView[]>(LAB.list, projectCwd),
-  prepare: (projectCwd: string) => bridge.invoke<LabPrepareInfo>(LAB.prepare, projectCwd),
-  create: (input: CreateLabRoundInput) => bridge.invoke<LabRoundView>(LAB.create, input),
-  cancel: (roundId: string) => bridge.invoke<LabRoundView>(LAB.cancel, roundId),
-  candidates: (roundId: string) => bridge.invoke<BlindCandidate[]>(LAB.candidates, roundId),
-  choose: (roundId: string, anonId: string, why: string) =>
-    bridge.invoke<LabRoundView>(LAB.choose, roundId, anonId, why),
-  askClaude: (roundId: string) => bridge.invoke<LabRoundView>(LAB.askClaude, roundId),
+  list: (projectCwd: string) => bridge.invoke(LAB.list, projectCwd),
+  prepare: (projectCwd: string) => bridge.invoke(LAB.prepare, projectCwd),
+  create: (input: CreateLabRoundInput) => bridge.invoke(LAB.create, input),
+  cancel: (roundId: string) => bridge.invoke(LAB.cancel, roundId),
+  candidates: (roundId: string) => bridge.invoke(LAB.candidates, roundId),
+  choose: (roundId: string, anonId: string, why: string) => bridge.invoke(LAB.choose, roundId, anonId, why),
+  askClaude: (roundId: string) => bridge.invoke(LAB.askClaude, roundId),
   adopt: (roundId: string, apply: boolean, confirmExec?: string) =>
-    bridge.invoke<AdoptResult>(LAB.adopt, roundId, apply, confirmExec),
-  adoptReview: (roundId: string) => bridge.invoke<ExecReview>(LAB.adoptReview, roundId),
-  createReview: (input: CreateLabRoundInput) => bridge.invoke<VariantExecReview[]>(LAB.createReview, input),
-  reflect: (roundId: string) => bridge.invoke<ReflectResult>(LAB.reflect, roundId),
-  cleanup: (roundId: string) => bridge.invoke<LabRoundView>(LAB.cleanup, roundId),
-  remove: (roundId: string) => bridge.invoke<void>(LAB.remove, roundId)
+    bridge.invoke(LAB.adopt, roundId, apply, confirmExec),
+  adoptReview: (roundId: string) => bridge.invoke(LAB.adoptReview, roundId),
+  createReview: (input: CreateLabRoundInput) => bridge.invoke(LAB.createReview, input),
+  reflect: (roundId: string) => bridge.invoke(LAB.reflect, roundId),
+  cleanup: (roundId: string) => bridge.invoke(LAB.cleanup, roundId),
+  remove: (roundId: string) => bridge.invoke(LAB.remove, roundId)
 }
 
 /** Strips Electron's "Error invoking remote method 'x': Error:" prefix. */

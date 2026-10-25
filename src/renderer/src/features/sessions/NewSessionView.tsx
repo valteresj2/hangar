@@ -2,7 +2,7 @@
 // then type the first prompt. Submitting creates the session, selects it and hands the prompt to the engine.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
-import type { PermissionMode, Session, Worktree } from '@shared/contracts'
+import type { PermissionMode, Worktree } from '@shared/contracts'
 import { ENGINE } from '@shared/features/engine'
 import { GIT } from '@shared/features/git'
 import { SESSIONS, type CreateSessionInput } from '@shared/features/sessions'
@@ -76,7 +76,7 @@ export function NewSessionView() {
     if (!cwd) return
     let alive = true
     bridge
-      .invoke<boolean>(GIT.isRepo, cwd)
+      .invoke(GIT.isRepo, cwd)
       .then((v) => alive && setIsRepo(!!v))
       .catch(() => alive && setIsRepo(false))
     return () => {
@@ -143,9 +143,9 @@ export function NewSessionView() {
     setError(undefined)
     try {
       let worktree: Worktree | undefined
-      if (useWorktree && isRepo) worktree = await bridge.invoke<Worktree>(GIT.worktreeCreate, cwd)
+      if (useWorktree && isRepo) worktree = await bridge.invoke(GIT.worktreeCreate, cwd)
       const input: CreateSessionInput = { id: nanoid(), cwd, projectId, model, permissionMode, worktree }
-      const session = await bridge.invoke<Session>(SESSIONS.create, input)
+      const session = await bridge.invoke(SESSIONS.create, input)
       setPrompt('')
       useUi.getState().selectSession(session.id)
       bridge.invoke(ENGINE.send, session.id, text).catch((err) => {

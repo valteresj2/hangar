@@ -2,7 +2,7 @@
 // CLI info/login, MCP servers, skills/plugins, scheduled tasks, theme, notifications, tray, Quick Entry and
 // provider profiles.
 
-import { app, dialog, ipcMain, nativeTheme } from 'electron'
+import { app, dialog, nativeTheme } from 'electron'
 import { join } from 'node:path'
 import type { StoreChange } from '../../../shared/contracts'
 import {
@@ -49,6 +49,7 @@ import {
   validateCron
 } from './schedules'
 import { showMainAndSend, showNotification, startTrayAndNotifications, stopTrayAndNotifications } from './tray'
+import { handle } from '../../core/handle'
 
 function applyTheme(): void {
   const theme = settings().get().theme
@@ -67,9 +68,9 @@ export const settingsFeature: Feature = {
     applyTheme()
     bus.on('store:changed', onStoreChanged)
 
-    ipcMain.handle(SETTINGS.cliInfo, () => cliInfo())
-    ipcMain.handle(SETTINGS.authStatus, () => authStatus())
-    ipcMain.handle(SETTINGS.pickFile, async (_e, defaultPath?: string) => {
+    handle(SETTINGS.cliInfo, () => cliInfo())
+    handle(SETTINGS.authStatus, () => authStatus())
+    handle(SETTINGS.pickFile, async (_e, defaultPath?: string) => {
       const win = ctx.mainWindow()
       const opts: Electron.OpenDialogOptions = {
         properties: ['openFile'],
@@ -79,10 +80,8 @@ export const settingsFeature: Feature = {
       const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
       return res.canceled ? undefined : res.filePaths[0]
     })
-    ipcMain.handle(SETTINGS.testNotification, () =>
-      showNotification(ctx, 'Hangar', 'As notificações estão funcionando.')
-    )
-    ipcMain.handle(SETTINGS.appInfo, (): AppInfo => ({
+    handle(SETTINGS.testNotification, () => showNotification(ctx, 'Hangar', 'As notificações estão funcionando.'))
+    handle(SETTINGS.appInfo, (): AppInfo => ({
       version: app.getVersion(),
       electron: process.versions.electron,
       node: process.versions.node,
@@ -90,22 +89,22 @@ export const settingsFeature: Feature = {
       dataDir: join(app.getPath('userData'), 'hangar-data')
     }))
 
-    ipcMain.handle(SETTINGS.mcpList, (_e, cwd?: string) => mcpList(cwd))
-    ipcMain.handle(SETTINGS.mcpGet, (_e, name: string, cwd?: string) => mcpGet(name, cwd))
-    ipcMain.handle(SETTINGS.mcpAdd, (_e, input: McpAddInput) => mcpAdd(input))
-    ipcMain.handle(SETTINGS.mcpRemove, (_e, name: string, scope?: string, cwd?: string) => mcpRemove(name, scope, cwd))
-    ipcMain.handle(SETTINGS.mcpSetEnabled, (_e, input: McpToggleInput) => mcpSetEnabled(input))
-    ipcMain.handle(SETTINGS.mcpLog, (_e, name: string, cwd?: string) => mcpLog(name, cwd))
+    handle(SETTINGS.mcpList, (_e, cwd?: string) => mcpList(cwd))
+    handle(SETTINGS.mcpGet, (_e, name: string, cwd?: string) => mcpGet(name, cwd))
+    handle(SETTINGS.mcpAdd, (_e, input: McpAddInput) => mcpAdd(input))
+    handle(SETTINGS.mcpRemove, (_e, name: string, scope?: string, cwd?: string) => mcpRemove(name, scope, cwd))
+    handle(SETTINGS.mcpSetEnabled, (_e, input: McpToggleInput) => mcpSetEnabled(input))
+    handle(SETTINGS.mcpLog, (_e, name: string, cwd?: string) => mcpLog(name, cwd))
 
-    ipcMain.handle(SETTINGS.skills, () => listSkills())
-    ipcMain.handle(SETTINGS.plugins, () => listPlugins())
-    ipcMain.handle(SETTINGS.claudeDir, () => claudeDir())
+    handle(SETTINGS.skills, () => listSkills())
+    handle(SETTINGS.plugins, () => listPlugins())
+    handle(SETTINGS.claudeDir, () => claudeDir())
 
-    ipcMain.handle(SETTINGS.schedulesList, () => listSchedules())
-    ipcMain.handle(SETTINGS.schedulesSave, (_e, input: ScheduledTaskInput) => saveSchedule(input))
-    ipcMain.handle(SETTINGS.schedulesDelete, (_e, id: string) => deleteSchedule(id))
-    ipcMain.handle(SETTINGS.schedulesRunNow, (_e, id: string) => runTask(id, true))
-    ipcMain.handle(SETTINGS.cronValidate, (_e, expr: string) => validateCron(expr))
+    handle(SETTINGS.schedulesList, () => listSchedules())
+    handle(SETTINGS.schedulesSave, (_e, input: ScheduledTaskInput) => saveSchedule(input))
+    handle(SETTINGS.schedulesDelete, (_e, id: string) => deleteSchedule(id))
+    handle(SETTINGS.schedulesRunNow, (_e, id: string) => runTask(id, true))
+    handle(SETTINGS.cronValidate, (_e, expr: string) => validateCron(expr))
 
     // Provider errors can echo input back; never let a secret ride along in an IPC error.
     const guarded =
@@ -118,34 +117,34 @@ export const settingsFeature: Feature = {
           throw new Error(maskSecrets(err instanceof Error ? err.message : String(err)))
         }
       }
-    ipcMain.handle(SETTINGS.providersList, () => providersState())
-    ipcMain.handle(
+    handle(SETTINGS.providersList, () => providersState())
+    handle(
       SETTINGS.providerSave,
       guarded((input: ProviderInput) => saveProvider(input))
     )
-    ipcMain.handle(
+    handle(
       SETTINGS.providerDelete,
       guarded((id: string) => deleteProvider(id))
     )
-    ipcMain.handle(
+    handle(
       SETTINGS.providerSetSecret,
       guarded((id: string, secret: string) => setProviderSecret(id, secret))
     )
-    ipcMain.handle(
+    handle(
       SETTINGS.providerClearSecret,
       guarded((id: string) => clearProviderSecret(id))
     )
-    ipcMain.handle(
+    handle(
       SETTINGS.providerSetDefault,
       guarded((id: string) => setDefaultProvider(id))
     )
-    ipcMain.handle(SETTINGS.providerTest, (_e, id: string) => testProvider(id))
+    handle(SETTINGS.providerTest, (_e, id: string) => testProvider(id))
 
-    ipcMain.handle(SETTINGS.quickEntryStatus, () => quickEntryStatus())
-    ipcMain.handle(SETTINGS.quickEntrySuspend, (_e, suspended: boolean) => suspendQuickEntryShortcut(suspended))
-    ipcMain.handle(SETTINGS.quickEntryHide, () => hideQuickEntry())
-    ipcMain.handle(SETTINGS.quickEntryPickFolder, (_e, defaultPath?: string) => pickFolderForQuickEntry(defaultPath))
-    ipcMain.handle(SETTINGS.quickEntryDone, (_e, sessionId: string) => {
+    handle(SETTINGS.quickEntryStatus, () => quickEntryStatus())
+    handle(SETTINGS.quickEntrySuspend, (_e, suspended: boolean) => suspendQuickEntryShortcut(suspended))
+    handle(SETTINGS.quickEntryHide, () => hideQuickEntry())
+    handle(SETTINGS.quickEntryPickFolder, (_e, defaultPath?: string) => pickFolderForQuickEntry(defaultPath))
+    handle(SETTINGS.quickEntryDone, (_e, sessionId: string) => {
       hideQuickEntry()
       showMainAndSend(ctx, SETTINGS.focusSession, { sessionId })
     })

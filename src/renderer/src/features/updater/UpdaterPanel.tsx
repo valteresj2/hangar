@@ -16,7 +16,7 @@ function useUpdaterState(): UpdaterState | undefined {
   const [state, setState] = useState<UpdaterState>()
   useEffect(() => {
     let alive = true
-    void bridge.invoke<UpdaterState>(UPDATER.state).then((s) => alive && setState(s))
+    void bridge.invoke(UPDATER.state).then((s) => alive && setState(s))
     const off = bridge.on(UPDATER.evState, (s: UpdaterState) => setState(s))
     return () => {
       alive = false

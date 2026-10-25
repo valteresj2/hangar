@@ -236,9 +236,7 @@ export function Composer(props: Props) {
   useEffect(() => {
     if (slashQuery === undefined || loadedCommands.current) return
     loadedCommands.current = true
-    void bridge
-      .invoke<SlashCommandInfo[]>(ENGINE.slashCommands, session.id)
-      .then(setCommands, () => (loadedCommands.current = false))
+    void bridge.invoke(ENGINE.slashCommands, session.id).then(setCommands, () => (loadedCommands.current = false))
   }, [slashQuery, session.id])
 
   const mentionQuery = mention?.query
@@ -246,7 +244,7 @@ export function Composer(props: Props) {
     if (mentionQuery === undefined) return setFiles([])
     let alive = true
     const timer = setTimeout(() => {
-      bridge.invoke<string[]>(ENGINE.listFiles, session.id, mentionQuery).then(
+      bridge.invoke(ENGINE.listFiles, session.id, mentionQuery).then(
         (r) => alive && setFiles(r),
         () => alive && setFiles([])
       )

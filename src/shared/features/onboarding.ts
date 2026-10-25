@@ -84,3 +84,12 @@ export interface DirectFixResult {
   testOk?: boolean
   message: string
 }
+
+// IPC contract of this feature (see src/shared/ipc.ts).
+declare module '../ipc' {
+  interface IpcInvokeContract {
+    [ONBOARDING.diagnose]: (opts?: DiagnoseOptions) => DiagnosticReport
+    [ONBOARDING.applyDirectFix]: () => DirectFixResult
+    [ONBOARDING.providerSummary]: () => ProviderSummary
+  }
+}

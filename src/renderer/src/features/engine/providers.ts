@@ -14,7 +14,7 @@ export function useProviders(): ProviderProfile[] {
   useEffect(() => {
     let alive = true
     const load = () =>
-      void bridge.invoke<ProviderProfile[]>(ENGINE.providers).then(
+      void bridge.invoke(ENGINE.providers).then(
         (l) => alive && setList(l),
         () => undefined
       )

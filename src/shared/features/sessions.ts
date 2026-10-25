@@ -1,5 +1,5 @@
 // IPC channels and payload types for the "sessions" feature. Owned by the sessions agent.
-import type { Effort, PermissionMode, Worktree } from '../contracts'
+import type { Effort, PermissionMode, Session, Worktree } from '../contracts'
 
 export const SESSIONS = {
   create: 'sessions:create',
@@ -63,3 +63,14 @@ export interface ImportCliResult {
 }
 
 // `sessions:exportMarkdown` (id) → string | undefined (saved file path; undefined when the dialog was canceled).
+
+// IPC contract of this feature (see src/shared/ipc.ts).
+declare module '../ipc' {
+  interface IpcInvokeContract {
+    [SESSIONS.create]: (input: CreateSessionInput) => Session
+    [SESSIONS.delete]: (id: string, opts?: DeleteSessionOptions) => DeleteSessionResult
+    [SESSIONS.exportMarkdown]: (id: string) => string | undefined
+    [SESSIONS.listCli]: () => CliSessionInfo[]
+    [SESSIONS.importCli]: (ids: string[]) => ImportCliResult
+  }
+}

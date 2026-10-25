@@ -5,8 +5,9 @@
 //   'session:turn-ended'   { sessionId, result: 'success'|'error' } — engine
 //   'session:needs-input'  { sessionId, reason }               — engine (permission / question)
 //   'session:file-written' { sessionId, path }                 — engine (Write/Edit/MultiEdit/NotebookEdit ok)
-// Listeners: git (turn-ended, file-written), preview (file-written), settings (turn-ended, needs-input),
-// terminal and engine (store:changed, to clean up after deleted sessions).
+// Listeners: engine (file-written; store:changed to clean up after deleted sessions), git and harness
+// (turn-ended, file-written), lab (turn-ended, store:changed), preview (file-written, store:changed),
+// settings (turn-ended, needs-input, store:changed), terminal (store:changed).
 
 import { EventEmitter } from 'node:events'
 

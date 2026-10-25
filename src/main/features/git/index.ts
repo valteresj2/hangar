@@ -1,5 +1,5 @@
 // Feature "git" — main process side. Owned by the git agent.
-import { ipcMain, type WebContents } from 'electron'
+import { type WebContents } from 'electron'
 import type { Worktree } from '../../../shared/contracts'
 import { FILES, GIT, type GitDiffRequest } from '../../../shared/features/git'
 import { bus } from '../../core/bus'
@@ -9,6 +9,7 @@ import { createWorktree, isGitRepo, removeWorktree } from './api'
 import { findFiles, listDir, openInEditor, readFileContent } from './files'
 import * as ops from './ops'
 import { notifyChanged, startWatching, stopAll, stopWatching } from './watch'
+import { handle } from '../../core/handle'
 
 /** Folders each renderer asked to watch, so they are released when it goes away. */
 const watchesBySender = new Map<number, string[]>()
@@ -54,31 +55,31 @@ async function mutate<T>(cwd: string, fn: () => Promise<T>): Promise<T> {
 export const gitFeature: Feature = {
   name: 'git',
   register() {
-    ipcMain.handle(GIT.isRepo, (_e, cwd: string) => isGitRepo(cwd))
-    ipcMain.handle(GIT.worktreeCreate, (_e, cwd: string, branch?: string) => createWorktree(cwd, branch))
-    ipcMain.handle(GIT.worktreeRemove, (_e, wt: Worktree) => removeWorktree(wt))
+    handle(GIT.isRepo, (_e, cwd: string) => isGitRepo(cwd))
+    handle(GIT.worktreeCreate, (_e, cwd: string, branch?: string) => createWorktree(cwd, branch))
+    handle(GIT.worktreeRemove, (_e, wt: Worktree) => removeWorktree(wt))
 
-    ipcMain.handle(GIT.status, (_e, cwd: string) => ops.status(cwd))
-    ipcMain.handle(GIT.diff, (_e, cwd: string, req: GitDiffRequest) => ops.diff(cwd, req))
-    ipcMain.handle(GIT.stage, (_e, cwd: string, paths?: string[]) => mutate(cwd, () => ops.stage(cwd, paths)))
-    ipcMain.handle(GIT.unstage, (_e, cwd: string, paths?: string[]) => mutate(cwd, () => ops.unstage(cwd, paths)))
-    ipcMain.handle(GIT.discard, (_e, cwd: string, paths: string[], untracked?: boolean) =>
+    handle(GIT.status, (_e, cwd: string) => ops.status(cwd))
+    handle(GIT.diff, (_e, cwd: string, req: GitDiffRequest) => ops.diff(cwd, req))
+    handle(GIT.stage, (_e, cwd: string, paths?: string[]) => mutate(cwd, () => ops.stage(cwd, paths)))
+    handle(GIT.unstage, (_e, cwd: string, paths?: string[]) => mutate(cwd, () => ops.unstage(cwd, paths)))
+    handle(GIT.discard, (_e, cwd: string, paths: string[], untracked?: boolean) =>
       mutate(cwd, () => ops.discard(cwd, paths, untracked))
     )
-    ipcMain.handle(GIT.commit, (_e, cwd: string, message: string) => mutate(cwd, () => ops.commit(cwd, message)))
-    ipcMain.handle(GIT.branches, (_e, cwd: string) => ops.branches(cwd))
-    ipcMain.handle(GIT.checkout, (_e, cwd: string, branch: string) => mutate(cwd, () => ops.checkout(cwd, branch)))
-    ipcMain.handle(GIT.createBranch, (_e, cwd: string, name: string) => mutate(cwd, () => ops.createBranch(cwd, name)))
-    ipcMain.handle(GIT.push, (_e, cwd: string) => mutate(cwd, () => ops.push(cwd)))
-    ipcMain.handle(GIT.log, (_e, cwd: string, count?: number) => ops.log(cwd, count))
-    ipcMain.handle(GIT.prStatus, (_e, cwd: string) => ops.prStatus(cwd))
-    ipcMain.handle(GIT.watch, (e, cwd: string) => trackWatch(e.sender, cwd))
-    ipcMain.handle(GIT.unwatch, (e, cwd: string) => untrackWatch(e.sender, cwd))
+    handle(GIT.commit, (_e, cwd: string, message: string) => mutate(cwd, () => ops.commit(cwd, message)))
+    handle(GIT.branches, (_e, cwd: string) => ops.branches(cwd))
+    handle(GIT.checkout, (_e, cwd: string, branch: string) => mutate(cwd, () => ops.checkout(cwd, branch)))
+    handle(GIT.createBranch, (_e, cwd: string, name: string) => mutate(cwd, () => ops.createBranch(cwd, name)))
+    handle(GIT.push, (_e, cwd: string) => mutate(cwd, () => ops.push(cwd)))
+    handle(GIT.log, (_e, cwd: string, count?: number) => ops.log(cwd, count))
+    handle(GIT.prStatus, (_e, cwd: string) => ops.prStatus(cwd))
+    handle(GIT.watch, (e, cwd: string) => trackWatch(e.sender, cwd))
+    handle(GIT.unwatch, (e, cwd: string) => untrackWatch(e.sender, cwd))
 
-    ipcMain.handle(FILES.list, (_e, dir: string) => listDir(dir))
-    ipcMain.handle(FILES.find, (_e, root: string, query: string) => findFiles(root, query))
-    ipcMain.handle(FILES.read, (_e, path: string) => readFileContent(path))
-    ipcMain.handle(FILES.openInEditor, (_e, path: string, line?: number) => openInEditor(path, line))
+    handle(FILES.list, (_e, dir: string) => listDir(dir))
+    handle(FILES.find, (_e, root: string, query: string) => findFiles(root, query))
+    handle(FILES.read, (_e, path: string) => readFileContent(path))
+    handle(FILES.openInEditor, (_e, path: string, line?: number) => openInEditor(path, line))
 
     // The agent finished a turn or wrote a file: refresh that session's folder even if unwatched.
     bus.on('session:turn-ended', ({ sessionId }: { sessionId: string }) => {

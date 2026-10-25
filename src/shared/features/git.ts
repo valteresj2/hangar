@@ -1,4 +1,5 @@
 // IPC channels and payload types for the "git" feature. Owned by the git agent.
+import type { Worktree } from '../contracts'
 export const GIT = {
   isRepo: 'git:isRepo',
   worktreeCreate: 'git:worktreeCreate',
@@ -136,4 +137,35 @@ export function samePath(a: string | undefined, b: string | undefined): boolean 
       .replace(/\/$/, '')
       .toLowerCase()
   return norm(a) === norm(b)
+}
+
+// IPC contract of this feature (see src/shared/ipc.ts).
+declare module '../ipc' {
+  interface IpcInvokeContract {
+    [GIT.isRepo]: (cwd: string) => boolean
+    [GIT.worktreeCreate]: (cwd: string, branch?: string) => Worktree
+    [GIT.worktreeRemove]: (wt: Worktree) => void
+    [GIT.status]: (cwd: string) => GitStatus
+    [GIT.diff]: (cwd: string, req: GitDiffRequest) => GitDiffResult
+    [GIT.stage]: (cwd: string, paths?: string[]) => void
+    [GIT.unstage]: (cwd: string, paths?: string[]) => void
+    [GIT.discard]: (cwd: string, paths: string[], untracked?: boolean) => void
+    [GIT.commit]: (cwd: string, message: string) => string
+    [GIT.branches]: (cwd: string) => GitBranch[]
+    [GIT.checkout]: (cwd: string, branch: string) => void
+    [GIT.createBranch]: (cwd: string, name: string) => void
+    [GIT.push]: (cwd: string) => string
+    [GIT.log]: (cwd: string, count?: number) => GitCommit[]
+    [GIT.prStatus]: (cwd: string) => GitPrStatus
+    [GIT.watch]: (cwd: string) => void
+    [GIT.unwatch]: (cwd: string) => void
+    [FILES.list]: (dir: string) => FileEntry[]
+    [FILES.find]: (root: string, query: string) => FileEntry[]
+    [FILES.read]: (path: string) => FileContent
+    [FILES.openInEditor]: (path: string, line?: number) => void
+  }
+
+  interface IpcEventContract {
+    [GIT.changed]: GitChangedEvent
+  }
 }

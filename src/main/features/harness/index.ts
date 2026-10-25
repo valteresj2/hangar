@@ -1,7 +1,6 @@
 // Feature "harness" — main process side. Owned by the harness agent.
 // The project's harness surface (components), snapshots, lessons and the session reflector.
 
-import { ipcMain } from 'electron'
 import { existsSync } from 'node:fs'
 import { join, relative } from 'node:path'
 import { nanoid } from 'nanoid'
@@ -40,6 +39,7 @@ import {
 import { projectOf, sessionLessons } from './lessons'
 import { condenseTrajectory, gitChanges } from './material'
 import { assertHarnessPath, deleteHarnessFile, readHarnessState, readTree, writeHarnessFile } from './tree'
+import { handle } from '../../core/handle'
 
 function filesChanged(dir: string): void {
   const change: HarnessChange = { dir: normalizeProject(dir), what: 'files' }
@@ -194,35 +194,35 @@ function updateLesson(projectCwd: string, id: string, patch: LessonPatch): Lesso
 export const harnessFeature: Feature = {
   name: 'harness',
   register() {
-    ipcMain.handle(HARNESS.read, (_e, dir: string) => readHarnessState(dir))
-    ipcMain.handle(HARNESS.writeFile, async (_e, dir: string, rel: string, content: string) => {
+    handle(HARNESS.read, (_e, dir: string) => readHarnessState(dir))
+    handle(HARNESS.writeFile, async (_e, dir: string, rel: string, content: string) => {
       await writeHarnessFile(dir, rel, content)
       filesChanged(dir)
     })
-    ipcMain.handle(HARNESS.deleteFile, async (_e, dir: string, rel: string) => {
+    handle(HARNESS.deleteFile, async (_e, dir: string, rel: string) => {
       await deleteHarnessFile(dir, rel)
       filesChanged(dir)
     })
-    ipcMain.handle(HARNESS.createFromTemplate, (_e, dir: string, kind: TemplateKind, name?: string) =>
+    handle(HARNESS.createFromTemplate, (_e, dir: string, kind: TemplateKind, name?: string) =>
       createFromTemplate(dir, kind, name)
     )
-    ipcMain.handle(HARNESS.snapshots, (_e, projectCwd: string) => getSnapshots(projectCwd))
-    ipcMain.handle(HARNESS.snapshotCreate, async (_e, projectCwd: string, label: string, dir?: string, note?: string) =>
+    handle(HARNESS.snapshots, (_e, projectCwd: string) => getSnapshots(projectCwd))
+    handle(HARNESS.snapshotCreate, async (_e, projectCwd: string, label: string, dir?: string, note?: string) =>
       createSnapshot(projectCwd, label, 'manual', await readTree(dir ?? projectCwd), note)
     )
-    ipcMain.handle(HARNESS.snapshotRestore, (_e, projectCwd: string, id: string, dir?: string) =>
+    handle(HARNESS.snapshotRestore, (_e, projectCwd: string, id: string, dir?: string) =>
       restoreSnapshot(projectCwd, id, dir)
     )
-    ipcMain.handle(HARNESS.snapshotDelete, (_e, projectCwd: string, id: string) => removeSnapshot(projectCwd, id))
-    ipcMain.handle(HARNESS.diff, (_e, from: HarnessTree, to: HarnessTree) => diffTrees(from, to))
-    ipcMain.handle(HARNESS.lessons, (_e, projectCwd: string) => getLessons(projectCwd))
-    ipcMain.handle(HARNESS.saveLesson, (_e, lesson: Lesson, reflectionId?: string) => saveLesson(lesson, reflectionId))
-    ipcMain.handle(HARNESS.updateLesson, (_e, projectCwd: string, id: string, patch: LessonPatch) =>
+    handle(HARNESS.snapshotDelete, (_e, projectCwd: string, id: string) => removeSnapshot(projectCwd, id))
+    handle(HARNESS.diff, (_e, from: HarnessTree, to: HarnessTree) => diffTrees(from, to))
+    handle(HARNESS.lessons, (_e, projectCwd: string) => getLessons(projectCwd))
+    handle(HARNESS.saveLesson, (_e, lesson: Lesson, reflectionId?: string) => saveLesson(lesson, reflectionId))
+    handle(HARNESS.updateLesson, (_e, projectCwd: string, id: string, patch: LessonPatch) =>
       updateLesson(projectCwd, id, patch)
     )
-    ipcMain.handle(HARNESS.deleteLesson, (_e, projectCwd: string, id: string) => removeLesson(projectCwd, id))
-    ipcMain.handle(HARNESS.reflections, (_e, projectCwd: string) => getReflections(projectCwd))
-    ipcMain.handle(HARNESS.reflectSession, (_e, sessionId: string, opts?: ReflectSessionOptions) =>
+    handle(HARNESS.deleteLesson, (_e, projectCwd: string, id: string) => removeLesson(projectCwd, id))
+    handle(HARNESS.reflections, (_e, projectCwd: string) => getReflections(projectCwd))
+    handle(HARNESS.reflectSession, (_e, sessionId: string, opts?: ReflectSessionOptions) =>
       reflectSession(sessionId, opts)
     )
 

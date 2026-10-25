@@ -1,7 +1,7 @@
 // "Servidores" dropdown of the BrowserPanel: configurations from .claude/launch.json,
 // start/stop, live log, and an editor to create or change the file.
 import { useEffect, useRef, useState } from 'react'
-import { PREVIEW, type LaunchSaveResult, type ServerInfo } from '@shared/features/preview'
+import { PREVIEW, type ServerInfo } from '@shared/features/preview'
 import { bridge } from '../../core/api'
 import { previewApi, useLaunchConfigs, useServerLog } from './servers'
 import { useBrowser } from './store'
@@ -71,7 +71,7 @@ function Editor({
 
   const save = async (overwrite: boolean) => {
     setError(undefined)
-    const res = await bridge.invoke<LaunchSaveResult>(PREVIEW.launchSave, sessionId, text, overwrite)
+    const res = await bridge.invoke(PREVIEW.launchSave, sessionId, text, overwrite)
     if (res.ok) return onDone(true)
     if (res.exists) setConfirming(true)
     else setError(res.error)

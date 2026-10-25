@@ -258,3 +258,49 @@ export interface ProviderTestResult {
   /** Error text with secrets masked. */
   error?: string
 }
+
+// IPC contract of this feature (see src/shared/ipc.ts).
+declare module '../ipc' {
+  interface IpcInvokeContract {
+    [SETTINGS.cliInfo]: () => CliInfo
+    [SETTINGS.authStatus]: () => AuthStatus
+    [SETTINGS.pickFile]: (defaultPath?: string) => string | undefined
+    [SETTINGS.testNotification]: () => boolean
+    [SETTINGS.appInfo]: () => AppInfo
+    [SETTINGS.mcpList]: (cwd?: string) => McpListResult
+    [SETTINGS.mcpGet]: (name: string, cwd?: string) => CliResult
+    [SETTINGS.mcpAdd]: (input: McpAddInput) => CliResult
+    [SETTINGS.mcpRemove]: (name: string, scope?: string, cwd?: string) => CliResult
+    [SETTINGS.mcpSetEnabled]: (input: McpToggleInput) => McpToggleResult
+    [SETTINGS.mcpLog]: (name: string, cwd?: string) => McpLog
+    [SETTINGS.skills]: () => SkillInfo[]
+    [SETTINGS.plugins]: () => PluginInfo[]
+    [SETTINGS.claudeDir]: () => string
+    [SETTINGS.schedulesList]: () => ScheduledTask[]
+    [SETTINGS.schedulesSave]: (input: ScheduledTaskInput) => ScheduledTask
+    [SETTINGS.schedulesDelete]: (id: string) => boolean
+    [SETTINGS.schedulesRunNow]: (id: string) => ScheduleRun
+    [SETTINGS.cronValidate]: (expr: string) => CronCheck
+    [SETTINGS.providersList]: () => ProvidersState
+    [SETTINGS.providerSave]: (input: ProviderInput) => ProviderProfile
+    [SETTINGS.providerDelete]: (id: string) => boolean
+    [SETTINGS.providerSetSecret]: (id: string, secret: string) => ProviderProfile
+    [SETTINGS.providerClearSecret]: (id: string) => ProviderProfile
+    [SETTINGS.providerSetDefault]: (id: string) => void
+    [SETTINGS.providerTest]: (id: string) => ProviderTestResult
+    [SETTINGS.quickEntryStatus]: () => QuickEntryStatus
+    [SETTINGS.quickEntrySuspend]: (suspended: boolean) => QuickEntryStatus
+    [SETTINGS.quickEntryHide]: () => void
+    [SETTINGS.quickEntryPickFolder]: (defaultPath?: string) => string | undefined
+    [SETTINGS.quickEntryDone]: (sessionId: string) => void
+  }
+
+  interface IpcEventContract {
+    [SETTINGS.focusSession]: { sessionId: string }
+    [SETTINGS.newSession]: void
+    [SETTINGS.schedulesChanged]: void
+    [SETTINGS.quickEntryStatusChanged]: QuickEntryStatus
+    [SETTINGS.quickEntryShown]: void
+    [SETTINGS.providersChanged]: void
+  }
+}

@@ -277,7 +277,7 @@ export async function openTerminal(session: Session, shell?: string): Promise<vo
     }
   }
   try {
-    const info = await bridge.invoke<TerminalInfo>(TERMINAL.create, opts)
+    const info = await bridge.invoke(TERMINAL.create, opts)
     adopt(info) // no-op when the `created` event already did it
     useTerminals.setState({ error: undefined })
   } catch (err) {
@@ -317,8 +317,8 @@ export function startTerminals(): void {
   })
 
   void Promise.all([
-    bridge.invoke<ShellInfo[]>(TERMINAL.shells).catch(() => [] as ShellInfo[]),
-    bridge.invoke<TerminalSnapshot[]>(TERMINAL.list).catch(() => [] as TerminalSnapshot[])
+    bridge.invoke(TERMINAL.shells).catch(() => [] as ShellInfo[]),
+    bridge.invoke(TERMINAL.list).catch(() => [] as TerminalSnapshot[])
   ]).then(([shells, snapshots]) => {
     for (const snap of snapshots) adopt(snap, snap.buffer, snap.seq, false)
     useTerminals.setState({ shells, synced: true })

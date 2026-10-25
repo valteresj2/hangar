@@ -183,3 +183,27 @@ export function anonId(index: number): string {
 export function isBaseVariant(v: { id: string; role?: string }): boolean {
   return v.role === 'base' || v.id === BASE_VARIANT_ID
 }
+
+// IPC contract of this feature (see src/shared/ipc.ts).
+declare module '../ipc' {
+  interface IpcInvokeContract {
+    [LAB.list]: (projectCwd: string) => LabRoundView[]
+    [LAB.prepare]: (projectCwd: string) => LabPrepareInfo
+    [LAB.create]: (input: CreateLabRoundInput) => LabRoundView
+    [LAB.cancel]: (roundId: string) => LabRoundView
+    [LAB.candidates]: (roundId: string) => BlindCandidate[]
+    [LAB.choose]: (roundId: string, anonId: string, why: string) => LabRoundView
+    [LAB.askClaude]: (roundId: string) => LabRoundView
+    [LAB.adopt]: (roundId: string, apply: boolean, confirmExec?: string) => AdoptResult
+    [LAB.adoptReview]: (roundId: string) => ExecReview
+    [LAB.createReview]: (input: CreateLabRoundInput) => VariantExecReview[]
+    [LAB.reflect]: (roundId: string) => ReflectResult
+    [LAB.cleanup]: (roundId: string) => LabRoundView
+    [LAB.remove]: (roundId: string) => void
+  }
+
+  interface IpcEventContract {
+    [LAB.evRound]: LabRoundView
+    [LAB.evRemoved]: { roundId: string }
+  }
+}

@@ -215,7 +215,7 @@ function useTranscriptSearch(query: string) {
     if (!trimmed) return setResult({ query: '', hits: [], loading: false })
     setResult((r) => ({ ...r, loading: true }))
     bridge
-      .invoke<SearchHit[]>(ENGINE.search, trimmed)
+      .invoke(ENGINE.search, trimmed)
       .then((hits) => id === seq.current && setResult({ query: trimmed, hits: hits ?? [], loading: false }))
       .catch((err) => {
         console.warn('[sessions] transcript search failed', err)

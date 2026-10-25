@@ -225,3 +225,28 @@ export function alwaysOnChars(tree: HarnessTree): number {
 
 /** Above this, the always-on text gets a cost warning in the UI. */
 export const ALWAYS_ON_WARN_CHARS = 8000
+
+// IPC contract of this feature (see src/shared/ipc.ts).
+declare module '../ipc' {
+  interface IpcInvokeContract {
+    [HARNESS.read]: (dir: string) => HarnessState
+    [HARNESS.writeFile]: (dir: string, rel: string, content: string) => void
+    [HARNESS.deleteFile]: (dir: string, rel: string) => void
+    [HARNESS.createFromTemplate]: (dir: string, kind: TemplateKind, name?: string) => string[]
+    [HARNESS.snapshots]: (projectCwd: string) => HarnessSnapshot[]
+    [HARNESS.snapshotCreate]: (projectCwd: string, label: string, dir?: string, note?: string) => HarnessSnapshot
+    [HARNESS.snapshotRestore]: (projectCwd: string, id: string, dir?: string) => HarnessSnapshot
+    [HARNESS.snapshotDelete]: (projectCwd: string, id: string) => void
+    [HARNESS.diff]: (from: HarnessTree, to: HarnessTree) => TreeDiffFile[]
+    [HARNESS.lessons]: (projectCwd: string) => Lesson[]
+    [HARNESS.saveLesson]: (lesson: Lesson, reflectionId?: string) => Lesson
+    [HARNESS.updateLesson]: (projectCwd: string, id: string, patch: LessonPatch) => Lesson
+    [HARNESS.deleteLesson]: (projectCwd: string, id: string) => void
+    [HARNESS.reflections]: (projectCwd: string) => Reflection[]
+    [HARNESS.reflectSession]: (sessionId: string, opts?: ReflectSessionOptions) => ReflectProposal
+  }
+
+  interface IpcEventContract {
+    [HARNESS.evChanged]: HarnessChange
+  }
+}

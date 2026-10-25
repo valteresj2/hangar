@@ -1,13 +1,7 @@
 // Session/group/project actions shared by the sidebar, the context menu and the session header.
 import { nanoid } from 'nanoid'
 import type { Group, Project, Session } from '@shared/contracts'
-import {
-  DEFAULT_SESSION_TITLE,
-  SESSIONS,
-  type DeleteSessionResult,
-  type ImportCliResult,
-  type CliSessionInfo
-} from '@shared/features/sessions'
+import { DEFAULT_SESSION_TITLE, SESSIONS, type ImportCliResult, type CliSessionInfo } from '@shared/features/sessions'
 import { api, bridge } from '../../core/api'
 import { useUi } from '../../core/ui'
 import type { MenuItem } from './ContextMenu'
@@ -50,9 +44,7 @@ export function moveToGroup(sessionId: string, groupId: string | undefined): Pro
 }
 
 export async function exportSession(session: Session): Promise<void> {
-  const path = await guard('Falha ao exportar', () =>
-    bridge.invoke<string | undefined>(SESSIONS.exportMarkdown, session.id)
-  )
+  const path = await guard('Falha ao exportar', () => bridge.invoke(SESSIONS.exportMarkdown, session.id))
   if (path) toast(`Exportado para ${path}`)
 }
 
@@ -61,9 +53,7 @@ export function openFolder(session: Session): void {
 }
 
 export async function deleteSession(session: Session, removeWorktree: boolean): Promise<void> {
-  const res = await guard('Falha ao excluir', () =>
-    bridge.invoke<DeleteSessionResult>(SESSIONS.delete, session.id, { removeWorktree })
-  )
+  const res = await guard('Falha ao excluir', () => bridge.invoke(SESSIONS.delete, session.id, { removeWorktree }))
   if (!res?.deleted) return
   const ui = useUi.getState()
   if (ui.activeSessionId === session.id) ui.selectSession(undefined)
@@ -128,11 +118,11 @@ export async function deleteProject(project: Project, sessions: Session[]): Prom
 }
 
 export function listCliSessions(): Promise<CliSessionInfo[]> {
-  return bridge.invoke<CliSessionInfo[]>(SESSIONS.listCli)
+  return bridge.invoke(SESSIONS.listCli)
 }
 
 export async function importCliSessions(ids: string[]): Promise<ImportCliResult | undefined> {
-  const res = await guard('Falha ao importar', () => bridge.invoke<ImportCliResult>(SESSIONS.importCli, ids))
+  const res = await guard('Falha ao importar', () => bridge.invoke(SESSIONS.importCli, ids))
   if (res) {
     const extra = res.skipped ? ` (${res.skipped} já importada${res.skipped > 1 ? 's' : ''})` : ''
     toast(`${res.imported} sess${res.imported === 1 ? 'ão importada' : 'ões importadas'}${extra}`)

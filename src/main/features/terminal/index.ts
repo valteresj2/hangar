@@ -1,5 +1,4 @@
 // Feature "terminal" — main process side. Owned by the terminal agent.
-import { ipcMain } from 'electron'
 import type { StoreChange } from '../../../shared/contracts'
 import { TERMINAL, type CreateTerminalOptions } from '../../../shared/features/terminal'
 import { bus } from '../../core/bus'
@@ -16,6 +15,7 @@ import {
   shells,
   writeTerminal
 } from './manager'
+import { handle } from '../../core/handle'
 
 /** Kills the PTYs of sessions that no longer exist in the store. */
 function onStoreChanged(change: StoreChange): void {
@@ -30,13 +30,13 @@ function onStoreChanged(change: StoreChange): void {
 export const terminalFeature: Feature = {
   name: 'terminal',
   register() {
-    ipcMain.handle(TERMINAL.create, (_e, opts: CreateTerminalOptions) => createTerminal(opts))
-    ipcMain.handle(TERMINAL.write, (_e, id: string, data: string) => writeTerminal(id, data))
-    ipcMain.handle(TERMINAL.resize, (_e, id: string, cols: number, rows: number) => resizeTerminal(id, cols, rows))
-    ipcMain.handle(TERMINAL.kill, (_e, id: string) => killTerminal(id))
-    ipcMain.handle(TERMINAL.rename, (_e, id: string, title: string) => renameTerminal(id, title))
-    ipcMain.handle(TERMINAL.list, (_e, sessionId?: string) => listTerminals(sessionId))
-    ipcMain.handle(TERMINAL.shells, () => shells())
+    handle(TERMINAL.create, (_e, opts: CreateTerminalOptions) => createTerminal(opts))
+    handle(TERMINAL.write, (_e, id: string, data: string) => writeTerminal(id, data))
+    handle(TERMINAL.resize, (_e, id: string, cols: number, rows: number) => resizeTerminal(id, cols, rows))
+    handle(TERMINAL.kill, (_e, id: string) => killTerminal(id))
+    handle(TERMINAL.rename, (_e, id: string, title: string) => renameTerminal(id, title))
+    handle(TERMINAL.list, (_e, sessionId?: string) => listTerminals(sessionId))
+    handle(TERMINAL.shells, () => shells())
     bus.on('store:changed', onStoreChanged)
   },
   dispose() {

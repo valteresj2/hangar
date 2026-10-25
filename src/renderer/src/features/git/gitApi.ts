@@ -1,40 +1,26 @@
 // Typed wrappers over the git:* / files:* channels plus small shared hooks.
 import { useEffect, useRef } from 'react'
 import type { Session } from '@shared/contracts'
-import {
-  FILES,
-  GIT,
-  samePath,
-  type FileContent,
-  type FileEntry,
-  type GitBranch,
-  type GitChangedEvent,
-  type GitCommit,
-  type GitDiffRequest,
-  type GitDiffResult,
-  type GitPrStatus,
-  type GitStatus
-} from '@shared/features/git'
+import { FILES, GIT, samePath, type GitChangedEvent, type GitDiffRequest } from '@shared/features/git'
 import { bridge } from '../../core/api'
 
 export const gitApi = {
-  status: (cwd: string) => bridge.invoke<GitStatus>(GIT.status, cwd),
-  diff: (cwd: string, req: GitDiffRequest) => bridge.invoke<GitDiffResult>(GIT.diff, cwd, req),
-  stage: (cwd: string, paths?: string[]) => bridge.invoke<void>(GIT.stage, cwd, paths),
-  unstage: (cwd: string, paths?: string[]) => bridge.invoke<void>(GIT.unstage, cwd, paths),
-  discard: (cwd: string, paths: string[], untracked?: boolean) =>
-    bridge.invoke<void>(GIT.discard, cwd, paths, untracked),
-  commit: (cwd: string, message: string) => bridge.invoke<string>(GIT.commit, cwd, message),
-  branches: (cwd: string) => bridge.invoke<GitBranch[]>(GIT.branches, cwd),
-  checkout: (cwd: string, branch: string) => bridge.invoke<void>(GIT.checkout, cwd, branch),
-  createBranch: (cwd: string, name: string) => bridge.invoke<void>(GIT.createBranch, cwd, name),
-  push: (cwd: string) => bridge.invoke<string>(GIT.push, cwd),
-  log: (cwd: string, count?: number) => bridge.invoke<GitCommit[]>(GIT.log, cwd, count),
-  prStatus: (cwd: string) => bridge.invoke<GitPrStatus>(GIT.prStatus, cwd),
-  listDir: (dir: string) => bridge.invoke<FileEntry[]>(FILES.list, dir),
-  find: (root: string, query: string) => bridge.invoke<FileEntry[]>(FILES.find, root, query),
-  read: (path: string) => bridge.invoke<FileContent>(FILES.read, path),
-  openInEditor: (path: string, line?: number) => bridge.invoke<void>(FILES.openInEditor, path, line)
+  status: (cwd: string) => bridge.invoke(GIT.status, cwd),
+  diff: (cwd: string, req: GitDiffRequest) => bridge.invoke(GIT.diff, cwd, req),
+  stage: (cwd: string, paths?: string[]) => bridge.invoke(GIT.stage, cwd, paths),
+  unstage: (cwd: string, paths?: string[]) => bridge.invoke(GIT.unstage, cwd, paths),
+  discard: (cwd: string, paths: string[], untracked?: boolean) => bridge.invoke(GIT.discard, cwd, paths, untracked),
+  commit: (cwd: string, message: string) => bridge.invoke(GIT.commit, cwd, message),
+  branches: (cwd: string) => bridge.invoke(GIT.branches, cwd),
+  checkout: (cwd: string, branch: string) => bridge.invoke(GIT.checkout, cwd, branch),
+  createBranch: (cwd: string, name: string) => bridge.invoke(GIT.createBranch, cwd, name),
+  push: (cwd: string) => bridge.invoke(GIT.push, cwd),
+  log: (cwd: string, count?: number) => bridge.invoke(GIT.log, cwd, count),
+  prStatus: (cwd: string) => bridge.invoke(GIT.prStatus, cwd),
+  listDir: (dir: string) => bridge.invoke(FILES.list, dir),
+  find: (root: string, query: string) => bridge.invoke(FILES.find, root, query),
+  read: (path: string) => bridge.invoke(FILES.read, path),
+  openInEditor: (path: string, line?: number) => bridge.invoke(FILES.openInEditor, path, line)
 }
 
 export function sessionDir(session: Session): string {

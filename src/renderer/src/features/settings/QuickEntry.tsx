@@ -1,6 +1,5 @@
 // Root view of the Quick Entry window (#quick-entry): type a prompt, pick a folder, Enter starts a session.
 import { useEffect, useMemo, useRef, useState } from 'react'
-import type { Session } from '@shared/contracts'
 import { ENGINE } from '@shared/features/engine'
 import { SESSIONS, type CreateSessionInput } from '@shared/features/sessions'
 import { SETTINGS } from '@shared/features/settings'
@@ -85,7 +84,7 @@ export function QuickEntry() {
     setError(undefined)
     try {
       const input: CreateSessionInput = { cwd }
-      const session = await bridge.invoke<Session>(SESSIONS.create, input)
+      const session = await bridge.invoke(SESSIONS.create, input)
       await bridge.invoke(ENGINE.send, session.id, prompt)
       setText('')
       await settingsApi.quickEntryDone(session.id)

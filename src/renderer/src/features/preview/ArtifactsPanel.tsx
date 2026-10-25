@@ -48,7 +48,7 @@ function useArtifacts(sessionId: string) {
   useEffect(() => {
     let alive = true
     let n = 0
-    const load = () => void bridge.invoke<Artifact[]>(PREVIEW.artifacts, sessionId).then((r) => alive && setList(r))
+    const load = () => void bridge.invoke(PREVIEW.artifacts, sessionId).then((r) => alive && setList(r))
     load()
     const off = bridge.on(PREVIEW.artifactsEvent, (e: ArtifactsEvent) => {
       if (e.sessionId !== sessionId) return
@@ -127,7 +127,8 @@ function ArtifactBar({
   onReload(): void
   onError(message: string): void
 }) {
-  const act = (channel: string) => bridge.invoke(channel, artifact.id).catch((err) => onError(errorMessage(err)))
+  const act = (channel: typeof PREVIEW.artifactOpen | typeof PREVIEW.artifactReveal | typeof PREVIEW.artifactRemove) =>
+    bridge.invoke(channel, artifact.id).catch((err) => onError(errorMessage(err)))
   return (
     <div className={styles.viewerBar}>
       <div className={styles.viewerTitle}>
@@ -184,7 +185,7 @@ function Viewer({ artifact, version, onReload }: { artifact: Artifact; version: 
   useEffect(() => {
     let alive = true
     setError(undefined)
-    bridge.invoke<ArtifactContent>(PREVIEW.artifactRead, artifact.path).then(
+    bridge.invoke(PREVIEW.artifactRead, artifact.path).then(
       (d) => alive && setData(d),
       (err) => {
         if (!alive) return
@@ -246,7 +247,7 @@ function SessionArtifacts({ session }: { session: Session }) {
     async (path?: string) => {
       setError(undefined)
       try {
-        const artifact = await bridge.invoke<Artifact | undefined>(PREVIEW.artifactAdd, sessionId, path)
+        const artifact = await bridge.invoke(PREVIEW.artifactAdd, sessionId, path)
         if (artifact) select(artifact.id)
       } catch (err) {
         setError(errorMessage(err))

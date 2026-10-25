@@ -4,14 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { parseMotion, type MotionSpec } from '@shared/motion/spec'
 import { imageSources, loadMotionAssets, type MotionAssets } from '@renderer/motion/runtime'
-import {
-  PREVIEW,
-  type Artifact,
-  type ArtifactContent,
-  type ArtifactStat,
-  type ArtifactWriteResult,
-  type MotionAssetUrls
-} from '@shared/features/preview'
+import { PREVIEW, type Artifact, type MotionAssetUrls } from '@shared/features/preview'
 import { bridge } from '../../../core/api'
 import { Editor } from './Editor'
 import type { Edit } from './ElementForm'
@@ -69,7 +62,7 @@ export function MotionViewer({ artifact, sessionId }: { artifact: Artifact; sess
 
   const load = useCallback(async () => {
     try {
-      const data = await bridge.invoke<ArtifactContent>(PREVIEW.artifactRead, artifact.path)
+      const data = await bridge.invoke(PREVIEW.artifactRead, artifact.path)
       knownMtime.current = data.mtime
       setLoadError(undefined)
       setDiskChanged(false)
@@ -97,7 +90,7 @@ export function MotionViewer({ artifact, sessionId }: { artifact: Artifact; sess
 
   // Watch the file: the agent (or anything else) may rewrite it while it is open.
   const checkDisk = useCallback(async () => {
-    const stat = await bridge.invoke<ArtifactStat>(PREVIEW.artifactStat, artifact.id).catch(() => undefined)
+    const stat = await bridge.invoke(PREVIEW.artifactStat, artifact.id).catch(() => undefined)
     if (!stat?.exists || stat.mtime === knownMtime.current) return
     if (dirtyRef.current) {
       knownMtime.current = stat.mtime
@@ -134,9 +127,7 @@ export function MotionViewer({ artifact, sessionId }: { artifact: Artifact; sess
     void (async () => {
       const srcs = imageSources(current)
       const urls = srcs.length
-        ? await bridge
-            .invoke<MotionAssetUrls>(PREVIEW.motionAssets, artifact.id, srcs)
-            .catch((): MotionAssetUrls => ({}))
+        ? await bridge.invoke(PREVIEW.motionAssets, artifact.id, srcs).catch((): MotionAssetUrls => ({}))
         : {}
       const loadedAssets = await loadMotionAssets(current, (src) => urls[src] ?? src)
       if (alive) setAssets(loadedAssets)
@@ -163,11 +154,7 @@ export function MotionViewer({ artifact, sessionId }: { artifact: Artifact; sess
     setSaving(true)
     setSaveError(undefined)
     try {
-      const res = await bridge.invoke<ArtifactWriteResult>(
-        PREVIEW.artifactWrite,
-        artifact.id,
-        `${JSON.stringify(cur, null, 2)}\n`
-      )
+      const res = await bridge.invoke(PREVIEW.artifactWrite, artifact.id, `${JSON.stringify(cur, null, 2)}\n`)
       knownMtime.current = res.mtime
       setSaved(cur)
       setDiskChanged(false)
@@ -223,7 +210,7 @@ export function MotionViewer({ artifact, sessionId }: { artifact: Artifact; sess
   const startExport = async () => {
     if (!spec) return
     player.current?.pause()
-    const path = await bridge.invoke<string | undefined>(PREVIEW.exportDialog, sessionId, spec.title)
+    const path = await bridge.invoke(PREVIEW.exportDialog, sessionId, spec.title)
     if (!path) return
     const controller = new AbortController()
     setExp({ state: 'running', frame: 0, total: 1, path, controller })

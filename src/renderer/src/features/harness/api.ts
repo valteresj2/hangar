@@ -1,41 +1,38 @@
 // Renderer wrappers and data hooks for the harness feature.
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { create } from 'zustand'
-import type { HarnessSnapshot, HarnessTree, Lesson, Reflection } from '@shared/harness'
+import type { HarnessTree, Lesson } from '@shared/harness'
 import {
   HARNESS,
   type HarnessChange,
-  type HarnessState,
   type LessonPatch,
   type ReflectProposal,
   type ReflectSessionOptions,
-  type TemplateKind,
-  type TreeDiffFile
+  type TemplateKind
 } from '@shared/features/harness'
 import { bridge } from '../../core/api'
 
 export const harnessApi = {
-  read: (dir: string) => bridge.invoke<HarnessState>(HARNESS.read, dir),
-  writeFile: (dir: string, rel: string, content: string) => bridge.invoke<void>(HARNESS.writeFile, dir, rel, content),
-  deleteFile: (dir: string, rel: string) => bridge.invoke<void>(HARNESS.deleteFile, dir, rel),
+  read: (dir: string) => bridge.invoke(HARNESS.read, dir),
+  writeFile: (dir: string, rel: string, content: string) => bridge.invoke(HARNESS.writeFile, dir, rel, content),
+  deleteFile: (dir: string, rel: string) => bridge.invoke(HARNESS.deleteFile, dir, rel),
   createFromTemplate: (dir: string, kind: TemplateKind, name?: string) =>
-    bridge.invoke<string[]>(HARNESS.createFromTemplate, dir, kind, name),
-  snapshots: (project: string) => bridge.invoke<HarnessSnapshot[]>(HARNESS.snapshots, project),
+    bridge.invoke(HARNESS.createFromTemplate, dir, kind, name),
+  snapshots: (project: string) => bridge.invoke(HARNESS.snapshots, project),
   snapshotCreate: (project: string, label: string, dir?: string) =>
-    bridge.invoke<HarnessSnapshot>(HARNESS.snapshotCreate, project, label, dir),
+    bridge.invoke(HARNESS.snapshotCreate, project, label, dir),
   snapshotRestore: (project: string, id: string, dir?: string) =>
-    bridge.invoke<HarnessSnapshot>(HARNESS.snapshotRestore, project, id, dir),
-  snapshotDelete: (project: string, id: string) => bridge.invoke<void>(HARNESS.snapshotDelete, project, id),
-  diff: (from: HarnessTree, to: HarnessTree) => bridge.invoke<TreeDiffFile[]>(HARNESS.diff, from, to),
-  lessons: (project: string) => bridge.invoke<Lesson[]>(HARNESS.lessons, project),
-  saveLesson: (lesson: Lesson, reflectionId?: string) =>
-    bridge.invoke<Lesson>(HARNESS.saveLesson, lesson, reflectionId),
+    bridge.invoke(HARNESS.snapshotRestore, project, id, dir),
+  snapshotDelete: (project: string, id: string) => bridge.invoke(HARNESS.snapshotDelete, project, id),
+  diff: (from: HarnessTree, to: HarnessTree) => bridge.invoke(HARNESS.diff, from, to),
+  lessons: (project: string) => bridge.invoke(HARNESS.lessons, project),
+  saveLesson: (lesson: Lesson, reflectionId?: string) => bridge.invoke(HARNESS.saveLesson, lesson, reflectionId),
   updateLesson: (project: string, id: string, patch: LessonPatch) =>
-    bridge.invoke<Lesson>(HARNESS.updateLesson, project, id, patch),
-  deleteLesson: (project: string, id: string) => bridge.invoke<void>(HARNESS.deleteLesson, project, id),
-  reflections: (project: string) => bridge.invoke<Reflection[]>(HARNESS.reflections, project),
+    bridge.invoke(HARNESS.updateLesson, project, id, patch),
+  deleteLesson: (project: string, id: string) => bridge.invoke(HARNESS.deleteLesson, project, id),
+  reflections: (project: string) => bridge.invoke(HARNESS.reflections, project),
   reflectSession: (sessionId: string, opts?: ReflectSessionOptions) =>
-    bridge.invoke<ReflectProposal>(HARNESS.reflectSession, sessionId, opts)
+    bridge.invoke(HARNESS.reflectSession, sessionId, opts)
 }
 
 export function samePath(a: string | undefined, b: string | undefined): boolean {

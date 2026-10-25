@@ -51,3 +51,18 @@ export interface UpdaterState {
   /** Absolute path of the updater log file. */
   logFile: string
 }
+
+// IPC contract of this feature (see src/shared/ipc.ts).
+declare module '../ipc' {
+  interface IpcInvokeContract {
+    [UPDATER.state]: () => UpdaterState
+    [UPDATER.check]: () => UpdaterState
+    [UPDATER.download]: () => void
+    [UPDATER.install]: () => void
+    [UPDATER.setAutoDownload]: (enabled: boolean) => UpdaterState
+  }
+
+  interface IpcEventContract {
+    [UPDATER.evState]: UpdaterState
+  }
+}

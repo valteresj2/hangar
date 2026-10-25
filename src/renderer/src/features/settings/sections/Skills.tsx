@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { PluginInfo, SkillInfo } from '@shared/features/settings'
-import { api } from '../../../core/api'
+import { api, bridge } from '../../../core/api'
 import { settingsApi } from '../api'
 import { Card, Spinner } from '../ui'
 import styles from '../settings.module.css'
@@ -22,7 +22,7 @@ export function SkillsSection() {
 
   const q = filter.trim().toLowerCase()
   const shown = skills?.filter((s) => !q || s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q))
-  const sep = window.hangar.platform === 'win32' ? '\\' : '/'
+  const sep = bridge.platform === 'win32' ? '\\' : '/'
 
   return (
     <>

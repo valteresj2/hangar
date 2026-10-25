@@ -3,7 +3,6 @@ import { useEffect, useState } from 'react'
 import {
   ENGINE,
   type DeltaEvent,
-  type EngineState,
   type EntryEvent,
   type PermissionEvent,
   type PermissionRequest,
@@ -79,22 +78,21 @@ export function useChat(sessionId: string): ChatState {
       bridge.on(ENGINE.evStatus, onStatus)
     ]
 
-    void Promise.all([
-      bridge.invoke<TranscriptEntry[]>(ENGINE.history, sessionId),
-      bridge.invoke<EngineState>(ENGINE.state, sessionId)
-    ]).then(([history, live]) => {
-      if (!alive) return
-      loaded = true
-      const seen = new Set(history.map((e) => e.id))
-      setState({
-        loaded: true,
-        entries: [...history, ...early.filter((e) => !seen.has(e.id))],
-        streamText: live.streamText,
-        streamThinking: live.streamThinking,
-        pending: live.pending,
-        busy: live.busy
-      })
-    })
+    void Promise.all([bridge.invoke(ENGINE.history, sessionId), bridge.invoke(ENGINE.state, sessionId)]).then(
+      ([history, live]) => {
+        if (!alive) return
+        loaded = true
+        const seen = new Set(history.map((e) => e.id))
+        setState({
+          loaded: true,
+          entries: [...history, ...early.filter((e) => !seen.has(e.id))],
+          streamText: live.streamText,
+          streamThinking: live.streamThinking,
+          pending: live.pending,
+          busy: live.busy
+        })
+      }
+    )
 
     return () => {
       alive = false

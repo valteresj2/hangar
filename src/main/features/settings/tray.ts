@@ -6,7 +6,9 @@ import { join } from 'node:path'
 import type { FeatureContext } from '../../core/feature'
 import { bus } from '../../core/bus'
 import { db, settings } from '../../core/store'
+import { sendTo } from '../../core/handle'
 import { isQuitting, markQuitting } from '../../core/window'
+import type { EventArgs, EventChannel } from '../../../shared/ipc'
 import { SETTINGS } from '../../../shared/features/settings'
 import { closeQuickEntry, toggleQuickEntry } from './quickEntry'
 
@@ -22,9 +24,9 @@ function showWindow(ctx: FeatureContext): BrowserWindow {
  * Shows the main window and sends `channel` to it once its renderer is ready
  * (the window may have just been recreated, in which case nothing listens yet).
  */
-export function showMainAndSend(ctx: FeatureContext, channel: string, payload?: unknown): void {
+export function showMainAndSend<E extends EventChannel>(ctx: FeatureContext, channel: E, ...args: EventArgs<E>): void {
   const win = showWindow(ctx)
-  const send = () => !win.isDestroyed() && win.webContents.send(channel, payload)
+  const send = () => !win.isDestroyed() && sendTo(win.webContents, channel, ...args)
   if (win.webContents.isLoading()) win.webContents.once('did-finish-load', () => setTimeout(send, 400))
   else send()
 }

@@ -164,3 +164,36 @@ export interface ArtifactWriteResult {
 
 /** Result of `preview:motionAssets` (artifactId, srcs): data: URLs keyed by the element `src`. Failed ones are missing. */
 export type MotionAssetUrls = Record<string, string>
+
+// IPC contract of this feature (see src/shared/ipc.ts).
+declare module '../ipc' {
+  interface IpcInvokeContract {
+    [PREVIEW.launchConfigs]: (sessionId: string) => LaunchConfigsResult
+    [PREVIEW.launchSave]: (sessionId: string, text: string, overwrite?: boolean) => LaunchSaveResult
+    [PREVIEW.start]: (sessionId: string, name: string) => ServerInfo
+    [PREVIEW.stop]: (serverId: string) => void
+    [PREVIEW.servers]: (sessionId?: string) => ServerInfo[]
+    [PREVIEW.logs]: (serverId: string) => string
+    [PREVIEW.artifacts]: (sessionId: string) => Artifact[]
+    [PREVIEW.artifactRead]: (pathOrId: string) => ArtifactContent
+    [PREVIEW.artifactAdd]: (sessionId: string, path?: string) => Artifact | undefined
+    [PREVIEW.artifactRemove]: (id: string) => boolean
+    [PREVIEW.artifactReveal]: (id: string) => void
+    [PREVIEW.artifactOpen]: (id: string) => void
+    [PREVIEW.artifactStat]: (id: string) => ArtifactStat
+    [PREVIEW.artifactWrite]: (id: string, text: string) => ArtifactWriteResult
+    [PREVIEW.motionAssets]: (id: string, srcs: string[]) => MotionAssetUrls
+    [PREVIEW.exportDialog]: (sessionId: string, title: string) => string | undefined
+    [PREVIEW.exportOpen]: (path: string) => string
+    [PREVIEW.exportWrite]: (id: string, position: number, data: Uint8Array) => void
+    [PREVIEW.exportClose]: (id: string, commit: boolean) => void
+    [PREVIEW.showInFolder]: (path: string) => void
+  }
+
+  interface IpcEventContract {
+    [PREVIEW.serverEvent]: ServerEvent
+    [PREVIEW.artifactsEvent]: ArtifactsEvent
+    [PREVIEW.popupEvent]: PopupEvent
+    [PREVIEW.downloadEvent]: DownloadEvent
+  }
+}

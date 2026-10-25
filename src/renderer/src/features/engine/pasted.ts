@@ -57,7 +57,7 @@ const thumbs = new Map<string, Promise<string | undefined>>()
 export function savedImageUrl(path: string): Promise<string | undefined> {
   let p = thumbs.get(path)
   if (!p) {
-    p = bridge.invoke<string | undefined>(ENGINE.readImage, path).catch(() => undefined)
+    p = bridge.invoke(ENGINE.readImage, path).catch(() => undefined)
     thumbs.set(path, p)
   }
   return p

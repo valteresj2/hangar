@@ -4,6 +4,7 @@
 import { BrowserWindow, dialog, globalShortcut, nativeTheme, screen } from 'electron'
 import { SETTINGS, type QuickEntryStatus } from '../../../shared/features/settings'
 import { broadcast } from '../../core/broadcast'
+import { sendTo } from '../../core/handle'
 import { settings } from '../../core/store'
 import { isQuitting, loadRenderer, rendererWebPreferences } from '../../core/window'
 
@@ -67,7 +68,7 @@ export function showQuickEntry(): void {
     if (w.isDestroyed()) return
     w.show()
     w.focus()
-    w.webContents.send(SETTINGS.quickEntryShown)
+    sendTo(w.webContents, SETTINGS.quickEntryShown)
   }
   if (w.webContents.isLoading()) w.webContents.once('did-finish-load', reveal)
   else reveal()
