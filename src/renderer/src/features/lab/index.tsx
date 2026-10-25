@@ -33,7 +33,8 @@ function isEditable(el: Element | null): boolean {
 export function LabView({ cwd, onClose }: { cwd: string; onClose: () => void }) {
   const rounds = useLabRounds(cwd)
   const selectSession = useUi((s) => s.selectSession)
-  const [selected, setSelected] = useState<string | 'new'>()
+  // A round id, or 'new' for the "Nova rodada" form.
+  const [selected, setSelected] = useState<string>()
 
   // Default selection: the newest round, or the form when there is none.
   useEffect(() => {

@@ -136,7 +136,7 @@ export function MotionViewer({ artifact, sessionId }: { artifact: Artifact; sess
       const urls = srcs.length
         ? await bridge
             .invoke<MotionAssetUrls>(PREVIEW.motionAssets, artifact.id, srcs)
-            .catch(() => ({}) as MotionAssetUrls)
+            .catch((): MotionAssetUrls => ({}))
         : {}
       const loadedAssets = await loadMotionAssets(current, (src) => urls[src] ?? src)
       if (alive) setAssets(loadedAssets)

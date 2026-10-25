@@ -307,7 +307,7 @@ export async function runReflector(prompt: string, model?: string): Promise<stri
       }
     }
   } catch (err) {
-    if (abort.signal.aborted) throw new Error('O refletor demorou demais e foi interrompido.')
+    if (abort.signal.aborted) throw new Error('O refletor demorou demais e foi interrompido.', { cause: err })
     throw err
   } finally {
     clearTimeout(timer)

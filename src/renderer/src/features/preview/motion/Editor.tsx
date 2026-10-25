@@ -74,7 +74,7 @@ export function Editor({ doc, edit, sceneIndex, elementId, onSelectScene, onSele
         delete s.transition
         return
       }
-      const next = { ...(s.transition ?? { type: 'fade' }), ...patch } as SceneTransition
+      const next = { ...(s.transition ?? { type: 'fade' }), ...patch }
       if (next.duration === undefined) delete next.duration
       s.transition = next
     }, 'transition')

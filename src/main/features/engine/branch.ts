@@ -188,7 +188,7 @@ export async function fork(sessionId: string, entryId: string): Promise<ForkResu
   const id = randomUUID()
   const copy = entries
     .slice(0, end)
-    .map((e) => (e.kind === 'user' && e.sdkUuid ? { ...e, sdkUuid: remap.get(e.sdkUuid) } : e)) as TranscriptEntry[]
+    .map((e): TranscriptEntry => (e.kind === 'user' && e.sdkUuid ? { ...e, sdkUuid: remap.get(e.sdkUuid) } : e))
   writeEntries(id, copy)
 
   const now = Date.now()

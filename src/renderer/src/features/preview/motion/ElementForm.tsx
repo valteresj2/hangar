@@ -202,7 +202,7 @@ export function ElementForm({ el, sceneIndex, edit }: { el: MotionElement; scene
       <div className={styles.grid}>
         <SelectField
           label="Tipo"
-          value={value?.type as string | undefined}
+          value={value?.type}
           options={which === 'enter' ? ENTER : EXIT}
           onChange={(v) => update({ type: v })}
         />
@@ -246,7 +246,11 @@ export function ElementForm({ el, sceneIndex, edit }: { el: MotionElement; scene
               {color('color', 'Cor')}
               <SelectField
                 label="Peso"
-                value={any.fontWeight === undefined ? undefined : String(any.fontWeight)}
+                value={
+                  typeof any.fontWeight === 'number' || typeof any.fontWeight === 'string'
+                    ? String(any.fontWeight)
+                    : undefined
+                }
                 options={WEIGHTS}
                 onChange={(v) => set('fontWeight', v ? Number(v) : undefined)}
               />
@@ -345,7 +349,11 @@ export function ElementForm({ el, sceneIndex, edit }: { el: MotionElement; scene
               {color('color', 'Cor')}
               <SelectField
                 label="Peso"
-                value={any.fontWeight === undefined ? undefined : String(any.fontWeight)}
+                value={
+                  typeof any.fontWeight === 'number' || typeof any.fontWeight === 'string'
+                    ? String(any.fontWeight)
+                    : undefined
+                }
                 options={WEIGHTS}
                 onChange={(v) => set('fontWeight', v ? Number(v) : undefined)}
               />

@@ -88,14 +88,16 @@ function LessonForm({
         <button
           className="btn btn-primary"
           disabled={!valid || busy}
-          onClick={async () => {
-            setBusy(true)
-            try {
-              await onSubmit(d)
-            } finally {
-              setBusy(false)
-            }
-          }}
+          onClick={() =>
+            void (async () => {
+              setBusy(true)
+              try {
+                await onSubmit(d)
+              } finally {
+                setBusy(false)
+              }
+            })()
+          }
         >
           {submitLabel}
         </button>

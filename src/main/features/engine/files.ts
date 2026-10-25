@@ -22,7 +22,10 @@ function gitFiles(cwd: string): Promise<string[]> {
       'git',
       ['ls-files', '--cached', '--others', '--exclude-standard'],
       { cwd, maxBuffer: 64 * 1024 * 1024, windowsHide: true },
-      (err, stdout) => (err ? reject(err) : resolve([...new Set(stdout.split(/\r?\n/).filter(Boolean))]))
+      (err, stdout) =>
+        err
+          ? reject(err instanceof Error ? err : new Error(err.message))
+          : resolve([...new Set(stdout.split(/\r?\n/).filter(Boolean))])
     )
   })
 }

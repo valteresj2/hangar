@@ -222,10 +222,7 @@ async function callProposer(dir: string, prompt: string, model: string, signal: 
     })
     for await (const m of q) {
       if (m.type === 'assistant') {
-        const blocks = (m.message as { content?: unknown }).content
-        if (Array.isArray(blocks)) {
-          for (const b of blocks) if (b?.type === 'text' && typeof b.text === 'string') text += `${b.text}\n`
-        }
+        for (const b of m.message.content) if (b.type === 'text') text += `${b.text}\n`
       } else if (m.type === 'result') {
         costUsd = m.total_cost_usd
         if (m.subtype === 'success') text = m.result || text

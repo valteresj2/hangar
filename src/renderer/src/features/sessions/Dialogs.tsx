@@ -122,11 +122,13 @@ function ConfirmDialog(props: {
           className={`btn ${styles.btnDanger}`}
           autoFocus
           disabled={busy}
-          onClick={async () => {
-            setBusy(true)
-            await props.onConfirm()
-            props.onClose()
-          }}
+          onClick={() =>
+            void (async () => {
+              setBusy(true)
+              await props.onConfirm()
+              props.onClose()
+            })()
+          }
         >
           {busy ? 'Aguarde…' : props.confirm}
         </button>

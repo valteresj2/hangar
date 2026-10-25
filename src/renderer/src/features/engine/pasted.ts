@@ -11,8 +11,9 @@ const SUPPORTED = new Set<string>(['image/png', 'image/jpeg', 'image/gif', 'imag
 function readAsBase64(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => resolve(String(reader.result).replace(/^data:[^,]*,/, ''))
-    reader.onerror = () => reject(reader.error)
+    // readAsDataURL always yields a string.
+    reader.onload = () => resolve((typeof reader.result === 'string' ? reader.result : '').replace(/^data:[^,]*,/, ''))
+    reader.onerror = () => reject(reader.error ?? new Error('Falha ao ler a imagem.'))
     reader.readAsDataURL(blob)
   })
 }

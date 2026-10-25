@@ -60,7 +60,7 @@ function textOf(node: ReactNode): string {
 
 const components: Components = {
   pre({ children }) {
-    const child = Array.isArray(children) ? children[0] : children
+    const child: ReactNode = Array.isArray(children) ? (children as ReactNode[])[0] : children
     const className = isValidElement<{ className?: string }>(child) ? (child.props.className ?? '') : ''
     const lang = /language-([\w+#.-]+)/.exec(className)?.[1]
     return <CodeBlock code={textOf(children).replace(/\n$/, '')} lang={lang} />

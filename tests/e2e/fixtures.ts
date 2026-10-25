@@ -110,10 +110,7 @@ export const test = base.extend<Fixtures>({
     await page.waitForSelector('#root > *')
 
     const invoke = <T>(channel: string, ...args: unknown[]) =>
-      page.evaluate(([c, a]) => window.hangar.invoke(c as string, ...(a as unknown[])), [
-        channel,
-        args
-      ] as const) as Promise<T>
+      page.evaluate(([c, a]) => window.hangar.invoke<T>(c, ...a), [channel, args] as const)
 
     const useMockProvider: Hangar['useMockProvider'] = async (opts = {}) => {
       const profile = await invoke<{ id: string }>('settings:providerSave', {

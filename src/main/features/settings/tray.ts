@@ -1,6 +1,6 @@
 // System notifications for session events, the tray icon and the app icon.
 
-import { app, BrowserWindow, Menu, nativeImage, Notification, Tray, type NativeImage } from 'electron'
+import { app, type BrowserWindow, Menu, nativeImage, Notification, Tray, type NativeImage } from 'electron'
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { FeatureContext } from '../../core/feature'

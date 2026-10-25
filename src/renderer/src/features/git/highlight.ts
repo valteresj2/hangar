@@ -77,6 +77,6 @@ export async function highlight(code: string, fileName: string): Promise<string 
   const lang = await languageFor(fileName)
   if (lang === 'text' || lang === 'log') return undefined
   const hl = await load()
-  if (!hl.getLoadedLanguages().includes(lang)) await hl.loadLanguage(lang as never)
+  if (!hl.getLoadedLanguages().includes(lang)) await hl.loadLanguage(lang)
   return hl.codeToHtml(code, { lang, themes: THEMES, defaultColor: 'light' })
 }

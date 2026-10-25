@@ -39,7 +39,7 @@ let ptyModule: Promise<NodePty> | undefined
 
 function loadPty(): Promise<NodePty> {
   if (!ptyModule) {
-    ptyModule = import('node-pty').then((m) => ((m as { default?: NodePty }).default ?? m) as NodePty)
+    ptyModule = import('node-pty').then((m) => (m as { default?: NodePty }).default ?? m)
     // Allow a retry on the next create instead of caching the failure.
     ptyModule.catch(() => (ptyModule = undefined))
   }

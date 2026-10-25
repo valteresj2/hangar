@@ -92,7 +92,7 @@ export async function authStatus(): Promise<AuthStatus> {
   const text = res.stdout.trim()
   try {
     const json = JSON.parse(text.slice(text.indexOf('{'))) as Record<string, unknown>
-    const str = (k: string) => (typeof json[k] === 'string' ? (json[k] as string) : undefined)
+    const str = (k: string) => (typeof json[k] === 'string' ? json[k] : undefined)
     return {
       loggedIn: json.loggedIn === true,
       authMethod: str('authMethod'),

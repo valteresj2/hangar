@@ -333,6 +333,7 @@ export async function setProviderSecret(id: string, secret: string): Promise<Pro
   try {
     return await storeSecret(id, secret)
   } catch (err) {
+    // eslint-disable-next-line preserve-caught-error -- the original error may carry a secret; it is dropped on purpose
     throw new Error(maskSecrets(err instanceof Error ? err.message : String(err)))
   }
 }

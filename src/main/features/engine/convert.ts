@@ -16,10 +16,19 @@ function blocks(content: unknown): Block[] {
   return Array.isArray(content) ? (content.filter((b) => b && typeof b === 'object') as Block[]) : []
 }
 
+/** A field of an SDK block as text; objects become JSON instead of "[object Object]". */
+function str(value: unknown, fallback = ''): string {
+  if (value === undefined || value === null) return fallback
+  if (typeof value === 'string') return value
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value)
+  // Objects and arrays as JSON; functions and symbols (never sent by the SDK) fall back.
+  return JSON.stringify(value) ?? fallback
+}
+
 export function toolResultText(content: unknown): string {
   const text = blocks(content)
     .map((b) => {
-      if (b.type === 'text') return String(b.text ?? '')
+      if (b.type === 'text') return str(b.text)
       if (b.type === 'image') return '[imagem]'
       return ''
     })
@@ -39,7 +48,7 @@ export function fromAssistantContent(content: unknown, parentToolUseId?: string)
       out.push({
         kind: 'tool_use',
         toolUseId: b.id,
-        name: String(b.name ?? 'tool'),
+        name: str(b.name, 'tool'),
         input: (b.input as Record<string, unknown>) ?? {},
         ...(parentToolUseId ? { parentToolUseId } : {})
       })
@@ -83,14 +92,14 @@ export function parseQuestions(input: Record<string, unknown>): Question[] | und
   return raw
     .filter((q): q is Record<string, unknown> => !!q && typeof q === 'object')
     .map((q) => ({
-      question: String(q.question ?? ''),
+      question: str(q.question),
       header: typeof q.header === 'string' ? q.header : undefined,
       multiSelect: q.multiSelect === true,
       options: Array.isArray(q.options)
         ? q.options
             .filter((o): o is Record<string, unknown> => !!o && typeof o === 'object')
             .map((o) => ({
-              label: String(o.label ?? ''),
+              label: str(o.label),
               description: typeof o.description === 'string' ? o.description : undefined
             }))
         : []

@@ -17,7 +17,7 @@ function oneLine(text: string, max: number): string {
 }
 
 function summarizeInput(name: string, input: Record<string, unknown>): string {
-  const pick = (k: string) => (typeof input[k] === 'string' ? (input[k] as string) : undefined)
+  const pick = (k: string) => (typeof input[k] === 'string' ? input[k] : undefined)
   const main =
     pick('command') ??
     pick('file_path') ??
@@ -99,7 +99,7 @@ function git(cwd: string, args: string[]): Promise<string> {
       'git',
       ['-C', cwd, ...args],
       { maxBuffer: 32 * 1024 * 1024, timeout: 30_000, windowsHide: true },
-      (err, stdout) => (err ? reject(err) : resolve(stdout))
+      (err, stdout) => (err ? reject(err instanceof Error ? err : new Error(err.message)) : resolve(stdout))
     )
   })
 }

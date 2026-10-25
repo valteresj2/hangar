@@ -27,7 +27,7 @@ export function transcriptExists(sessionId: string): boolean {
 }
 
 export function makeEntry(draft: EntryDraft, ts = Date.now()): TranscriptEntry {
-  return { ...draft, id: randomUUID(), ts } as TranscriptEntry
+  return { ...draft, id: randomUUID(), ts }
 }
 
 export function appendEntries(sessionId: string, entries: TranscriptEntry[]): void {
@@ -81,7 +81,7 @@ export async function searchEntries(query: string, limit = 50): Promise<SearchHi
   const needle = query.trim().toLowerCase()
   if (!needle) return []
   const hits: SearchHit[] = []
-  let files: string[] = []
+  let files: string[]
   try {
     files = (await readdir(transcriptsDir())).filter((f) => f.endsWith('.jsonl'))
   } catch {

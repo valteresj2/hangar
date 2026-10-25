@@ -114,6 +114,7 @@ export const settingsFeature: Feature = {
         try {
           return await fn(...args)
         } catch (err) {
+          // eslint-disable-next-line preserve-caught-error -- the original error may carry a secret; it is dropped on purpose
           throw new Error(maskSecrets(err instanceof Error ? err.message : String(err)))
         }
       }
@@ -149,7 +150,8 @@ export const settingsFeature: Feature = {
       showMainAndSend(ctx, SETTINGS.focusSession, { sessionId })
     })
 
-    loadProviders()
+    // Awaited through providersReady() before the first window opens.
+    void loadProviders()
     startSchedules()
     startTrayAndNotifications(ctx)
     applyQuickEntryShortcut()

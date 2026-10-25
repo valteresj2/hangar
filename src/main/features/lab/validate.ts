@@ -8,7 +8,7 @@ const ALWAYS_ON_LIMIT = 20_000
 const REFERENCE = /\.claude\/(?:scripts\/[\w.\-/]+|skills\/[\w.-]+\/[\w.\-/]+|agents\/[\w.-]+\.md)/g
 
 function frontmatter(text: string): Record<string, string> | undefined {
-  const m = /^﻿?---\r?\n([\s\S]*?)\r?\n---/.exec(text)
+  const m = /^\uFEFF?---\r?\n([\s\S]*?)\r?\n---/.exec(text)
   if (!m) return undefined
   const out: Record<string, string> = {}
   for (const line of m[1].split(/\r?\n/)) {

@@ -56,8 +56,10 @@ export function normalizeInput(text: string): string | undefined {
 
 /** Removes ANSI escape sequences from process output. */
 export function stripAnsi(text: string): string {
-  // eslint-disable-next-line no-control-regex
-  return text
-    .replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[()][A-Za-z0-9]/g, '')
-    .replace(/\r(?!\n)/g, '\n')
+  return (
+    text
+      // eslint-disable-next-line no-control-regex -- ANSI escape sequences are control characters by definition
+      .replace(/\x1b\][^\x07\x1b]*(\x07|\x1b\\)|\x1b\[[0-9;?]*[ -/]*[@-~]|\x1b[()][A-Za-z0-9]/g, '')
+      .replace(/\r(?!\n)/g, '\n')
+  )
 }

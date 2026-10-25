@@ -36,15 +36,17 @@ export function Confirm(props: {
             className={`btn ${props.danger ? styles.btnDanger : 'btn-primary'}`}
             autoFocus
             disabled={busy}
-            onClick={async () => {
-              setBusy(true)
-              try {
-                await props.onConfirm()
-              } finally {
-                setBusy(false)
-                props.onClose()
-              }
-            }}
+            onClick={() =>
+              void (async () => {
+                setBusy(true)
+                try {
+                  await props.onConfirm()
+                } finally {
+                  setBusy(false)
+                  props.onClose()
+                }
+              })()
+            }
           >
             {busy ? 'Aguarde…' : props.confirm}
           </button>

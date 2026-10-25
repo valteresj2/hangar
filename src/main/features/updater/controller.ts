@@ -140,7 +140,7 @@ export async function startUpdater(): Promise<void> {
   try {
     // electron-updater is CJS; under interop its exports may sit on `default`.
     const mod = await import('electron-updater')
-    u = (mod.autoUpdater ?? (mod as unknown as { default: typeof mod }).default.autoUpdater) as AppUpdater
+    u = mod.autoUpdater ?? (mod as unknown as { default: typeof mod }).default.autoUpdater
   } catch (err) {
     fileLogger.error('could not load electron-updater', err)
     setState({ disabledReason: 'Não foi possível carregar o módulo de atualização.' })

@@ -347,7 +347,7 @@ async function removeWorktreeWithRetry(wt: Worktree, projectCwd: string): Promis
     }
     await sleep(1000)
   }
-  throw lastError ?? new Error(`Não foi possível remover ${wt.path} (pasta em uso).`)
+  throw lastError instanceof Error ? lastError : new Error(`Não foi possível remover ${wt.path} (pasta em uso).`)
 }
 
 export async function cleanup(roundId: string): Promise<LabRoundView> {

@@ -87,6 +87,7 @@ function fileSlug(title: string): string {
   const slug = title
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')
+    // eslint-disable-next-line no-control-regex -- control characters are invalid in Windows file names
     .replace(/[<>:"/\\|?*\u0000-\u001f]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()

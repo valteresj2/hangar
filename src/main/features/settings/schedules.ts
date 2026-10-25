@@ -62,7 +62,7 @@ function save(): void {
 }
 
 function schedule(task: ScheduledTask): void {
-  jobs.get(task.id)?.destroy()
+  void jobs.get(task.id)?.destroy()
   jobs.delete(task.id)
   if (!task.enabled || !cron.validate(task.cron)) return
   const job = cron.schedule(task.cron, () => void runTask(task.id, false), {
@@ -98,7 +98,7 @@ export function saveSchedule(input: ScheduledTaskInput): ScheduledTask {
 }
 
 export function deleteSchedule(id: string): boolean {
-  jobs.get(id)?.destroy()
+  void jobs.get(id)?.destroy()
   jobs.delete(id)
   const before = tasks.length
   tasks = tasks.filter((t) => t.id !== id)

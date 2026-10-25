@@ -75,7 +75,7 @@ export function parseLaunch(text: string): LaunchConfiguration[] {
   try {
     value = JSON.parse(stripJsonc(text))
   } catch (err) {
-    throw new Error(`JSON inválido: ${(err as Error).message}`)
+    throw new Error(`JSON inválido: ${(err as Error).message}`, { cause: err })
   }
   if (!value || typeof value !== 'object' || !Array.isArray((value as { configurations?: unknown }).configurations)) {
     throw new Error('O arquivo precisa ter um array "configurations".')
@@ -105,8 +105,8 @@ export function parseLaunch(text: string): LaunchConfiguration[] {
       name: c.name,
       runtimeExecutable: c.runtimeExecutable,
       runtimeArgs: c.runtimeArgs as string[] | undefined,
-      port: c.port as number | undefined,
-      url: c.url as string | undefined
+      port: c.port,
+      url: c.url
     }
   })
 }
@@ -216,9 +216,9 @@ function waitForPort(run: Running, port: number): void {
       emitState(run, true)
       return
     }
-    run.pollTimer = setTimeout(tick, POLL_MS)
+    run.pollTimer = setTimeout(() => void tick(), POLL_MS)
   }
-  run.pollTimer = setTimeout(tick, POLL_MS)
+  run.pollTimer = setTimeout(() => void tick(), POLL_MS)
 }
 
 function killTree(pid: number, sync = false): void {

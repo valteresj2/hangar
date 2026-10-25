@@ -54,12 +54,12 @@ export function WebviewTab({ sessionId, tab, active }: { sessionId: string; tab:
         }
       ]
     ]
-    for (const [name, fn] of listeners) el.addEventListener(name, fn as EventListener)
+    for (const [name, fn] of listeners) el.addEventListener(name, fn)
 
     host.appendChild(el)
     webviews.set(tabId, el)
     return () => {
-      for (const [name, fn] of listeners) el.removeEventListener(name, fn as EventListener)
+      for (const [name, fn] of listeners) el.removeEventListener(name, fn)
       webviews.delete(tabId)
       readyWebviews.delete(tabId)
       el.remove()

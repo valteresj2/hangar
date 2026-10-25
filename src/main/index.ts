@@ -90,7 +90,7 @@ if (!app.requestSingleInstanceLock()) {
   app.on('second-instance', () => ctx.showMainWindow())
 }
 
-app.whenReady().then(async () => {
+void app.whenReady().then(async () => {
   installWebContentsHardening()
   nativeTheme.themeSource = settings().get().theme
   registerCoreIpc(ctx)
@@ -107,10 +107,12 @@ app.whenReady().then(async () => {
   app.on('activate', () => ctx.showMainWindow())
 })
 
-app.on('before-quit', async () => {
+app.on('before-quit', () => {
   markQuitting()
   flushAll()
-  for (const feature of features) await feature.dispose?.()
+  void (async () => {
+    for (const feature of features) await feature.dispose?.()
+  })()
 })
 
 app.on('window-all-closed', () => {

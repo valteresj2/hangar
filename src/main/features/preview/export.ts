@@ -22,6 +22,7 @@ function safeName(title: string): string {
   const base = title
     .normalize('NFKD')
     .replace(/[̀-ͯ]/g, '')
+    // eslint-disable-next-line no-control-regex -- control characters are invalid in Windows file names
     .replace(/[<>:"/\\|?*\u0000-\u001f]/g, '')
     .trim()
     .replace(/\s+/g, '-')
