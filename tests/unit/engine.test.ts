@@ -34,7 +34,12 @@ describe('convert', () => {
   it('toolResultsFromUserContent and toolResultText (images, truncation)', () => {
     const [r] = convert.toolResultsFromUserContent([
       { type: 'text', text: 'ignored prompt text' },
-      { type: 'tool_result', tool_use_id: 'tu1', is_error: true, content: [{ type: 'text', text: 'falhou' }, { type: 'image' }] }
+      {
+        type: 'tool_result',
+        tool_use_id: 'tu1',
+        is_error: true,
+        content: [{ type: 'text', text: 'falhou' }, { type: 'image' }]
+      }
     ])
     expect(r).toEqual({ kind: 'tool_result', toolUseId: 'tu1', content: 'falhou\n[imagem]', isError: true })
     const long = convert.toolResultText('x'.repeat(31_000))
@@ -56,8 +61,28 @@ describe('convert', () => {
   })
 
   it('parseQuestions normalizes AskUserQuestion input', () => {
-    expect(convert.parseQuestions({ questions: [{ question: 'Qual?', header: 'H', multiSelect: true, options: [{ label: 'A', description: 'a' }, { label: 'B' }, 7] }, null] })).toEqual([
-      { question: 'Qual?', header: 'H', multiSelect: true, options: [{ label: 'A', description: 'a' }, { label: 'B', description: undefined }] }
+    expect(
+      convert.parseQuestions({
+        questions: [
+          {
+            question: 'Qual?',
+            header: 'H',
+            multiSelect: true,
+            options: [{ label: 'A', description: 'a' }, { label: 'B' }, 7]
+          },
+          null
+        ]
+      })
+    ).toEqual([
+      {
+        question: 'Qual?',
+        header: 'H',
+        multiSelect: true,
+        options: [
+          { label: 'A', description: 'a' },
+          { label: 'B', description: undefined }
+        ]
+      }
     ])
     expect(convert.parseQuestions({})).toBeUndefined()
   })
@@ -85,7 +110,9 @@ describe('provider failures and masking', () => {
   })
 
   it('maskSecrets removes the launch secrets and credential-shaped text', () => {
-    const out = maskSecrets('token=abc123secret Bearer eyJhbGciOi sk-ant-api03-ABCDEFGHIJ my-secret-value!', ['my-secret-value'])
+    const out = maskSecrets('token=abc123secret Bearer eyJhbGciOi sk-ant-api03-ABCDEFGHIJ my-secret-value!', [
+      'my-secret-value'
+    ])
     expect(out).not.toContain('abc123secret')
     expect(out).not.toContain('eyJhbGciOi')
     expect(out).not.toContain('ABCDEFGHIJ')
@@ -100,6 +127,10 @@ describe('small helpers', () => {
   })
 
   it('toCommandInfo drops empty argument hints', () => {
-    expect(toCommandInfo({ name: 'review', description: 'd', argumentHint: '' })).toEqual({ name: 'review', description: 'd', argumentHint: undefined })
+    expect(toCommandInfo({ name: 'review', description: 'd', argumentHint: '' })).toEqual({
+      name: 'review',
+      description: 'd',
+      argumentHint: undefined
+    })
   })
 })

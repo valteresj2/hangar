@@ -128,7 +128,11 @@ async function scanAll(): Promise<ScannedSession[]> {
 }
 
 function importedIds(): Set<string> {
-  return new Set(db('sessions').list().flatMap((s) => (s.sdkSessionId ? [s.sdkSessionId] : [])))
+  return new Set(
+    db('sessions')
+      .list()
+      .flatMap((s) => (s.sdkSessionId ? [s.sdkSessionId] : []))
+  )
 }
 
 export async function listCliSessions(): Promise<CliSessionInfo[]> {

@@ -93,7 +93,15 @@ export function registerArtifact(sessionId: string, rawPath: string): Artifact |
     changed(sessionId, existing.id)
     return existing
   }
-  const artifact: Artifact = { id: randomUUID(), sessionId, path, name: basename(path), kind, addedAt: now, updatedAt: now }
+  const artifact: Artifact = {
+    id: randomUUID(),
+    sessionId,
+    path,
+    name: basename(path),
+    kind,
+    addedAt: now,
+    updatedAt: now
+  }
   artifacts.push(artifact)
   changed(sessionId, artifact.id)
   return artifact
@@ -144,7 +152,11 @@ export async function readArtifact(pathOrId: string): Promise<ArtifactContent> {
 }
 
 /** Adds a file by hand; without a path, asks the user to pick one. */
-export async function addArtifactInteractive(win: BrowserWindow | undefined, sessionId: string, path?: string): Promise<Artifact | undefined> {
+export async function addArtifactInteractive(
+  win: BrowserWindow | undefined,
+  sessionId: string,
+  path?: string
+): Promise<Artifact | undefined> {
   if (!path) {
     let defaultPath: string | undefined
     try {
@@ -156,13 +168,19 @@ export async function addArtifactInteractive(win: BrowserWindow | undefined, ses
       title: 'Abrir arquivo como artifact',
       defaultPath,
       properties: ['openFile'],
-      filters: [{ name: 'Artifacts', extensions: [MOTION_EXTENSION.slice(1), ...Object.keys(ARTIFACT_EXTENSIONS).map((e) => e.slice(1))] }]
+      filters: [
+        {
+          name: 'Artifacts',
+          extensions: [MOTION_EXTENSION.slice(1), ...Object.keys(ARTIFACT_EXTENSIONS).map((e) => e.slice(1))]
+        }
+      ]
     }
     const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
     if (res.canceled || !res.filePaths[0]) return undefined
     path = res.filePaths[0]
   }
-  if (!artifactKind(path)) throw new Error('Tipo de arquivo não suportado (use .html, .htm, .svg, .md, .mermaid ou .motion.json).')
+  if (!artifactKind(path))
+    throw new Error('Tipo de arquivo não suportado (use .html, .htm, .svg, .md, .mermaid ou .motion.json).')
   return registerArtifact(sessionId, path)
 }
 
@@ -189,8 +207,7 @@ export async function openArtifactExternally(id: string): Promise<void> {
 Ele foi gerado pelo agente e, fora do Hangar, roda sem o isolamento do painel Artifacts.`
     })
     if (response === 0) await shell.openExternal(pathToFileURL(artifact.path).href)
-  }
-  else {
+  } else {
     const err = await shell.openPath(artifact.path)
     if (err) throw new Error(err)
   }

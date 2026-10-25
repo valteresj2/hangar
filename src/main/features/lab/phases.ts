@@ -3,9 +3,21 @@
 import type { LabPhaseView } from '../../../shared/features/lab'
 import type { LabStage, LabVariant } from '../../../shared/harness'
 
-type Item = { status: 'pending' | 'running' | 'done' | 'error'; costUsd?: number; durationMs?: number; startedAt?: number; finishedAt?: number }
+type Item = {
+  status: 'pending' | 'running' | 'done' | 'error'
+  costUsd?: number
+  durationMs?: number
+  startedAt?: number
+  finishedAt?: number
+}
 
-function phase(key: string, title: string, items: Item[], planned: number, extra: Partial<LabPhaseView> = {}): LabPhaseView {
+function phase(
+  key: string,
+  title: string,
+  items: Item[],
+  planned: number,
+  extra: Partial<LabPhaseView> = {}
+): LabPhaseView {
   const total = Math.max(planned, items.length)
   const finished = items.filter((i) => i.status === 'done' || i.status === 'error').length
   const running = items.some((i) => i.status === 'running')
@@ -16,7 +28,8 @@ function phase(key: string, title: string, items: Item[], planned: number, extra
   // Phase time: from the first start to the last finish (items in a phase run in parallel).
   const starts = items.map((i) => i.startedAt).filter((t): t is number => !!t)
   const ends = items.map((i) => i.finishedAt).filter((t): t is number => !!t)
-  const durationMs = starts.length && ends.length && finished === total ? Math.max(...ends) - Math.min(...starts) : undefined
+  const durationMs =
+    starts.length && ends.length && finished === total ? Math.max(...ends) - Math.min(...starts) : undefined
   return {
     key,
     title,
@@ -48,16 +61,33 @@ export function phasesOf(r: {
   const k = r.depth ?? 1
   const stages = r.stages ?? []
   const runs = (pred: (v: LabVariant) => boolean) => r.variants.filter(pred)
-  const out: LabPhaseView[] = [phase('base', 'Execução da base', runs((v) => v.role === 'base'), 1)]
+  const out: LabPhaseView[] = [
+    phase(
+      'base',
+      'Execução da base',
+      runs((v) => v.role === 'base'),
+      1
+    )
+  ]
 
   if (r.mode === 'parallel') {
     const proposals = stages.filter((s) => s.dim !== 'COMPOSE')
     const composer = stages.filter((s) => s.dim === 'COMPOSE')
     out.push(
       phase('propose', 'Propostas INV/DOM', proposals, 2 * k, stageExtra(proposals)),
-      phase('runs', 'Execuções das propostas', runs((v) => v.role === 'inv' || v.role === 'dom'), 2 * k),
+      phase(
+        'runs',
+        'Execuções das propostas',
+        runs((v) => v.role === 'inv' || v.role === 'dom'),
+        2 * k
+      ),
       phase('compose', 'Composição', composer, 1, stageExtra(composer)),
-      phase('compose-run', 'Execução do composto', runs((v) => v.role === 'compose'), 1)
+      phase(
+        'compose-run',
+        'Execução do composto',
+        runs((v) => v.role === 'compose'),
+        1
+      )
     )
   } else {
     for (let t = 1; t <= k; t++) {
@@ -65,9 +95,19 @@ export function phasesOf(r: {
       const composer = stages.filter((s) => s.step === t && s.dim === 'COMPOSE')
       out.push(
         phase(`propose-${t}`, `Passo ${t} · propostas INV/DOM`, proposals, 2, stageExtra(proposals)),
-        phase(`runs-${t}`, `Passo ${t} · execuções`, runs((v) => v.step === t && (v.role === 'inv' || v.role === 'dom')), 2),
+        phase(
+          `runs-${t}`,
+          `Passo ${t} · execuções`,
+          runs((v) => v.step === t && (v.role === 'inv' || v.role === 'dom')),
+          2
+        ),
         phase(`compose-${t}`, `Passo ${t} · composição`, composer, 1, stageExtra(composer)),
-        phase(`ckrun-${t}`, `Passo ${t} · execução do checkpoint`, runs((v) => v.step === t && v.role === 'compose'), 1)
+        phase(
+          `ckrun-${t}`,
+          `Passo ${t} · execução do checkpoint`,
+          runs((v) => v.step === t && v.role === 'compose'),
+          1
+        )
       )
     }
   }

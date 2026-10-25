@@ -81,12 +81,11 @@ function initialState(): UpdaterState {
 /** Why the updater cannot run in this process, or undefined when it can. */
 function disabledReason(): string | undefined {
   if (!app.isPackaged) {
-    return process.env.HANGAR_UPDATE_URL
-      ? undefined
-      : 'Atualizações automáticas só funcionam no app instalado.'
+    return process.env.HANGAR_UPDATE_URL ? undefined : 'Atualizações automáticas só funcionam no app instalado.'
   }
   if (process.platform !== 'win32') return 'Atualizações automáticas só estão disponíveis no Windows por enquanto.'
-  if (!existsSync(join(process.resourcesPath, 'app-update.yml'))) return 'Este build não tem configuração de atualização.'
+  if (!existsSync(join(process.resourcesPath, 'app-update.yml')))
+    return 'Este build não tem configuração de atualização.'
   return undefined
 }
 
@@ -112,7 +111,11 @@ function wire(u: AppUpdater): void {
     })
   )
   u.on('update-downloaded', (info: UpdateInfo) =>
-    setState({ status: 'downloaded', availableVersion: info.version, releaseNotes: notesText(info) ?? state.releaseNotes })
+    setState({
+      status: 'downloaded',
+      availableVersion: info.version,
+      releaseNotes: notesText(info) ?? state.releaseNotes
+    })
   )
   u.on('error', (err: Error) => {
     fileLogger.error('updater error', err)

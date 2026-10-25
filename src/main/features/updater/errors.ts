@@ -8,7 +8,10 @@ const RULES: [RegExp, string][] = [
   ],
   [/sha512 checksum mismatch|checksum/i, 'O download chegou corrompido (checksum diferente). Tente novamente.'],
   [/ENOSPC/i, 'Sem espaço em disco para baixar a atualização.'],
-  [/\b(401|403)\b|Bad credentials|authentication/i, 'O servidor de atualizações recusou o acesso (repositório privado?).'],
+  [
+    /\b(401|403)\b|Bad credentials|authentication/i,
+    'O servidor de atualizações recusou o acesso (repositório privado?).'
+  ],
   [
     /\b404\b|Cannot find .*\.yml|No published versions|Unable to find latest version/i,
     'Nenhuma versão publicada foi encontrada no canal de atualizações.'

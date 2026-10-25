@@ -5,14 +5,26 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import Markdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import type { Session } from '@shared/contracts'
-import { PREVIEW, type Artifact, type ArtifactContent, type ArtifactKind, type ArtifactsEvent } from '@shared/features/preview'
+import {
+  PREVIEW,
+  type Artifact,
+  type ArtifactContent,
+  type ArtifactKind,
+  type ArtifactsEvent
+} from '@shared/features/preview'
 import { api, bridge } from '../../core/api'
 import { MotionViewer } from './motion/MotionViewer'
 import { NewMotionForm } from './motion/NewMotionForm'
 import { onOpenRequest, takeOpenRequest } from './motion/openRequests'
 import styles from './preview.module.css'
 
-const KIND_LABEL: Record<ArtifactKind, string> = { html: 'HTML', svg: 'SVG', markdown: 'MD', mermaid: 'MMD', motion: 'MOT' }
+const KIND_LABEL: Record<ArtifactKind, string> = {
+  html: 'HTML',
+  svg: 'SVG',
+  markdown: 'MD',
+  mermaid: 'MMD',
+  motion: 'MOT'
+}
 
 /** Selected artifact per session, remembered while the app is open. */
 const selectedBySession = new Map<string, string>()
@@ -91,14 +103,30 @@ function FramedView({ data, version }: { data: ArtifactContent; version: number 
     const url = new URL(data.url)
     // Changing the URL (manual reload or new file contents) remounts the frame.
     url.searchParams.set('v', `${version}-${data.mtime}`)
-    return <iframe key={url.href} className={styles.frame} sandbox="allow-scripts" src={url.href} title={data.artifact.name} />
+    return (
+      <iframe
+        key={url.href}
+        className={styles.frame}
+        sandbox="allow-scripts"
+        src={url.href}
+        title={data.artifact.name}
+      />
+    )
   }
   // Fallback when the local artifact server is unavailable: inline scripts are blocked by the app CSP here.
   if (data.artifact.kind === 'mermaid') return <pre className={styles.source}>{data.content}</pre>
   return <iframe className={styles.frame} sandbox="allow-scripts" srcDoc={data.content} title={data.artifact.name} />
 }
 
-function ArtifactBar({ artifact, onReload, onError }: { artifact: Artifact; onReload(): void; onError(message: string): void }) {
+function ArtifactBar({
+  artifact,
+  onReload,
+  onError
+}: {
+  artifact: Artifact
+  onReload(): void
+  onError(message: string): void
+}) {
   const act = (channel: string) => bridge.invoke(channel, artifact.id).catch((err) => onError(errorMessage(err)))
   return (
     <div className={styles.viewerBar}>
@@ -111,7 +139,11 @@ function ArtifactBar({ artifact, onReload, onError }: { artifact: Artifact; onRe
       <button className="icon-btn" title="Recarregar do disco" onClick={onReload}>
         ⟳
       </button>
-      <button className="icon-btn" title="Abrir no navegador / app padrão" onClick={() => void act(PREVIEW.artifactOpen)}>
+      <button
+        className="icon-btn"
+        title="Abrir no navegador / app padrão"
+        onClick={() => void act(PREVIEW.artifactOpen)}
+      >
         ⧉
       </button>
       <button className="icon-btn" title="Abrir pasta" onClick={() => void act(PREVIEW.artifactReveal)}>
@@ -124,7 +156,17 @@ function ArtifactBar({ artifact, onReload, onError }: { artifact: Artifact; onRe
   )
 }
 
-function MotionArtifact({ artifact, sessionId, version, onReload }: { artifact: Artifact; sessionId: string; version: number; onReload(): void }) {
+function MotionArtifact({
+  artifact,
+  sessionId,
+  version,
+  onReload
+}: {
+  artifact: Artifact
+  sessionId: string
+  version: number
+  onReload(): void
+}) {
   const [error, setError] = useState<string>()
   return (
     <div className={styles.viewer}>
@@ -270,14 +312,18 @@ function SessionArtifacts({ session }: { session: Session }) {
       )}
       {list.length === 0 ? (
         <div className={`muted ${styles.centered}`}>
-          Nenhum artifact ainda. Arquivos .html, .svg, .md, .mermaid e .motion.json escritos pelo agente aparecem aqui — ou arraste um arquivo para cá.
+          Nenhum artifact ainda. Arquivos .html, .svg, .md, .mermaid e .motion.json escritos pelo agente aparecem aqui —
+          ou arraste um arquivo para cá.
         </div>
       ) : (
         <>
           <ul className={styles.artifactList}>
             {list.map((a) => (
               <li key={a.id}>
-                <button className={`${styles.artifactItem} ${a.id === selected?.id ? styles.artifactItemActive : ''}`} onClick={() => select(a.id)}>
+                <button
+                  className={`${styles.artifactItem} ${a.id === selected?.id ? styles.artifactItemActive : ''}`}
+                  onClick={() => select(a.id)}
+                >
                   <span className={styles.kind}>{KIND_LABEL[a.kind]}</span>
                   <span className={styles.ellipsis}>{a.name}</span>
                   <span className={`muted ${styles.when}`}>{ago(a.updatedAt)}</span>
@@ -286,9 +332,22 @@ function SessionArtifacts({ session }: { session: Session }) {
             ))}
           </ul>
           {selected?.kind === 'motion' ? (
-            <MotionArtifact key={selected.id} artifact={selected} sessionId={sessionId} version={version} onReload={() => setVersion((v) => v + 1)} />
+            <MotionArtifact
+              key={selected.id}
+              artifact={selected}
+              sessionId={sessionId}
+              version={version}
+              onReload={() => setVersion((v) => v + 1)}
+            />
           ) : (
-            selected && <Viewer key={selected.id} artifact={selected} version={version} onReload={() => setVersion((v) => v + 1)} />
+            selected && (
+              <Viewer
+                key={selected.id}
+                artifact={selected}
+                version={version}
+                onReload={() => setVersion((v) => v + 1)}
+              />
+            )
           )}
         </>
       )}

@@ -29,7 +29,15 @@ export function DiffBlock({ text }: { text: string }) {
 }
 
 /** One deliverable: final answer, change summary and (collapsed) diff. */
-export function DeliverableCard({ title, d, children }: { title: string; d: LabDeliverable; children?: React.ReactNode }) {
+export function DeliverableCard({
+  title,
+  d,
+  children
+}: {
+  title: string
+  d: LabDeliverable
+  children?: React.ReactNode
+}) {
   const [showDiff, setShowDiff] = useState(false)
   return (
     <div className={styles.candidate}>
@@ -37,10 +45,18 @@ export function DeliverableCard({ title, d, children }: { title: string; d: LabD
       <div className={styles.candidateBody}>
         <div className={styles.sectionLabel}>Resposta final</div>
         <div className={styles.markdown}>
-          {d.finalAnswer ? <Markdown remarkPlugins={[remarkGfm]}>{d.finalAnswer}</Markdown> : <em className="muted">Sem resposta final.</em>}
+          {d.finalAnswer ? (
+            <Markdown remarkPlugins={[remarkGfm]}>{d.finalAnswer}</Markdown>
+          ) : (
+            <em className="muted">Sem resposta final.</em>
+          )}
         </div>
         <div className={styles.sectionLabel}>Mudanças</div>
-        {d.diffStat ? <pre className={styles.stat}>{d.diffStat}</pre> : <div className="muted">Nenhum arquivo alterado.</div>}
+        {d.diffStat ? (
+          <pre className={styles.stat}>{d.diffStat}</pre>
+        ) : (
+          <div className="muted">Nenhum arquivo alterado.</div>
+        )}
         {d.diffExcerpt && (
           <>
             <button className={styles.linkBtn} onClick={() => setShowDiff((v) => !v)}>
@@ -120,10 +136,14 @@ export function BlindSelect({ round }: { round: LabRoundView }) {
       {mode === 'claude' && (
         <div className={styles.callout}>
           <p>
-            Um Claude sem ferramentas recebe a tarefa e os candidatos anônimos (resposta final + mudanças), sem gabarito,
-            e escolhe um com a justificativa. Ele usa o modelo padrão das configurações.
+            Um Claude sem ferramentas recebe a tarefa e os candidatos anônimos (resposta final + mudanças), sem
+            gabarito, e escolhe um com a justificativa. Ele usa o modelo padrão das configurações.
           </p>
-          <button className="btn btn-primary" disabled={round.claudeSelecting || !candidates} onClick={() => void ask()}>
+          <button
+            className="btn btn-primary"
+            disabled={round.claudeSelecting || !candidates}
+            onClick={() => void ask()}
+          >
             {round.claudeSelecting ? 'O Claude está comparando…' : 'Pedir ao Claude para escolher'}
           </button>
         </div>
@@ -132,7 +152,10 @@ export function BlindSelect({ round }: { round: LabRoundView }) {
       {!candidates ? (
         <div className="muted">Carregando candidatos…</div>
       ) : (
-        <div className={styles.candidates} style={{ gridTemplateColumns: `repeat(${candidates.length}, minmax(320px, 1fr))` }}>
+        <div
+          className={styles.candidates}
+          style={{ gridTemplateColumns: `repeat(${candidates.length}, minmax(320px, 1fr))` }}
+        >
           {candidates.map((c) => (
             <DeliverableCard key={c.anonId} title={`Candidato ${c.anonId}`} d={c}>
               {mode === 'user' && (

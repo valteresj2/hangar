@@ -62,7 +62,9 @@ export function SnapshotsTab({ project, dir, current }: { project: string; dir: 
 
       <div className={styles.scroll}>
         {snapshots && snapshots.length === 0 && (
-          <div className={styles.empty}>Nenhum snapshot ainda. Crie um antes de mexer no harness para poder comparar e voltar.</div>
+          <div className={styles.empty}>
+            Nenhum snapshot ainda. Crie um antes de mexer no harness para poder comparar e voltar.
+          </div>
         )}
         {snapshots?.map((s) => {
           const files = Object.keys(s.tree).length
@@ -88,7 +90,11 @@ export function SnapshotsTab({ project, dir, current }: { project: string; dir: 
                   <button className="btn" onClick={() => setConfirm({ kind: 'restore', snap: s })}>
                     Restaurar
                   </button>
-                  <button className="icon-btn" title="Excluir snapshot" onClick={() => setConfirm({ kind: 'delete', snap: s })}>
+                  <button
+                    className="icon-btn"
+                    title="Excluir snapshot"
+                    onClick={() => setConfirm({ kind: 'delete', snap: s })}
+                  >
                     ✕
                   </button>
                 </div>
@@ -104,9 +110,9 @@ export function SnapshotsTab({ project, dir, current }: { project: string; dir: 
           title="Restaurar snapshot"
           message={
             <>
-              Os arquivos de harness desta pasta voltam a ser os de <b>{confirm.snap.label}</b>: arquivos de harness que não existem
-              no snapshot são apagados. Antes disso, o estado atual vira um snapshot automático. Arquivos fora do harness não são
-              tocados.
+              Os arquivos de harness desta pasta voltam a ser os de <b>{confirm.snap.label}</b>: arquivos de harness que
+              não existem no snapshot são apagados. Antes disso, o estado atual vira um snapshot automático. Arquivos
+              fora do harness não são tocados.
             </>
           }
           confirm="Restaurar"

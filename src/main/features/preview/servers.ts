@@ -88,10 +88,16 @@ export function parseLaunch(text: string): LaunchConfiguration[] {
     if (typeof c.runtimeExecutable !== 'string' || !c.runtimeExecutable.trim()) {
       throw new Error(`${where}: "runtimeExecutable" é obrigatório.`)
     }
-    if (c.runtimeArgs !== undefined && (!Array.isArray(c.runtimeArgs) || c.runtimeArgs.some((a) => typeof a !== 'string'))) {
+    if (
+      c.runtimeArgs !== undefined &&
+      (!Array.isArray(c.runtimeArgs) || c.runtimeArgs.some((a) => typeof a !== 'string'))
+    ) {
       throw new Error(`${where}: "runtimeArgs" deve ser uma lista de textos.`)
     }
-    if (c.port !== undefined && (typeof c.port !== 'number' || !Number.isInteger(c.port) || c.port <= 0 || c.port > 65535)) {
+    if (
+      c.port !== undefined &&
+      (typeof c.port !== 'number' || !Number.isInteger(c.port) || c.port <= 0 || c.port > 65535)
+    ) {
       throw new Error(`${where}: "port" deve ser um número de porta válido.`)
     }
     if (c.url !== undefined && typeof c.url !== 'string') throw new Error(`${where}: "url" deve ser texto.`)
@@ -163,7 +169,12 @@ function flushLog(run: Running): void {
   if (!run.pending) return
   const chunk = run.pending
   run.pending = ''
-  broadcast(PREVIEW.serverEvent, { type: 'log', serverId: run.info.id, sessionId: run.info.sessionId, chunk } satisfies ServerEvent)
+  broadcast(PREVIEW.serverEvent, {
+    type: 'log',
+    serverId: run.info.id,
+    sessionId: run.info.sessionId,
+    chunk
+  } satisfies ServerEvent)
 }
 
 function portAnswers(port: number, host: string): Promise<boolean> {
@@ -242,7 +253,11 @@ export function serverLogs(serverId: string): string {
 
 export function startServer(sessionId: string, name: string): ServerInfo {
   for (const run of servers.values()) {
-    if (run.info.sessionId === sessionId && run.info.name === name && (run.info.status === 'starting' || run.info.status === 'running')) {
+    if (
+      run.info.sessionId === sessionId &&
+      run.info.name === name &&
+      (run.info.status === 'starting' || run.info.status === 'running')
+    ) {
       return { ...run.info }
     }
   }
@@ -271,7 +286,18 @@ export function startServer(sessionId: string, name: string): ServerInfo {
       : spawn(config.runtimeExecutable, args, { cwd, env, detached: true })
 
   const run: Running = {
-    info: { id: randomUUID(), sessionId, name, cwd, command, port, url, status: 'starting', pid: child.pid, startedAt: Date.now() },
+    info: {
+      id: randomUUID(),
+      sessionId,
+      name,
+      cwd,
+      command,
+      port,
+      url,
+      status: 'starting',
+      pid: child.pid,
+      startedAt: Date.now()
+    },
     child,
     log: [],
     logChars: 0,

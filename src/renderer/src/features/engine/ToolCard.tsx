@@ -33,7 +33,8 @@ function EditBody({ use }: { use: ToolUse }) {
     )
   }
   if (use.name === 'Write') return <DiffView before="" after={s(input.content)} />
-  if (use.name === 'NotebookEdit') return <CodeBlock code={s(input.new_source)} lang={s(input.cell_type) === 'markdown' ? 'markdown' : 'python'} />
+  if (use.name === 'NotebookEdit')
+    return <CodeBlock code={s(input.new_source)} lang={s(input.cell_type) === 'markdown' ? 'markdown' : 'python'} />
   return null
 }
 
@@ -42,7 +43,15 @@ function ResultBlock({ result }: { result: ToolResult }) {
   return <pre className={`${styles.toolOutput} ${result.isError ? styles.toolOutputError : ''}`}>{result.content}</pre>
 }
 
-export const ToolCard = memo(function ToolCard({ use, result, running }: { use: ToolUse; result?: ToolResult; running: boolean }) {
+export const ToolCard = memo(function ToolCard({
+  use,
+  result,
+  running
+}: {
+  use: ToolUse
+  result?: ToolResult
+  running: boolean
+}) {
   const isEdit = EDIT_TOOLS.has(use.name)
   const [open, setOpen] = useState(isEdit)
   const failed = result?.isError

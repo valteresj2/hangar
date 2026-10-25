@@ -23,10 +23,14 @@ test('sessão numa pasta temporária recebe texto em streaming do mock', async (
   await composer.press('Enter')
 
   // While the stream is running only part of the reply is on screen…
-  await page.waitForFunction(() => document.body.innerText.includes('Parte 1. ') && !document.body.innerText.includes('Parte 8. '), undefined, {
-    polling: 50,
-    timeout: 60_000
-  })
+  await page.waitForFunction(
+    () => document.body.innerText.includes('Parte 1. ') && !document.body.innerText.includes('Parte 8. '),
+    undefined,
+    {
+      polling: 50,
+      timeout: 60_000
+    }
+  )
   // …and then the whole reply.
   await expect(page.getByText(`Parte 8. ${TEXT_REPLY}`)).toBeVisible({ timeout: 60_000 })
 

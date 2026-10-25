@@ -11,9 +11,11 @@ function RequestDetail({ request }: { request: PermissionRequest }) {
   const input = request.input
   const text = (v: unknown) => (typeof v === 'string' ? v : '')
   if (SHELL_TOOLS.has(request.toolName)) return <pre className={styles.toolCommand}>{text(input.command)}</pre>
-  if (request.toolName === 'Edit') return <DiffView before={text(input.old_string)} after={text(input.new_string)} maxHeight={260} />
+  if (request.toolName === 'Edit')
+    return <DiffView before={text(input.old_string)} after={text(input.new_string)} maxHeight={260} />
   if (request.toolName === 'Write') return <DiffView before="" after={text(input.content)} maxHeight={260} />
-  if (request.toolName === 'ExitPlanMode' && text(input.plan)) return <pre className={styles.toolInput}>{text(input.plan)}</pre>
+  if (request.toolName === 'ExitPlanMode' && text(input.plan))
+    return <pre className={styles.toolInput}>{text(input.plan)}</pre>
   const summary = toolSummary(request.toolName, input)
   return summary ? <div className={styles.permSummary}>{summary}</div> : null
 }
@@ -106,7 +108,10 @@ function QuestionBlock({
             {o.description && <span className="muted">{o.description}</span>}
           </button>
         ))}
-        <button className={`${styles.option} ${value.picked.includes(OTHER) ? styles.optionOn : ''}`} onClick={() => toggle(OTHER)}>
+        <button
+          className={`${styles.option} ${value.picked.includes(OTHER) ? styles.optionOn : ''}`}
+          onClick={() => toggle(OTHER)}
+        >
           <span className={styles.optionLabel}>Outra resposta</span>
         </button>
         {value.picked.includes(OTHER) && (
@@ -137,7 +142,12 @@ export function QuestionCard({ request, onRespond }: { request: PermissionReques
     <div className={styles.permCard}>
       <div className={styles.permTitle}>Claude tem {questions.length > 1 ? 'algumas perguntas' : 'uma pergunta'}</div>
       {questions.map((q, i) => (
-        <QuestionBlock key={i} q={q} value={values[i]} onChange={(v) => setValues((all) => all.map((x, j) => (j === i ? v : x)))} />
+        <QuestionBlock
+          key={i}
+          q={q}
+          value={values[i]}
+          onChange={(v) => setValues((all) => all.map((x, j) => (j === i ? v : x)))}
+        />
       ))}
       <div className={styles.permActions}>
         <button

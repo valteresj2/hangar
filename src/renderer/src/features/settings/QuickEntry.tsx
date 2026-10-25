@@ -10,7 +10,11 @@ import { errorText, settingsApi } from './api'
 import styles from './quickEntry.module.css'
 
 const samePath = (a: string, b: string) => a.replace(/\\/g, '/').toLowerCase() === b.replace(/\\/g, '/').toLowerCase()
-const baseName = (p: string) => p.replace(/[\\/]+$/, '').split(/[\\/]/).pop() || p
+const baseName = (p: string) =>
+  p
+    .replace(/[\\/]+$/, '')
+    .split(/[\\/]/)
+    .pop() || p
 
 /** Same light/dark resolution as the main window. */
 function useTheme(theme: string | undefined): void {
@@ -18,7 +22,8 @@ function useTheme(theme: string | undefined): void {
     const media = window.matchMedia('(prefers-color-scheme: dark)')
     const apply = () => {
       const pref = theme ?? 'system'
-      document.documentElement.dataset.theme = pref === 'dark' || (pref === 'system' && media.matches) ? 'dark' : 'light'
+      document.documentElement.dataset.theme =
+        pref === 'dark' || (pref === 'system' && media.matches) ? 'dark' : 'light'
     }
     apply()
     media.addEventListener('change', apply)
@@ -135,7 +140,11 @@ export function QuickEntry() {
           ))}
           <option value="__pick__">Escolher outra pasta…</option>
         </select>
-        {error ? <span className={styles.error}>{error}</span> : <span className={styles.hint}>Enter envia · Shift+Enter quebra linha · Esc fecha</span>}
+        {error ? (
+          <span className={styles.error}>{error}</span>
+        ) : (
+          <span className={styles.hint}>Enter envia · Shift+Enter quebra linha · Esc fecha</span>
+        )}
         <button className="btn btn-primary" disabled={busy || !text.trim() || !cwd} onClick={() => void submit()}>
           {busy ? 'Enviando…' : 'Iniciar'}
         </button>

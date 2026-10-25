@@ -13,7 +13,13 @@ interface Props {
   onSelectElement(sceneIndex: number, id: string | undefined): void
 }
 
-const TYPE_LABEL: Record<MotionElement['type'], string> = { text: 'Texto', shape: 'Forma', image: 'Imagem', chart: 'Gráfico', counter: 'Contador' }
+const TYPE_LABEL: Record<MotionElement['type'], string> = {
+  text: 'Texto',
+  shape: 'Forma',
+  image: 'Imagem',
+  chart: 'Gráfico',
+  counter: 'Contador'
+}
 
 /** Every id used in the document (scenes and elements). */
 function usedIds(doc: MotionSpec): Set<string> {
@@ -81,8 +87,27 @@ export function Editor({ doc, edit, sceneIndex, elementId, onSelectScene, onSele
       id = uniqueId(d, type === 'text' ? 'texto' : 'forma')
       const el: MotionElement =
         type === 'text'
-          ? { id, type: 'text', text: 'Novo texto', x: d.width / 2, y: d.height / 2, fontSize: 64, color: '#1f1e1d', enter: { type: 'fade', duration: 0.5 } }
-          : { id, type: 'shape', shape: 'rect', x: d.width / 2, y: d.height / 2, width: 320, height: 180, fill: '#c96442', radius: 16 }
+          ? {
+              id,
+              type: 'text',
+              text: 'Novo texto',
+              x: d.width / 2,
+              y: d.height / 2,
+              fontSize: 64,
+              color: '#1f1e1d',
+              enter: { type: 'fade', duration: 0.5 }
+            }
+          : {
+              id,
+              type: 'shape',
+              shape: 'rect',
+              x: d.width / 2,
+              y: d.height / 2,
+              width: 320,
+              height: 180,
+              fill: '#c96442',
+              radius: 16
+            }
       s.elements.push(el)
     })
     if (id) onSelectElement(sceneIndex, id)
@@ -99,16 +124,36 @@ export function Editor({ doc, edit, sceneIndex, elementId, onSelectScene, onSele
       <Section title="Animação">
         <div className={styles.grid}>
           <TextField label="Título" value={doc.title} onChange={(v) => edit((d) => (d.title = v ?? ''), 'doc:title')} />
-          <ColorField label="Fundo padrão" value={doc.background} onChange={(v) => edit((d) => (d.background = v ?? '#ffffff'), 'doc:background')} />
-          <TextField label="Fonte padrão" value={doc.fontFamily} optional list={FONT_LIST_ID} onChange={(v) => edit((d) => (v ? (d.fontFamily = v) : delete d.fontFamily), 'doc:font')} />
-          <NumField label="FPS" value={doc.fps} min={1} max={60} onChange={(v) => v && edit((d) => (d.fps = v), 'doc:fps')} />
+          <ColorField
+            label="Fundo padrão"
+            value={doc.background}
+            onChange={(v) => edit((d) => (d.background = v ?? '#ffffff'), 'doc:background')}
+          />
+          <TextField
+            label="Fonte padrão"
+            value={doc.fontFamily}
+            optional
+            list={FONT_LIST_ID}
+            onChange={(v) => edit((d) => (v ? (d.fontFamily = v) : delete d.fontFamily), 'doc:font')}
+          />
+          <NumField
+            label="FPS"
+            value={doc.fps}
+            min={1}
+            max={60}
+            onChange={(v) => v && edit((d) => (d.fps = v), 'doc:fps')}
+          />
         </div>
       </Section>
 
       <Section title="Cenas">
         <ul className={styles.list}>
           {doc.scenes.map((s, i) => (
-            <li key={s.id} className={`${styles.item} ${i === sceneIndex ? styles.itemActive : ''}`} onClick={() => onSelectScene(i)}>
+            <li
+              key={s.id}
+              className={`${styles.item} ${i === sceneIndex ? styles.itemActive : ''}`}
+              onClick={() => onSelectScene(i)}
+            >
               <span className={styles.index}>{i + 1}</span>
               <input
                 className={`input ${styles.inlineInput}`}
@@ -139,16 +184,26 @@ export function Editor({ doc, edit, sceneIndex, elementId, onSelectScene, onSele
               />
               <span className="muted">s</span>
               <div className={styles.itemBtns} onClick={(e) => e.stopPropagation()}>
-                <button className={styles.mini} title="Mover para cima" disabled={i === 0} onClick={() => {
-                  edit((d) => move(d.scenes, i, i - 1))
-                  onSelectScene(i - 1)
-                }}>
+                <button
+                  className={styles.mini}
+                  title="Mover para cima"
+                  disabled={i === 0}
+                  onClick={() => {
+                    edit((d) => move(d.scenes, i, i - 1))
+                    onSelectScene(i - 1)
+                  }}
+                >
                   ↑
                 </button>
-                <button className={styles.mini} title="Mover para baixo" disabled={i === doc.scenes.length - 1} onClick={() => {
-                  edit((d) => move(d.scenes, i, i + 1))
-                  onSelectScene(i + 1)
-                }}>
+                <button
+                  className={styles.mini}
+                  title="Mover para baixo"
+                  disabled={i === doc.scenes.length - 1}
+                  onClick={() => {
+                    edit((d) => move(d.scenes, i, i + 1))
+                    onSelectScene(i + 1)
+                  }}
+                >
                   ↓
                 </button>
                 <button
@@ -187,7 +242,12 @@ export function Editor({ doc, edit, sceneIndex, elementId, onSelectScene, onSele
         </ul>
         {scene && (
           <div className={styles.grid}>
-            <ColorField label="Fundo da cena" value={scene.background} optional onChange={(v) => editScene((s) => (v ? (s.background = v) : delete s.background), 'background')} />
+            <ColorField
+              label="Fundo da cena"
+              value={scene.background}
+              optional
+              onChange={(v) => editScene((s) => (v ? (s.background = v) : delete s.background), 'background')}
+            />
             <SelectField
               label="Transição de entrada"
               value={scene.transition?.type}
@@ -200,7 +260,15 @@ export function Editor({ doc, edit, sceneIndex, elementId, onSelectScene, onSele
               onChange={(v) => setTransition({ type: v })}
             />
             {scene.transition && scene.transition.type !== 'none' && (
-              <NumField label="Duração da transição (s)" value={scene.transition.duration} step={0.1} min={0} optional placeholder="0,5" onChange={(v) => setTransition({ duration: v })} />
+              <NumField
+                label="Duração da transição (s)"
+                value={scene.transition.duration}
+                step={0.1}
+                min={0}
+                optional
+                placeholder="0,5"
+                onChange={(v) => setTransition({ duration: v })}
+              />
             )}
           </div>
         )}
@@ -223,14 +291,28 @@ export function Editor({ doc, edit, sceneIndex, elementId, onSelectScene, onSele
           {scene.elements.length === 0 && <div className="muted">Cena sem elementos.</div>}
           <ul className={styles.list}>
             {scene.elements.map((el, j) => (
-              <li key={el.id} className={`${styles.item} ${el.id === elementId ? styles.itemActive : ''}`} onClick={() => onSelectElement(sceneIndex, el.id)}>
+              <li
+                key={el.id}
+                className={`${styles.item} ${el.id === elementId ? styles.itemActive : ''}`}
+                onClick={() => onSelectElement(sceneIndex, el.id)}
+              >
                 <span className={styles.badge}>{TYPE_LABEL[el.type]}</span>
                 <span className={styles.itemLabel}>{elementLabel(el)}</span>
                 <div className={styles.itemBtns} onClick={(e) => e.stopPropagation()}>
-                  <button className={styles.mini} title="Trazer para trás" disabled={j === 0} onClick={() => edit((d) => move(d.scenes[sceneIndex].elements, j, j - 1))}>
+                  <button
+                    className={styles.mini}
+                    title="Trazer para trás"
+                    disabled={j === 0}
+                    onClick={() => edit((d) => move(d.scenes[sceneIndex].elements, j, j - 1))}
+                  >
                     ↑
                   </button>
-                  <button className={styles.mini} title="Trazer para frente" disabled={j === scene.elements.length - 1} onClick={() => edit((d) => move(d.scenes[sceneIndex].elements, j, j + 1))}>
+                  <button
+                    className={styles.mini}
+                    title="Trazer para frente"
+                    disabled={j === scene.elements.length - 1}
+                    onClick={() => edit((d) => move(d.scenes[sceneIndex].elements, j, j + 1))}
+                  >
                     ↓
                   </button>
                   <button
@@ -270,7 +352,9 @@ export function Editor({ doc, edit, sceneIndex, elementId, onSelectScene, onSele
       {scene && element ? (
         <ElementForm key={element.id} el={element} sceneIndex={sceneIndex} edit={edit} />
       ) : (
-        <div className={`muted ${styles.hint}`}>Clique num elemento no quadro ou na lista para editar. Arraste no quadro para mover.</div>
+        <div className={`muted ${styles.hint}`}>
+          Clique num elemento no quadro ou na lista para editar. Arraste no quadro para mover.
+        </div>
       )}
     </div>
   )

@@ -27,7 +27,11 @@ function buildLines(before: string, after: string): Line[] {
     const head = i === 0 ? 0 : CONTEXT
     const tail = j === raw.length ? 0 : CONTEXT
     if (run.length > head + tail + 1) {
-      out.push(...run.slice(0, head), { type: 'gap', text: `… ${run.length - head - tail} linhas sem mudança` }, ...run.slice(run.length - tail))
+      out.push(
+        ...run.slice(0, head),
+        { type: 'gap', text: `… ${run.length - head - tail} linhas sem mudança` },
+        ...run.slice(run.length - tail)
+      )
     } else {
       out.push(...run)
     }
@@ -49,7 +53,15 @@ export function DiffView({ before, after, maxHeight = 420 }: { before: string; a
         {lines.map((l, i) => (
           <div
             key={i}
-            className={l.type === 'add' ? styles.diffAdd : l.type === 'del' ? styles.diffDel : l.type === 'gap' ? styles.diffGap : styles.diffCtx}
+            className={
+              l.type === 'add'
+                ? styles.diffAdd
+                : l.type === 'del'
+                  ? styles.diffDel
+                  : l.type === 'gap'
+                    ? styles.diffGap
+                    : styles.diffCtx
+            }
           >
             <span className={styles.diffSign}>{l.type === 'add' ? '+' : l.type === 'del' ? '−' : ' '}</span>
             {l.text || ' '}

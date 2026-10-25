@@ -16,7 +16,10 @@ async function ignoredSet(dir: string, names: string[]): Promise<Set<string>> {
   if (!names.length || !(await repoRoot(dir))) return new Set()
   try {
     // Exit code 1 means "nothing ignored".
-    const { stdout } = await git(dir, ['check-ignore', '--stdin', '-z'], { input: names.join('\0') + '\0', okCodes: [0, 1] })
+    const { stdout } = await git(dir, ['check-ignore', '--stdin', '-z'], {
+      input: names.join('\0') + '\0',
+      okCodes: [0, 1]
+    })
     return new Set(stdout.split('\0').filter(Boolean))
   } catch {
     return new Set()

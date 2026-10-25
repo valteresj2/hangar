@@ -57,7 +57,7 @@ let nextKey = 1
 
 function QuickTreeEditor({ tree, onChange }: { tree: HarnessTree; onChange(tree: HarnessTree): void }) {
   const paths = Object.keys(tree).sort()
-  const [path, setPath] = useState(paths.includes('CLAUDE.md') ? 'CLAUDE.md' : paths[0] ?? '')
+  const [path, setPath] = useState(paths.includes('CLAUDE.md') ? 'CLAUDE.md' : (paths[0] ?? ''))
   const [newPath, setNewPath] = useState('')
   const newValid = newPath.trim() !== '' && isHarnessPath(newPath.trim())
 
@@ -207,7 +207,9 @@ export function NewRound({
     const runCost = mean(history.flatMap((r) => r.variants.map((v) => v.costUsd)))
     const callCost = mean(history.flatMap((r) => (r.stages ?? []).map((s) => s.costUsd)))
     const usd =
-      runCost !== undefined && (plan.calls === 0 || callCost !== undefined) ? plan.executions * runCost + plan.calls * (callCost ?? 0) : undefined
+      runCost !== undefined && (plan.calls === 0 || callCost !== undefined)
+        ? plan.executions * runCost + plan.calls * (callCost ?? 0)
+        : undefined
     return { ...plan, usd }
   }, [roundMode, depth, drafts.length, history])
 
@@ -251,7 +253,11 @@ export function NewRound({
   }
 
   if (!info) {
-    return <div className={styles.detail}>{error ? <div className={styles.error}>{error}</div> : <div className="muted">Carregando…</div>}</div>
+    return (
+      <div className={styles.detail}>
+        {error ? <div className={styles.error}>{error}</div> : <div className="muted">Carregando…</div>}
+      </div>
+    )
   }
 
   if (!info.isRepo || !info.hasHead) {
@@ -259,11 +265,14 @@ export function NewRound({
       <div className={styles.detail}>
         <h2 className={styles.h2}>Nova rodada</h2>
         <div className={styles.callout}>
-          <strong>{info.isRepo ? 'O repositório ainda não tem commits.' : 'Esta pasta não é um repositório git.'}</strong>
+          <strong>
+            {info.isRepo ? 'O repositório ainda não tem commits.' : 'Esta pasta não é um repositório git.'}
+          </strong>
           <p>
             O Lab roda a mesma tarefa com o harness atual e com cada variante, cada uma num <em>worktree</em> git
-            separado criado a partir do último commit. {info.isRepo ? 'Faça o primeiro commit' : 'Inicialize um repositório (git init) e faça um commit'} para
-            usar o Lab nesta pasta.
+            separado criado a partir do último commit.{' '}
+            {info.isRepo ? 'Faça o primeiro commit' : 'Inicialize um repositório (git init) e faça um commit'} para usar
+            o Lab nesta pasta.
           </p>
         </div>
         <div className={styles.actions}>
@@ -299,7 +308,11 @@ export function NewRound({
         <span className={styles.label}>Modo</span>
         <div className={styles.segmented}>
           {ROUND_MODES.map((m) => (
-            <button key={m.value} className={roundMode === m.value ? styles.segActive : ''} onClick={() => chooseMode(m.value)}>
+            <button
+              key={m.value}
+              className={roundMode === m.value ? styles.segActive : ''}
+              onClick={() => chooseMode(m.value)}
+            >
               {m.label}
             </button>
           ))}
@@ -367,19 +380,29 @@ export function NewRound({
         )}
         <label className={styles.field}>
           <span className={styles.label}>Teto de custo (US$, opcional)</span>
-          <input className="input" inputMode="decimal" placeholder="sem teto" value={cap} onChange={(e) => setCap(e.target.value)} />
+          <input
+            className="input"
+            inputMode="decimal"
+            placeholder="sem teto"
+            value={cap}
+            onChange={(e) => setCap(e.target.value)}
+          />
         </label>
       </div>
       <div className={styles.estimate}>
-        <strong>Estimativa:</strong> {estimate.executions} {estimate.executions === 1 ? 'execução' : 'execuções'} da tarefa
+        <strong>Estimativa:</strong> {estimate.executions} {estimate.executions === 1 ? 'execução' : 'execuções'} da
+        tarefa
         {estimate.calls > 0 && (
           <>
             {' '}
-            + {estimate.calls} chamadas de proponente/compositor (até {estimate.calls * 2} se propostas inválidas pedirem nova
-            tentativa)
+            + {estimate.calls} chamadas de proponente/compositor (até {estimate.calls * 2} se propostas inválidas
+            pedirem nova tentativa)
           </>
         )}
-        .{estimate.usd !== undefined && <> Pelo custo médio das rodadas anteriores deste projeto: ≈ {formatCost(estimate.usd)}.</>}
+        .
+        {estimate.usd !== undefined && (
+          <> Pelo custo médio das rodadas anteriores deste projeto: ≈ {formatCost(estimate.usd)}.</>
+        )}
         {capInvalid ? (
           <span className={styles.warnText}> O teto precisa ser um valor maior que zero.</span>
         ) : capValue !== undefined ? (
@@ -388,7 +411,8 @@ export function NewRound({
       </div>
       <p className={styles.hint}>
         Pedidos de permissão param a variante até você responder na sessão dela.
-        {mode === 'bypassPermissions' && ' Com "Ignorar permissões" as variantes executam qualquer comando sem perguntar.'}
+        {mode === 'bypassPermissions' &&
+          ' Com "Ignorar permissões" as variantes executam qualquer comando sem perguntar.'}
       </p>
       {info.dirty && (
         <p className={styles.warn}>
@@ -399,66 +423,71 @@ export function NewRound({
       <div className={styles.variantCard}>
         <div className={styles.variantHead}>
           <strong>Base</strong>
-          <span className="muted">harness atual do projeto · {baseFiles} arquivo{baseFiles === 1 ? '' : 's'}</span>
+          <span className="muted">
+            harness atual do projeto · {baseFiles} arquivo{baseFiles === 1 ? '' : 's'}
+          </span>
         </div>
       </div>
 
       {!auto &&
         drafts.map((d, i) => {
-        const diff = changes[i]
-        const open = editing === d.key
-        return (
-          <div key={d.key} className={styles.variantCard}>
-            <div className={styles.variantHead}>
-              <input
-                className={`input ${styles.labelInput}`}
-                value={d.label}
-                onChange={(e) => patchDraft(d.key, { label: e.target.value })}
-              />
-              <select className="input" value={d.origin} onChange={(e) => setOrigin(d, e.target.value)}>
-                <option value="base">Cópia editada da base</option>
-                {info.snapshots.map((s) => (
-                  <option key={s.id} value={s.id}>
-                    Snapshot: {s.label}
-                  </option>
-                ))}
-              </select>
-              <button className="btn" onClick={() => setEditing(open ? undefined : d.key)}>
-                {open ? 'Fechar editor' : 'Editar'}
-              </button>
-            </div>
-            <div className={styles.diffSummary}>
-              {diff.length === 0 ? (
-                <span className={styles.warnText}>Igual à base — edite para que a comparação diga algo.</span>
-              ) : (
-                diff.map((c) => (
-                  <span key={c.path} className={styles.diffChip}>
-                    <span className={styles[c.kind]}>{c.kind === 'added' ? 'novo' : c.kind === 'removed' ? 'removido' : 'alterado'}</span>{' '}
-                    {c.path} <span className={styles.plus}>+{c.added}</span> <span className={styles.minus}>−{c.removed}</span>
-                  </span>
-                ))
-              )}
-            </div>
-            {open && (
-              <div className={styles.editor}>
-                <div className={styles.editorTabs}>
-                  <button className={!quick ? styles.tabActive : ''} onClick={() => setQuick(false)}>
-                    Editor de harness
-                  </button>
-                  <button className={quick ? styles.tabActive : ''} onClick={() => setQuick(true)}>
-                    Edição rápida
-                  </button>
-                </div>
-                {quick ? (
-                  <QuickTreeEditor tree={d.tree} onChange={(tree) => patchDraft(d.key, { tree })} />
+          const diff = changes[i]
+          const open = editing === d.key
+          return (
+            <div key={d.key} className={styles.variantCard}>
+              <div className={styles.variantHead}>
+                <input
+                  className={`input ${styles.labelInput}`}
+                  value={d.label}
+                  onChange={(e) => patchDraft(d.key, { label: e.target.value })}
+                />
+                <select className="input" value={d.origin} onChange={(e) => setOrigin(d, e.target.value)}>
+                  <option value="base">Cópia editada da base</option>
+                  {info.snapshots.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      Snapshot: {s.label}
+                    </option>
+                  ))}
+                </select>
+                <button className="btn" onClick={() => setEditing(open ? undefined : d.key)}>
+                  {open ? 'Fechar editor' : 'Editar'}
+                </button>
+              </div>
+              <div className={styles.diffSummary}>
+                {diff.length === 0 ? (
+                  <span className={styles.warnText}>Igual à base — edite para que a comparação diga algo.</span>
                 ) : (
-                  <HarnessTreeEditor tree={d.tree} onChange={(tree) => patchDraft(d.key, { tree })} />
+                  diff.map((c) => (
+                    <span key={c.path} className={styles.diffChip}>
+                      <span className={styles[c.kind]}>
+                        {c.kind === 'added' ? 'novo' : c.kind === 'removed' ? 'removido' : 'alterado'}
+                      </span>{' '}
+                      {c.path} <span className={styles.plus}>+{c.added}</span>{' '}
+                      <span className={styles.minus}>−{c.removed}</span>
+                    </span>
+                  ))
                 )}
               </div>
-            )}
-          </div>
-        )
-      })}
+              {open && (
+                <div className={styles.editor}>
+                  <div className={styles.editorTabs}>
+                    <button className={!quick ? styles.tabActive : ''} onClick={() => setQuick(false)}>
+                      Editor de harness
+                    </button>
+                    <button className={quick ? styles.tabActive : ''} onClick={() => setQuick(true)}>
+                      Edição rápida
+                    </button>
+                  </div>
+                  {quick ? (
+                    <QuickTreeEditor tree={d.tree} onChange={(tree) => patchDraft(d.key, { tree })} />
+                  ) : (
+                    <HarnessTreeEditor tree={d.tree} onChange={(tree) => patchDraft(d.key, { tree })} />
+                  )}
+                </div>
+              )}
+            </div>
+          )
+        })}
 
       {execReviews && (
         <ExecWarning
@@ -466,7 +495,14 @@ export function NewRound({
           sections={execReviews.filter((r) => r.changes.length).map((r) => ({ label: r.label, changes: r.changes }))}
           confirmLabel="Rodar com estas mudanças"
           busy={busy}
-          onConfirm={() => void submit(execReviews.map((r) => r.fingerprint).filter(Boolean).join(','))}
+          onConfirm={() =>
+            void submit(
+              execReviews
+                .map((r) => r.fingerprint)
+                .filter(Boolean)
+                .join(',')
+            )
+          }
           onCancel={() => setExecReviews(undefined)}
         />
       )}

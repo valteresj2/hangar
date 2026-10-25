@@ -51,9 +51,9 @@ export function ExecWarning({
     <div className={styles.execWarning}>
       <strong>⚠ {title}</strong>
       <p>
-        Estas mudanças fazem o Claude Code <b>executar comandos na sua máquina</b> (hooks, scripts, comandos de ajuda) ou ampliam o
-        que ele pode fazer sem perguntar. Revise cada item: um harness gerado ou editado por outra pessoa pode conter comandos
-        maliciosos.
+        Estas mudanças fazem o Claude Code <b>executar comandos na sua máquina</b> (hooks, scripts, comandos de ajuda)
+        ou ampliam o que ele pode fazer sem perguntar. Revise cada item: um harness gerado ou editado por outra pessoa
+        pode conter comandos maliciosos.
       </p>
       {sections.map((s, i) => (
         <div key={i}>

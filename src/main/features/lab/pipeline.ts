@@ -54,7 +54,15 @@ async function stage(ctx: Ctx, spec: StageSpec): Promise<LabStage> {
   updateRound(ctx.roundId, (r) => {
     r.stages = [
       ...(r.stages ?? []),
-      { id: spec.id, dim: spec.dim, step: spec.step, status: 'running', attempts: 0, startedAt: Date.now(), parentTree: spec.currentTree }
+      {
+        id: spec.id,
+        dim: spec.dim,
+        step: spec.step,
+        status: 'running',
+        attempts: 0,
+        startedAt: Date.now(),
+        parentTree: spec.currentTree
+      }
     ]
   })
   const out = await runStage({
@@ -108,7 +116,9 @@ async function parallel(ctx: Ctx, k: number): Promise<void> {
   const baseRun = await runOne(ctx, baseId, 'base')
   if (!alive(ctx)) return
 
-  const specs = Array.from({ length: k }, (_, i) => (['INV', 'DOM'] as const).map((dim) => ({ dim, index: i + 1 }))).flat()
+  const specs = Array.from({ length: k }, (_, i) =>
+    (['INV', 'DOM'] as const).map((dim) => ({ dim, index: i + 1 }))
+  ).flat()
   const proposals = await Promise.all(
     specs.map(({ dim, index }) =>
       stage(ctx, {
@@ -144,10 +154,18 @@ async function parallel(ctx: Ctx, k: number): Promise<void> {
     job: aggregateJob(k),
     currentTree: ctx.baseTree,
     runs: [baseRun, ...runs],
-    candidates: requireRound(ctx.roundId).stages!.filter((s) => s.dim !== 'COMPOSE').map(candidateOf)
+    candidates: requireRound(ctx.roundId)
+      .stages!.filter((s) => s.dim !== 'COMPOSE')
+      .map(candidateOf)
   })
   if (!alive(ctx)) return
-  const compId = addVariant(ctx, { role: 'compose', roleLabel: 'Composto', tree: composed.tree ?? ctx.baseTree, stageId: 'agg', inPool: true })
+  const compId = addVariant(ctx, {
+    role: 'compose',
+    roleLabel: 'Composto',
+    tree: composed.tree ?? ctx.baseTree,
+    stageId: 'agg',
+    inPool: true
+  })
   linkStage(ctx, 'agg', compId)
   await runOne(ctx, compId, 'agg')
 }
@@ -204,7 +222,14 @@ async function sequential(ctx: Ctx, K: number): Promise<void> {
     })
     if (!alive(ctx)) return
     const ckTree = ck.tree ?? current
-    const ckId = addVariant(ctx, { role: 'compose', roleLabel: `Checkpoint ${t}`, tree: ckTree, stageId: ck.id, step: t, inPool: true })
+    const ckId = addVariant(ctx, {
+      role: 'compose',
+      roleLabel: `Checkpoint ${t}`,
+      tree: ckTree,
+      stageId: ck.id,
+      step: t,
+      inPool: true
+    })
     linkStage(ctx, ck.id, ckId)
     runs.push(await runOne(ctx, ckId, `c${t}`))
     candidates.push(candidateOf(ck))

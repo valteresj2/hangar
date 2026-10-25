@@ -14,7 +14,11 @@ export interface ProbeResult {
 
 const TIMEOUT_MS = 90_000
 
-export async function probe(env: Record<string, string | undefined>, settingsEnv: Record<string, string>, model = 'haiku'): Promise<ProbeResult> {
+export async function probe(
+  env: Record<string, string | undefined>,
+  settingsEnv: Record<string, string>,
+  model = 'haiku'
+): Promise<ProbeResult> {
   const started = Date.now()
   const abort = new AbortController()
   let failure: string | undefined
@@ -45,7 +49,9 @@ export async function probe(env: Record<string, string | undefined>, settingsEnv
       if (msg.type === 'system' && msg.subtype === 'init') {
         answered ??= msg.model
       } else if (msg.type === 'system' && msg.subtype === 'api_retry') {
-        failure = msg.error_status ? `HTTP ${msg.error_status} (${msg.error})` : 'sem resposta (conexão recusada, DNS ou timeout)'
+        failure = msg.error_status
+          ? `HTTP ${msg.error_status} (${msg.error})`
+          : 'sem resposta (conexão recusada, DNS ou timeout)'
         if (msg.attempt >= 2) {
           abort.abort()
           break
@@ -55,7 +61,11 @@ export async function probe(env: Record<string, string | undefined>, settingsEnv
         if (msg.error) failure = `erro ${msg.error}`
       } else if (msg.type === 'result') {
         if (msg.subtype === 'success' && !msg.is_error) failure = undefined
-        else failure = (msg.subtype === 'success' ? msg.result : msg.errors.join('\n'))?.trim() || failure || 'a consulta terminou com erro'
+        else
+          failure =
+            (msg.subtype === 'success' ? msg.result : msg.errors.join('\n'))?.trim() ||
+            failure ||
+            'a consulta terminou com erro'
         break
       }
     }
@@ -66,5 +76,7 @@ export async function probe(env: Record<string, string | undefined>, settingsEnv
     clearTimeout(timer)
   }
   const latencyMs = Date.now() - started
-  return failure ? { ok: false, model: answered ?? model, latencyMs, error: maskSecrets(failure) } : { ok: true, model: answered ?? model, latencyMs }
+  return failure
+    ? { ok: false, model: answered ?? model, latencyMs, error: maskSecrets(failure) }
+    : { ok: true, model: answered ?? model, latencyMs }
 }

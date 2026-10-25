@@ -80,7 +80,15 @@ export function toView(r: LabRoundRecord): LabRoundView {
     finishedAt: s.finishedAt
   })
   const neutralVariant = (v: LabVariantView): LabVariantView => {
-    const { role: _role, roleLabel: _roleLabel, stageId: _stageId, step: _step, inPool: _inPool, snapshotId: _snap, ...keep } = v
+    const {
+      role: _role,
+      roleLabel: _roleLabel,
+      stageId: _stageId,
+      step: _step,
+      inPool: _inPool,
+      snapshotId: _snap,
+      ...keep
+    } = v
     return { ...keep, tree: {} }
   }
   return {

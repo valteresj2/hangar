@@ -43,7 +43,17 @@ import {
   stopRound
 } from './runs'
 import { askClaude } from './select'
-import { allRounds, deleteRound, labDir, patchVariant, putRound, requireRound, toView, updateRound, type LabRoundRecord } from './store'
+import {
+  allRounds,
+  deleteRound,
+  labDir,
+  patchVariant,
+  putRound,
+  requireRound,
+  toView,
+  updateRound,
+  type LabRoundRecord
+} from './store'
 import { condenseTrajectory, outcomeOf } from './transcript'
 import { execReview } from './exec'
 
@@ -76,18 +86,24 @@ export async function createRound(input: CreateLabRoundInput): Promise<LabRoundV
   if (mode === 'manual' && (!input.variants.length || input.variants.length > MAX_LAB_VARIANTS)) {
     throw new Error(`Use de 1 a ${MAX_LAB_VARIANTS} variantes além da base.`)
   }
-  if (mode === 'parallel' && (depth < 1 || depth > LAB_PARALLEL_MAX)) throw new Error(`k deve ficar entre 1 e ${LAB_PARALLEL_MAX}.`)
-  if (mode === 'sequential' && (depth < 1 || depth > LAB_SEQUENTIAL_MAX)) throw new Error(`K deve ficar entre 1 e ${LAB_SEQUENTIAL_MAX}.`)
-  if (input.costCapUsd !== undefined && !(input.costCapUsd > 0)) throw new Error('O teto de custo deve ser maior que zero.')
+  if (mode === 'parallel' && (depth < 1 || depth > LAB_PARALLEL_MAX))
+    throw new Error(`k deve ficar entre 1 e ${LAB_PARALLEL_MAX}.`)
+  if (mode === 'sequential' && (depth < 1 || depth > LAB_SEQUENTIAL_MAX))
+    throw new Error(`K deve ficar entre 1 e ${LAB_SEQUENTIAL_MAX}.`)
+  if (input.costCapUsd !== undefined && !(input.costCapUsd > 0))
+    throw new Error('O teto de custo deve ser maior que zero.')
   if (!(await isGitRepo(input.projectCwd))) {
     throw new Error('O Lab precisa de um repositório git: cada variante roda num worktree próprio.')
   }
-  if (!(await hasHead(input.projectCwd))) throw new Error('O repositório ainda não tem commits; faça o primeiro commit antes.')
+  if (!(await hasHead(input.projectCwd)))
+    throw new Error('O repositório ainda não tem commits; faça o primeiro commit antes.')
 
   const baseTree = await readHarness(input.projectCwd)
   if (mode === 'manual') {
     // Variants that change hooks/scripts run that code inside the round's worktrees: the user must have seen it.
-    const expected = combinedFingerprint(input.variants.map((v) => ({ label: v.label, ...execReview(baseTree, v.tree) })))
+    const expected = combinedFingerprint(
+      input.variants.map((v) => ({ label: v.label, ...execReview(baseTree, v.tree) }))
+    )
     if (expected && input.confirmExec !== expected) {
       throw new Error('Variantes que alteram hooks ou scripts precisam de confirmação explícita antes de rodar.')
     }
@@ -135,7 +151,11 @@ async function launchManual(roundId: string): Promise<void> {
     try {
       ready.push({ variantId: v.id, sessionId: await prepareVariant(roundId, v.id) })
     } catch (err) {
-      patchVariant(roundId, v.id, { status: 'error', error: `Preparação falhou: ${errorText(err)}`, finishedAt: Date.now() })
+      patchVariant(roundId, v.id, {
+        status: 'error',
+        error: `Preparação falhou: ${errorText(err)}`,
+        finishedAt: Date.now()
+      })
     }
   }
   if (requireRound(roundId).status !== 'preparing') return
@@ -209,13 +229,19 @@ const nameOf = (v: LabVariantView) => v.roleLabel ?? v.label
 
 /** Manual-round confirmation token: the non-empty variant fingerprints, in variant order. */
 function combinedFingerprint(reviews: VariantExecReview[]): string {
-  return reviews.map((r) => r.fingerprint).filter(Boolean).join(',')
+  return reviews
+    .map((r) => r.fingerprint)
+    .filter(Boolean)
+    .join(',')
 }
 
 /** Executable changes of each manual variant against the project's current harness. */
 export async function createReview(input: CreateLabRoundInput): Promise<VariantExecReview[]> {
   const baseTree = await readHarness(input.projectCwd)
-  return input.variants.map((v, i) => ({ label: v.label.trim() || `Variante ${i + 1}`, ...execReview(baseTree, v.tree) }))
+  return input.variants.map((v, i) => ({
+    label: v.label.trim() || `Variante ${i + 1}`,
+    ...execReview(baseTree, v.tree)
+  }))
 }
 
 /** What applying the winner would change in what runs on this machine (vs the project's harness now). */
@@ -234,7 +260,9 @@ export async function adopt(roundId: string, apply: boolean, confirmExec?: strin
     // Writing hooks/scripts into the project is code execution: only with the exact list the user confirmed.
     const review = execReview(await readHarness(round.projectCwd), winner.tree)
     if (review.fingerprint && confirmExec !== review.fingerprint) {
-      throw new Error('Este harness altera hooks ou scripts executáveis: confirme a lista de mudanças antes de aplicar.')
+      throw new Error(
+        'Este harness altera hooks ou scripts executáveis: confirme a lista de mudanças antes de aplicar.'
+      )
     }
   }
   const by = round.selection!.by === 'user' ? 'você' : 'Claude'
@@ -263,12 +291,15 @@ export async function reflectRound(roundId: string): Promise<ReflectResult> {
     const d = round.deliverables?.[v.id]
     const entries = await readTranscript(v.sessionId).catch(() => [])
     const stage = round.stages?.find((s) => s.id === v.stageId)
-    const changes = d ? [d.diffStat, d.diffExcerpt.slice(0, 6000)].filter(Boolean).join('\n\n') || '(no file changes)' : '(not collected)'
+    const changes = d
+      ? [d.diffStat, d.diffExcerpt.slice(0, 6000)].filter(Boolean).join('\n\n') || '(no file changes)'
+      : '(not collected)'
     candidates.push({
       label: nameOf(v),
       tree: v.tree,
       // The proposer's own reasoning helps the reflector attribute effects to edits.
-      trajectory: (stage?.notes ? `PROPOSER NOTES (${stage.id}):\n${stage.notes}\n\n` : '') + condenseTrajectory(entries),
+      trajectory:
+        (stage?.notes ? `PROPOSER NOTES (${stage.id}):\n${stage.notes}\n\n` : '') + condenseTrajectory(entries),
       changes,
       costUsd: v.costUsd,
       durationMs: v.durationMs,
@@ -394,7 +425,11 @@ export async function reconcile(): Promise<void> {
               durationMs: outcome.durationMs,
               finishedAt: Date.now()
             }
-          : { status: 'error', error: 'Interrompida: o app foi fechado antes do fim da execução.', finishedAt: Date.now() }
+          : {
+              status: 'error',
+              error: 'Interrompida: o app foi fechado antes do fim da execução.',
+              finishedAt: Date.now()
+            }
       )
     }
     if (!auto) {
@@ -405,7 +440,8 @@ export async function reconcile(): Promise<void> {
     const finishedPipeline = round.variants.some((v) => v.role === 'base' && v.status === 'done')
     updateRound(round.id, (r) => {
       for (const s of r.stages ?? []) {
-        if (s.status === 'running' || s.status === 'pending') Object.assign(s, { status: 'error', error: 'Interrompida: o app foi fechado.' })
+        if (s.status === 'running' || s.status === 'pending')
+          Object.assign(s, { status: 'error', error: 'Interrompida: o app foi fechado.' })
       }
       if (!finishedPipeline) {
         r.status = 'failed'
@@ -413,7 +449,10 @@ export async function reconcile(): Promise<void> {
       }
     })
     if (finishedPipeline) {
-      updateRound(round.id, (r) => (r.error = 'O app foi fechado no meio do pipeline; a seleção usa as execuções concluídas.'))
+      updateRound(
+        round.id,
+        (r) => (r.error = 'O app foi fechado no meio do pipeline; a seleção usa as execuções concluídas.')
+      )
       await finalize(round.id)
     }
   }

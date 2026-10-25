@@ -19,9 +19,11 @@ export const labApi = {
   create: (input: CreateLabRoundInput) => bridge.invoke<LabRoundView>(LAB.create, input),
   cancel: (roundId: string) => bridge.invoke<LabRoundView>(LAB.cancel, roundId),
   candidates: (roundId: string) => bridge.invoke<BlindCandidate[]>(LAB.candidates, roundId),
-  choose: (roundId: string, anonId: string, why: string) => bridge.invoke<LabRoundView>(LAB.choose, roundId, anonId, why),
+  choose: (roundId: string, anonId: string, why: string) =>
+    bridge.invoke<LabRoundView>(LAB.choose, roundId, anonId, why),
   askClaude: (roundId: string) => bridge.invoke<LabRoundView>(LAB.askClaude, roundId),
-  adopt: (roundId: string, apply: boolean, confirmExec?: string) => bridge.invoke<AdoptResult>(LAB.adopt, roundId, apply, confirmExec),
+  adopt: (roundId: string, apply: boolean, confirmExec?: string) =>
+    bridge.invoke<AdoptResult>(LAB.adopt, roundId, apply, confirmExec),
   adoptReview: (roundId: string) => bridge.invoke<ExecReview>(LAB.adoptReview, roundId),
   createReview: (input: CreateLabRoundInput) => bridge.invoke<VariantExecReview[]>(LAB.createReview, input),
   reflect: (roundId: string) => bridge.invoke<ReflectResult>(LAB.reflect, roundId),
@@ -36,7 +38,11 @@ export function errorMessage(err: unknown): string {
 }
 
 function sameDir(a: string, b: string): boolean {
-  const norm = (p: string) => p.replace(/[\\/]+/g, '/').replace(/\/$/, '').toLowerCase()
+  const norm = (p: string) =>
+    p
+      .replace(/[\\/]+/g, '/')
+      .replace(/\/$/, '')
+      .toLowerCase()
   return norm(a) === norm(b)
 }
 
@@ -45,7 +51,10 @@ export function useLabRounds(projectCwd: string): LabRoundView[] | undefined {
   const [rounds, setRounds] = useState<LabRoundView[]>()
   useEffect(() => {
     let alive = true
-    labApi.list(projectCwd).then((r) => alive && setRounds(r), () => alive && setRounds([]))
+    labApi.list(projectCwd).then(
+      (r) => alive && setRounds(r),
+      () => alive && setRounds([])
+    )
     const offRound = bridge.on(LAB.evRound, (round: LabRoundView) => {
       if (!sameDir(round.projectCwd, projectCwd)) return
       setRounds((prev) => {

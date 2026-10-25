@@ -211,7 +211,12 @@ function applyPreset(s: ElementState, type: string, p: number, dir: 1 | -1): voi
   }
 }
 
-function font(weight: number | undefined, size: number, family: string | undefined, fallback: string | undefined): string {
+function font(
+  weight: number | undefined,
+  size: number,
+  family: string | undefined,
+  fallback: string | undefined
+): string {
   return `${weight ?? 400} ${size}px ${family ?? fallback ?? DEFAULT_FONT}`
 }
 
@@ -319,7 +324,9 @@ function drawImage(ctx: MotionContext, el: ImageElement, img: CanvasImageSource 
 }
 
 function formatNumber(v: number, decimals = 0, prefix = '', suffix = ''): string {
-  return prefix + v.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix
+  return (
+    prefix + v.toLocaleString('pt-BR', { minimumFractionDigits: decimals, maximumFractionDigits: decimals }) + suffix
+  )
 }
 
 function drawChart(ctx: MotionContext, el: ChartElement, local: number, specFont?: string): void {

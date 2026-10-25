@@ -32,7 +32,9 @@ export function openSession(session: Session): void {
 }
 
 export function renameSession(id: string, title: string): Promise<unknown> {
-  return guard('Não foi possível renomear', () => api.patch('sessions', id, { title: title.trim() || DEFAULT_SESSION_TITLE }))
+  return guard('Não foi possível renomear', () =>
+    api.patch('sessions', id, { title: title.trim() || DEFAULT_SESSION_TITLE })
+  )
 }
 
 export function setPinned(session: Session, pinned: boolean): Promise<unknown> {
@@ -48,7 +50,9 @@ export function moveToGroup(sessionId: string, groupId: string | undefined): Pro
 }
 
 export async function exportSession(session: Session): Promise<void> {
-  const path = await guard('Falha ao exportar', () => bridge.invoke<string | undefined>(SESSIONS.exportMarkdown, session.id))
+  const path = await guard('Falha ao exportar', () =>
+    bridge.invoke<string | undefined>(SESSIONS.exportMarkdown, session.id)
+  )
   if (path) toast(`Exportado para ${path}`)
 }
 
@@ -67,12 +71,18 @@ export async function deleteSession(session: Session, removeWorktree: boolean): 
 }
 
 export async function createGroup(name: string, groups: Group[]): Promise<Group | undefined> {
-  const group: Group = { id: nanoid(), name: name.trim() || 'Novo grupo', order: Math.max(-1, ...groups.map((g) => g.order)) + 1 }
+  const group: Group = {
+    id: nanoid(),
+    name: name.trim() || 'Novo grupo',
+    order: Math.max(-1, ...groups.map((g) => g.order)) + 1
+  }
   return guard('Não foi possível criar o grupo', () => api.put('groups', group))
 }
 
 export function renameGroup(group: Group, name: string): Promise<unknown> {
-  return guard('Não foi possível renomear o grupo', () => api.patch('groups', group.id, { name: name.trim() || group.name }))
+  return guard('Não foi possível renomear o grupo', () =>
+    api.patch('groups', group.id, { name: name.trim() || group.name })
+  )
 }
 
 export function setGroupCollapsed(group: Group, collapsed: boolean): Promise<unknown> {
@@ -82,7 +92,8 @@ export function setGroupCollapsed(group: Group, collapsed: boolean): Promise<unk
 /** Deletes a group; its sessions go back to "Recentes". */
 export async function deleteGroup(group: Group, sessions: Session[]): Promise<void> {
   await guard('Não foi possível excluir o grupo', async () => {
-    for (const s of sessions.filter((s) => s.groupId === group.id)) await api.patch('sessions', s.id, { groupId: undefined })
+    for (const s of sessions.filter((s) => s.groupId === group.id))
+      await api.patch('sessions', s.id, { groupId: undefined })
     await api.remove('groups', group.id)
   })
 }
@@ -99,7 +110,10 @@ export async function reorderGroup(groups: Group[], groupId: string, index: numb
   })
 }
 
-export async function saveProject(input: Omit<Project, 'id' | 'createdAt'>, existing?: Project): Promise<Project | undefined> {
+export async function saveProject(
+  input: Omit<Project, 'id' | 'createdAt'>,
+  existing?: Project
+): Promise<Project | undefined> {
   const project: Project = existing ? { ...existing, ...input } : { ...input, id: nanoid(), createdAt: Date.now() }
   return guard('Não foi possível salvar o projeto', () => api.put('projects', project))
 }
@@ -107,7 +121,8 @@ export async function saveProject(input: Omit<Project, 'id' | 'createdAt'>, exis
 /** Deletes a project; its sessions are kept and simply lose the link. */
 export async function deleteProject(project: Project, sessions: Session[]): Promise<void> {
   await guard('Não foi possível excluir o projeto', async () => {
-    for (const s of sessions.filter((s) => s.projectId === project.id)) await api.patch('sessions', s.id, { projectId: undefined })
+    for (const s of sessions.filter((s) => s.projectId === project.id))
+      await api.patch('sessions', s.id, { projectId: undefined })
     await api.remove('projects', project.id)
   })
 }
@@ -142,10 +157,15 @@ export function sessionMenu(session: Session, groups: Group[], where: 'sidebar' 
         })),
         ...(sortedGroups.length ? [{ separator: true } as MenuItem] : []),
         { label: 'Novo grupo…', onSelect: () => openDialog({ kind: 'newGroup', moveSessionId: session.id }) },
-        ...(session.groupId ? [{ label: 'Remover do grupo', onSelect: () => void moveToGroup(session.id, undefined) }] : [])
+        ...(session.groupId
+          ? [{ label: 'Remover do grupo', onSelect: () => void moveToGroup(session.id, undefined) }]
+          : [])
       ]
     },
-    { label: session.archived ? 'Desarquivar' : 'Arquivar', onSelect: () => void setArchived(session, !session.archived) },
+    {
+      label: session.archived ? 'Desarquivar' : 'Arquivar',
+      onSelect: () => void setArchived(session, !session.archived)
+    },
     { separator: true },
     { label: 'Exportar como Markdown…', onSelect: () => void exportSession(session) },
     { label: 'Abrir pasta', onSelect: () => openFolder(session) },

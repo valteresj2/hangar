@@ -43,7 +43,9 @@ export function closeAll(): void {
 }
 
 export function stateOf(sessionId: string): EngineState {
-  return runners.get(sessionId)?.state() ?? { running: false, busy: false, pending: [], streamText: '', streamThinking: '' }
+  return (
+    runners.get(sessionId)?.state() ?? { running: false, busy: false, pending: [], streamText: '', streamThinking: '' }
+  )
 }
 
 export async function slashCommandsFor(sessionId: string): Promise<SlashCommandInfo[]> {

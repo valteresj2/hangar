@@ -9,13 +9,18 @@ vi.mock('electron', async () => (await import('./helpers/electron')).default)
 const userData = useTempUserData()
 // The user's ~/.claude/settings.json: points at a local gateway, like the real machine does.
 const claudeConfig = mkdtempSync(join(tmpdir(), 'hangar-claude-config-'))
-writeFileSync(join(claudeConfig, 'settings.json'), JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'http://localhost:8787', ANTHROPIC_MODEL: 'gw-model' } }))
+writeFileSync(
+  join(claudeConfig, 'settings.json'),
+  JSON.stringify({ env: { ANTHROPIC_BASE_URL: 'http://localhost:8787', ANTHROPIC_MODEL: 'gw-model' } })
+)
 process.env.CLAUDE_CONFIG_DIR = claudeConfig
 
 const providers = await import('../../src/main/features/settings/providers')
-const { resolveLaunch, saveProvider, setDefaultProvider, listProviders, providersState, maskSecrets, deleteProvider } = providers
+const { resolveLaunch, saveProvider, setDefaultProvider, listProviders, providersState, maskSecrets, deleteProvider } =
+  providers
 // setProviderSecret may be synchronous or async depending on the safeStorage API in use; normalize to a promise.
-const setProviderSecret = (id: string, secret: string) => Promise.resolve().then(() => providers.setProviderSecret(id, secret))
+const setProviderSecret = (id: string, secret: string) =>
+  Promise.resolve().then(() => providers.setProviderSecret(id, secret))
 await providers.loadProviders()
 
 const SECRET = 'sk-ant-test-0123456789abcdefSECRET'
@@ -45,12 +50,29 @@ describe('resolveLaunch', () => {
   })
 
   it('gateway (bearer): base URL + auth token, clears other credentials and blanks the user settings override', async () => {
-    const p = saveProvider({ name: 'Gateway', kind: 'gateway', baseUrl: 'http://127.0.0.1:9999/', authStyle: 'bearer', extraEnv: { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' } })
+    const p = saveProvider({
+      name: 'Gateway',
+      kind: 'gateway',
+      baseUrl: 'http://127.0.0.1:9999/',
+      authStyle: 'bearer',
+      extraEnv: { CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' }
+    })
     expect(() => resolveLaunch(p.id)).toThrow(/não tem chave salva/)
     await setProviderSecret(p.id, SECRET)
     const l = resolveLaunch(p.id)
-    expect(l.env).toEqual({ ANTHROPIC_BASE_URL: 'http://127.0.0.1:9999', ANTHROPIC_AUTH_TOKEN: SECRET, CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1' })
-    expect(l.unset).toEqual(expect.arrayContaining(['ANTHROPIC_API_KEY', 'CLAUDE_CODE_OAUTH_TOKEN', 'CLAUDE_CODE_USE_BEDROCK', 'ANTHROPIC_MODEL']))
+    expect(l.env).toEqual({
+      ANTHROPIC_BASE_URL: 'http://127.0.0.1:9999',
+      ANTHROPIC_AUTH_TOKEN: SECRET,
+      CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: '1'
+    })
+    expect(l.unset).toEqual(
+      expect.arrayContaining([
+        'ANTHROPIC_API_KEY',
+        'CLAUDE_CODE_OAUTH_TOKEN',
+        'CLAUDE_CODE_USE_BEDROCK',
+        'ANTHROPIC_MODEL'
+      ])
+    )
     expect(l.unset).not.toContain('ANTHROPIC_BASE_URL')
     expect(l.unset).not.toContain('ANTHROPIC_AUTH_TOKEN')
     // Flag settings carry the profile and blank what ~/.claude/settings.json sets but the profile doesn't.
@@ -58,7 +80,12 @@ describe('resolveLaunch', () => {
   })
 
   it('gateway (x-api-key) uses ANTHROPIC_API_KEY', async () => {
-    const p = saveProvider({ name: 'GW key', kind: 'gateway', baseUrl: 'https://gw.example.com', authStyle: 'x-api-key' })
+    const p = saveProvider({
+      name: 'GW key',
+      kind: 'gateway',
+      baseUrl: 'https://gw.example.com',
+      authStyle: 'x-api-key'
+    })
     await setProviderSecret(p.id, 'gw-secret-value-123')
     const l = resolveLaunch(p.id)
     expect(l.env.ANTHROPIC_API_KEY).toBe('gw-secret-value-123')
@@ -67,7 +94,11 @@ describe('resolveLaunch', () => {
   })
 
   it('anthropic API key: default endpoint and model mapping', async () => {
-    const p = saveProvider({ name: 'API', kind: 'anthropic', models: { default: 'claude-x', opus: 'o-1', sonnet: 's-1', haiku: 'h-1' } })
+    const p = saveProvider({
+      name: 'API',
+      kind: 'anthropic',
+      models: { default: 'claude-x', opus: 'o-1', sonnet: 's-1', haiku: 'h-1' }
+    })
     await setProviderSecret(p.id, 'sk-ant-api-key-abcdef123456')
     const l = resolveLaunch(p.id)
     expect(l.env).toMatchObject({
@@ -89,8 +120,19 @@ describe('resolveLaunch', () => {
   })
 
   it('bedrock: region/profile, optional bearer token', async () => {
-    const p = saveProvider({ name: 'Bedrock', kind: 'bedrock', region: 'us-east-1', awsProfile: 'dev', baseUrl: 'https://bedrock.example.com' })
-    expect(resolveLaunch(p.id).env).toEqual({ CLAUDE_CODE_USE_BEDROCK: '1', AWS_REGION: 'us-east-1', AWS_PROFILE: 'dev', ANTHROPIC_BEDROCK_BASE_URL: 'https://bedrock.example.com' })
+    const p = saveProvider({
+      name: 'Bedrock',
+      kind: 'bedrock',
+      region: 'us-east-1',
+      awsProfile: 'dev',
+      baseUrl: 'https://bedrock.example.com'
+    })
+    expect(resolveLaunch(p.id).env).toEqual({
+      CLAUDE_CODE_USE_BEDROCK: '1',
+      AWS_REGION: 'us-east-1',
+      AWS_PROFILE: 'dev',
+      ANTHROPIC_BEDROCK_BASE_URL: 'https://bedrock.example.com'
+    })
     await setProviderSecret(p.id, 'bedrock-token-123456')
     expect(resolveLaunch(p.id).env.AWS_BEARER_TOKEN_BEDROCK).toBe('bedrock-token-123456')
   })
@@ -98,7 +140,11 @@ describe('resolveLaunch', () => {
   it('vertex: project and region; requires the project', async () => {
     expect(() => saveProvider({ name: 'V', kind: 'vertex' })).toThrow(/projeto GCP/)
     const p = saveProvider({ name: 'Vertex', kind: 'vertex', region: 'global', project: 'my-proj' })
-    expect(resolveLaunch(p.id).env).toEqual({ CLAUDE_CODE_USE_VERTEX: '1', CLOUD_ML_REGION: 'global', ANTHROPIC_VERTEX_PROJECT_ID: 'my-proj' })
+    expect(resolveLaunch(p.id).env).toEqual({
+      CLAUDE_CODE_USE_VERTEX: '1',
+      CLOUD_ML_REGION: 'global',
+      ANTHROPIC_VERTEX_PROJECT_ID: 'my-proj'
+    })
   })
 
   it('foundry: resource name, key style', async () => {
@@ -110,9 +156,15 @@ describe('resolveLaunch', () => {
   })
 
   it('extraEnv cannot override managed variables and must be well-formed', async () => {
-    expect(() => saveProvider({ name: 'X', kind: 'gateway', baseUrl: 'http://x', extraEnv: { ANTHROPIC_BASE_URL: 'http://evil' } })).toThrow(/controlada pelo próprio perfil/)
-    expect(() => saveProvider({ name: 'X', kind: 'gateway', baseUrl: 'http://x', extraEnv: { AWS_PROFILE: 'x' } })).toThrow(/controlada/)
-    expect(() => saveProvider({ name: 'X', kind: 'gateway', baseUrl: 'http://x', extraEnv: { 'bad-name': '1' } })).toThrow(/letras maiúsculas/)
+    expect(() =>
+      saveProvider({ name: 'X', kind: 'gateway', baseUrl: 'http://x', extraEnv: { ANTHROPIC_BASE_URL: 'http://evil' } })
+    ).toThrow(/controlada pelo próprio perfil/)
+    expect(() =>
+      saveProvider({ name: 'X', kind: 'gateway', baseUrl: 'http://x', extraEnv: { AWS_PROFILE: 'x' } })
+    ).toThrow(/controlada/)
+    expect(() =>
+      saveProvider({ name: 'X', kind: 'gateway', baseUrl: 'http://x', extraEnv: { 'bad-name': '1' } })
+    ).toThrow(/letras maiúsculas/)
     expect(() => saveProvider({ name: 'X', kind: 'gateway', baseUrl: 'ftp://x' })).toThrow(/http:\/\/ ou https:\/\//)
     expect(() => saveProvider({ name: 'X', kind: 'gateway' })).toThrow(/URL base do gateway/)
   })

@@ -79,9 +79,13 @@ export const previewFeature: Feature = {
 
     // Hangar Motion
     ipcMain.handle(PREVIEW.motionAssets, (_e, id: string, srcs: string[]) => motionAssets(id, srcs))
-    ipcMain.handle(PREVIEW.exportDialog, (_e, sessionId: string, title: string) => exportDialog(ctx.mainWindow(), sessionId, title))
+    ipcMain.handle(PREVIEW.exportDialog, (_e, sessionId: string, title: string) =>
+      exportDialog(ctx.mainWindow(), sessionId, title)
+    )
     ipcMain.handle(PREVIEW.exportOpen, (_e, path: string) => exportOpen(path))
-    ipcMain.handle(PREVIEW.exportWrite, (_e, id: string, position: number, data: Uint8Array) => exportWrite(id, position, data))
+    ipcMain.handle(PREVIEW.exportWrite, (_e, id: string, position: number, data: Uint8Array) =>
+      exportWrite(id, position, data)
+    )
     ipcMain.handle(PREVIEW.exportClose, (_e, id: string, commit: boolean) => exportClose(id, !!commit))
     ipcMain.handle(PREVIEW.showInFolder, (_e, path: string) => showInFolder(path))
 

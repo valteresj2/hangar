@@ -18,7 +18,8 @@ export interface OpenArtifactDetail {
 
 export type Easing = 'linear' | 'easeIn' | 'easeOut' | 'easeInOut' | 'backOut'
 
-export type EnterPreset = 'fade' | 'slide-up' | 'slide-down' | 'slide-left' | 'slide-right' | 'scale' | 'typewriter' | 'draw'
+export type EnterPreset =
+  'fade' | 'slide-up' | 'slide-down' | 'slide-left' | 'slide-right' | 'scale' | 'typewriter' | 'draw'
 export type ExitPreset = 'fade' | 'slide-up' | 'slide-down' | 'slide-left' | 'slide-right' | 'scale'
 
 export interface Preset<T extends string> {
@@ -205,7 +206,8 @@ export function parseMotion(source: string): MotionValidation {
     const elements: MotionElement[] = []
     ;(Array.isArray(s.elements) ? s.elements : []).forEach((e: any, j: number) => {
       if (!e || !kinds.has(e.type)) return errors.push(`Cena ${i + 1}, elemento ${j + 1}: "type" inválido.`)
-      if (typeof e.x !== 'number' || typeof e.y !== 'number') errors.push(`Cena ${i + 1}, elemento ${e.id ?? j + 1}: "x" e "y" são obrigatórios.`)
+      if (typeof e.x !== 'number' || typeof e.y !== 'number')
+        errors.push(`Cena ${i + 1}, elemento ${e.id ?? j + 1}: "x" e "y" são obrigatórios.`)
       elements.push({ ...e, id: typeof e.id === 'string' ? e.id : `s${i + 1}e${j + 1}` })
     })
     spec.scenes.push({

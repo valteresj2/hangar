@@ -54,7 +54,12 @@ interface TreeProps {
 
 function Tree({ dir, depth, tree, expanded, showIgnored, selected, onToggle, onOpen }: TreeProps) {
   const entries = tree[dir]
-  if (!entries) return <div className={styles.treeLoading} style={{ paddingLeft: 8 + depth * 14 }}>…</div>
+  if (!entries)
+    return (
+      <div className={styles.treeLoading} style={{ paddingLeft: 8 + depth * 14 }}>
+        …
+      </div>
+    )
   const visible = showIgnored ? entries : entries.filter((e) => !e.ignored)
   if (!visible.length && depth > 0) {
     return (
@@ -261,11 +266,7 @@ export function FilesPanel({ session }: { session: Session }) {
         >
           ◐
         </button>
-        <button
-          className="icon-btn"
-          title="Recolher tudo"
-          onClick={() => setExpanded(new Set())}
-        >
+        <button className="icon-btn" title="Recolher tudo" onClick={() => setExpanded(new Set())}>
           ⊟
         </button>
         <button className="icon-btn" title="Atualizar" onClick={() => void loadDir(root)}>

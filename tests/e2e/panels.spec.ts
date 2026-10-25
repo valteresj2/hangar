@@ -10,12 +10,16 @@ test('Terminal abre na pasta da sessão e mostra o prompt', async ({ hangar }) =
 
   const rows = page.locator('.xterm-rows').first()
   // PowerShell ("PS C:\…>"), cmd ("C:\…>") or a POSIX shell ("$ ").
-  await expect.poll(async () => (await rows.innerText()).trim(), { timeout: 30_000 }).toMatch(/(PS [A-Za-z]:\\.*>|[A-Za-z]:\\.*>|[$#] ?$)/m)
+  await expect
+    .poll(async () => (await rows.innerText()).trim(), { timeout: 30_000 })
+    .toMatch(/(PS [A-Za-z]:\\.*>|[A-Za-z]:\\.*>|[$#] ?$)/m)
 
   await page.locator('.xterm').first().click()
   await page.keyboard.type('echo hangar-e2e-ok')
   await page.keyboard.press('Enter')
-  await expect.poll(async () => (await rows.innerText()).split('hangar-e2e-ok').length - 1, { timeout: 20_000 }).toBeGreaterThanOrEqual(2)
+  await expect
+    .poll(async () => (await rows.innerText()).split('hangar-e2e-ok').length - 1, { timeout: 20_000 })
+    .toBeGreaterThanOrEqual(2)
 })
 
 test('Motion de exemplo toca no player', async ({ hangar }) => {
@@ -27,7 +31,10 @@ test('Motion de exemplo toca no player', async ({ hangar }) => {
 
   // The same path the chat's "Abrir no player" button takes: open Artifacts and dispatch the open event.
   await page.locator('header').getByRole('button', { name: 'Artifacts' }).click()
-  await page.evaluate((path) => window.dispatchEvent(new CustomEvent('hangar:artifacts:open', { detail: { path } })), file)
+  await page.evaluate(
+    (path) => window.dispatchEvent(new CustomEvent('hangar:artifacts:open', { detail: { path } })),
+    file
+  )
 
   await expect(page.locator('canvas').first()).toBeVisible()
   const clock = page.getByText(/^\d+:\d\d\.\d \/ 0:12\.0$/)
@@ -35,7 +42,9 @@ test('Motion de exemplo toca no player', async ({ hangar }) => {
   await expect(page.getByRole('button', { name: 'Números' })).toBeVisible()
 
   await page.getByTitle('Tocar (Espaço)').click()
-  await expect.poll(async () => Number((await clock.innerText()).split(' / ')[0].split(':')[1]), { timeout: 10_000 }).toBeGreaterThan(1)
+  await expect
+    .poll(async () => Number((await clock.innerText()).split(' / ')[0].split(':')[1]), { timeout: 10_000 })
+    .toBeGreaterThan(1)
   await page.getByTitle('Pausar (Espaço)').click()
 
   // The canvas actually draws the spec (background #faf9f5 at a corner).
@@ -67,5 +76,7 @@ test('teste de conexão de um perfil com o mock devolvendo 401', async ({ hangar
   expect(text).toMatch(/HTTP 401/)
   expect(text).not.toContain(token)
   // The test really went to the mock, with the profile's token.
-  expect(mock.requests.some((r) => r.path === '/v1/messages' && r.headers.authorization === `Bearer ${token}`)).toBe(true)
+  expect(mock.requests.some((r) => r.path === '/v1/messages' && r.headers.authorization === `Bearer ${token}`)).toBe(
+    true
+  )
 })

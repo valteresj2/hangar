@@ -20,7 +20,13 @@ function modeLabel(r: LabRoundView): string {
 }
 
 function isEditable(el: Element | null): boolean {
-  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || (el as HTMLElement).isContentEditable)
+  return (
+    !!el &&
+    (el.tagName === 'INPUT' ||
+      el.tagName === 'TEXTAREA' ||
+      el.tagName === 'SELECT' ||
+      (el as HTMLElement).isContentEditable)
+  )
 }
 
 /** Full-screen Harness Lab for one project directory: rounds, variants, blind selection. */

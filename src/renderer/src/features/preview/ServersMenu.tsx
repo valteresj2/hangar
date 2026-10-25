@@ -54,7 +54,17 @@ function LogView({ serverId }: { serverId: string }) {
   )
 }
 
-function Editor({ sessionId, initial, exists, onDone }: { sessionId: string; initial: string; exists: boolean; onDone(saved: boolean): void }) {
+function Editor({
+  sessionId,
+  initial,
+  exists,
+  onDone
+}: {
+  sessionId: string
+  initial: string
+  exists: boolean
+  onDone(saved: boolean): void
+}) {
   const [text, setText] = useState(initial)
   const [error, setError] = useState<string>()
   const [confirming, setConfirming] = useState(false)
@@ -69,11 +79,18 @@ function Editor({ sessionId, initial, exists, onDone }: { sessionId: string; ini
 
   return (
     <div className={styles.editor}>
-      <textarea className={`input ${styles.editorText}`} value={text} spellCheck={false} onChange={(e) => setText(e.target.value)} />
+      <textarea
+        className={`input ${styles.editorText}`}
+        value={text}
+        spellCheck={false}
+        onChange={(e) => setText(e.target.value)}
+      />
       {error && <div className={styles.errorText}>{error}</div>}
       {confirming ? (
         <div className={styles.confirm}>
-          <span>O arquivo <code>.claude/launch.json</code> já existe. Sobrescrever?</span>
+          <span>
+            O arquivo <code>.claude/launch.json</code> já existe. Sobrescrever?
+          </span>
           <button className="btn btn-primary" onClick={() => void save(true)}>
             Sobrescrever
           </button>
@@ -100,7 +117,15 @@ function Editor({ sessionId, initial, exists, onDone }: { sessionId: string; ini
   )
 }
 
-export function ServersMenu({ sessionId, servers, onClose }: { sessionId: string; servers: ServerInfo[]; onClose(): void }) {
+export function ServersMenu({
+  sessionId,
+  servers,
+  onClose
+}: {
+  sessionId: string
+  servers: ServerInfo[]
+  onClose(): void
+}) {
   const { data, reload } = useLaunchConfigs(sessionId)
   const [editing, setEditing] = useState(false)
   const [logFor, setLogFor] = useState<string>()
@@ -159,7 +184,8 @@ export function ServersMenu({ sessionId, servers, onClose }: { sessionId: string
           {startError && <div className={styles.errorText}>{startError}</div>}
           {data && !data.exists && (
             <div className="muted">
-              Nenhum <code>.claude/launch.json</code> nesta pasta. Crie um para iniciar servidores de desenvolvimento daqui.
+              Nenhum <code>.claude/launch.json</code> nesta pasta. Crie um para iniciar servidores de desenvolvimento
+              daqui.
             </div>
           )}
           {data?.configurations.map((config) => {
@@ -189,7 +215,11 @@ export function ServersMenu({ sessionId, servers, onClose }: { sessionId: string
                   </button>
                 )}
                 {alive || server?.status === 'stopping' ? (
-                  <button className="btn" disabled={server?.status === 'stopping'} onClick={() => server && void previewApi.stop(server.id)}>
+                  <button
+                    className="btn"
+                    disabled={server?.status === 'stopping'}
+                    onClick={() => server && void previewApi.stop(server.id)}
+                  >
                     Parar
                   </button>
                 ) : (

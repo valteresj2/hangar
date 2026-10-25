@@ -21,7 +21,12 @@ import {
   type ProviderModels,
   type ProviderProfile
 } from '../../../shared/providers'
-import { SETTINGS, type ProviderInput, type ProvidersState, type ProviderTestResult } from '../../../shared/features/settings'
+import {
+  SETTINGS,
+  type ProviderInput,
+  type ProvidersState,
+  type ProviderTestResult
+} from '../../../shared/features/settings'
 import { broadcast } from '../../core/broadcast'
 import { settings } from '../../core/store'
 import { loadSdk, resolveClaudeExecutable } from '../engine/sdk'
@@ -180,7 +185,9 @@ export function listProviders(): ProviderProfile[] {
 
 function defaultProviderId(): string {
   const id = settings().get().defaultProviderId
-  return id && (id === SUBSCRIPTION_PROFILE_ID || ensureLoaded().some((p) => p.id === id)) ? id : SUBSCRIPTION_PROFILE_ID
+  return id && (id === SUBSCRIPTION_PROFILE_ID || ensureLoaded().some((p) => p.id === id))
+    ? id
+    : SUBSCRIPTION_PROFILE_ID
 }
 
 export function providersState(): ProvidersState {
@@ -195,7 +202,10 @@ export function providersState(): ProvidersState {
 
 function findStored(id: string): StoredProfile {
   const p = ensureLoaded().find((x) => x.id === id)
-  if (!p) throw new Error(id === SUBSCRIPTION_PROFILE_ID ? 'O perfil da assinatura não pode ser alterado.' : 'Perfil não encontrado.')
+  if (!p)
+    throw new Error(
+      id === SUBSCRIPTION_PROFILE_ID ? 'O perfil da assinatura não pode ser alterado.' : 'Perfil não encontrado.'
+    )
   return p
 }
 
@@ -239,8 +249,10 @@ function normalizeExtraEnv(env: Record<string, string> | undefined): Record<stri
   for (const [rawName, value] of Object.entries(env)) {
     const name = rawName.trim()
     if (!name) continue
-    if (!ENV_NAME.test(name)) throw new Error(`Variável "${name}": use só letras maiúsculas, dígitos e _ (começando por letra).`)
-    if (PROTECTED_VARS.has(name)) throw new Error(`Variável "${name}" é controlada pelo próprio perfil; use os campos dele.`)
+    if (!ENV_NAME.test(name))
+      throw new Error(`Variável "${name}": use só letras maiúsculas, dígitos e _ (começando por letra).`)
+    if (PROTECTED_VARS.has(name))
+      throw new Error(`Variável "${name}" é controlada pelo próprio perfil; use os campos dele.`)
     out[name] = String(value ?? '')
   }
   if (Object.keys(out).length > 40) throw new Error('Variáveis extras demais (máximo 40).')
@@ -264,7 +276,12 @@ function validate(input: ProviderInput, existing?: StoredProfile): StoredProfile
     name,
     kind: input.kind,
     baseUrl,
-    authStyle: input.kind === 'gateway' || input.kind === 'foundry' ? (input.authStyle === 'x-api-key' ? 'x-api-key' : 'bearer') : undefined,
+    authStyle:
+      input.kind === 'gateway' || input.kind === 'foundry'
+        ? input.authStyle === 'x-api-key'
+          ? 'x-api-key'
+          : 'bearer'
+        : undefined,
     region: input.kind === 'bedrock' || input.kind === 'vertex' ? region : undefined,
     project: input.kind === 'vertex' || input.kind === 'foundry' ? project : undefined,
     awsProfile: input.kind === 'bedrock' ? awsProfile : undefined,
@@ -277,7 +294,8 @@ function validate(input: ProviderInput, existing?: StoredProfile): StoredProfile
   if (p.kind === 'vertex' && !p.project) throw new Error('Informe o ID do projeto GCP.')
   if (p.kind === 'foundry') {
     if (!p.project && !p.baseUrl) throw new Error('Informe o nome do recurso Foundry ou a URL base.')
-    if (p.project && !/^[a-zA-Z0-9-]+$/.test(p.project)) throw new Error('Recurso Foundry: só o nome (ex.: my-resource), sem URL.')
+    if (p.project && !/^[a-zA-Z0-9-]+$/.test(p.project))
+      throw new Error('Recurso Foundry: só o nome (ex.: my-resource), sem URL.')
   }
   for (const k of Object.keys(p) as (keyof StoredProfile)[]) if (p[k] === undefined) delete p[k]
   return p
@@ -327,7 +345,9 @@ async function storeSecret(id: string, secret: string): Promise<ProviderProfile>
   await loadProviders()
   encryptionAvailable = await safeStorage.isAsyncEncryptionAvailable()
   if (!encryptionAvailable) {
-    throw new Error('A criptografia do sistema (safeStorage/DPAPI) não está disponível, então o Hangar não salva chaves.')
+    throw new Error(
+      'A criptografia do sistema (safeStorage/DPAPI) não está disponível, então o Hangar não salva chaves.'
+    )
   }
   encrypted[id] = (await safeStorage.encryptStringAsync(value)).toString('base64')
   secrets.set(id, value)
@@ -379,7 +399,10 @@ function userSettingsEnv(): Record<string, unknown> {
 function requireSecret(p: StoredProfile): string {
   const s = secrets.get(p.id)
   if (s) return s
-  if (p.id in encrypted) throw new Error(`Não foi possível decifrar a chave do perfil “${p.name}”. Salve a chave de novo em Configurações → Provedores.`)
+  if (p.id in encrypted)
+    throw new Error(
+      `Não foi possível decifrar a chave do perfil “${p.name}”. Salve a chave de novo em Configurações → Provedores.`
+    )
   throw new Error(`O perfil “${p.name}” não tem chave salva. Abra Configurações → Provedores.`)
 }
 
@@ -387,7 +410,9 @@ export function resolveLaunch(profileId?: string): ProviderLaunch {
   ensureLoaded()
   const wanted = profileId ?? defaultProviderId()
   // A session may still point at a deleted profile: fall back to the default, then the subscription.
-  const p = ensureLoaded().find((x) => x.id === wanted) ?? (wanted !== SUBSCRIPTION_PROFILE_ID ? ensureLoaded().find((x) => x.id === defaultProviderId()) : undefined)
+  const p =
+    ensureLoaded().find((x) => x.id === wanted) ??
+    (wanted !== SUBSCRIPTION_PROFILE_ID ? ensureLoaded().find((x) => x.id === defaultProviderId()) : undefined)
   if (!p) return { env: {}, unset: ['ANTHROPIC_API_KEY'], settingsEnv: {} }
 
   const set: Record<string, string> = {}
@@ -424,7 +449,9 @@ export function resolveLaunch(profileId?: string): ProviderLaunch {
       if (p.project) set.ANTHROPIC_FOUNDRY_RESOURCE = p.project
       else if (p.baseUrl) set.ANTHROPIC_FOUNDRY_BASE_URL = p.baseUrl
       // Without a key Claude Code uses the Azure default credential chain (az login).
-      if (secrets.has(p.id)) secretVars[p.authStyle === 'bearer' ? 'ANTHROPIC_FOUNDRY_AUTH_TOKEN' : 'ANTHROPIC_FOUNDRY_API_KEY'] = requireSecret(p)
+      if (secrets.has(p.id))
+        secretVars[p.authStyle === 'bearer' ? 'ANTHROPIC_FOUNDRY_AUTH_TOKEN' : 'ANTHROPIC_FOUNDRY_API_KEY'] =
+          requireSecret(p)
       break
   }
   if (p.models?.opus) set.ANTHROPIC_DEFAULT_OPUS_MODEL = p.models.opus
@@ -436,7 +463,9 @@ export function resolveLaunch(profileId?: string): ProviderLaunch {
 
   const env = { ...set, ...secretVars }
   // The subscription login itself (a setup-token in CLAUDE_CODE_OAUTH_TOKEN) must survive a subscription profile.
-  const unset = MANAGED_VARS.filter((name) => !(name in env) && !(p.kind === 'subscription' && name === 'CLAUDE_CODE_OAUTH_TOKEN'))
+  const unset = MANAGED_VARS.filter(
+    (name) => !(name in env) && !(p.kind === 'subscription' && name === 'CLAUDE_CODE_OAUTH_TOKEN')
+  )
   // Flag settings outrank ~/.claude/settings.json (where this machine, for example, points ANTHROPIC_BASE_URL at a
   // local gateway). The SDK applies them over its stdio control channel, not the command line.
   const settingsEnv: Record<string, string> = { ...env }
@@ -511,7 +540,9 @@ export async function testProvider(id: string): Promise<ProviderTestResult> {
       } else if (msg.type === 'system' && msg.subtype === 'api_retry') {
         // Unreachable endpoints are retried with backoff for minutes; two failures are enough for a test.
         const hint = ERROR_HINT[msg.error] ?? msg.error
-        failure = msg.error_status ? `O provedor respondeu HTTP ${msg.error_status}: ${hint}.` : `Não foi possível conectar ao endpoint: ${ERROR_HINT.unknown}.`
+        failure = msg.error_status
+          ? `O provedor respondeu HTTP ${msg.error_status}: ${hint}.`
+          : `Não foi possível conectar ao endpoint: ${ERROR_HINT.unknown}.`
         if (msg.attempt >= 2) {
           abort.abort()
           break
@@ -539,5 +570,10 @@ export async function testProvider(id: string): Promise<ProviderTestResult> {
   }
 
   if (failure) return { ok: false, model: answeredModel ?? model, latencyMs: elapsed(), error: maskSecrets(failure) }
-  return { ok: true, model: answeredModel ?? model, latencyMs: elapsed(), reply: maskSecrets(reply.trim().slice(0, 200)) }
+  return {
+    ok: true,
+    model: answeredModel ?? model,
+    latencyMs: elapsed(),
+    reply: maskSecrets(reply.trim().slice(0, 200))
+  }
 }

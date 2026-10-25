@@ -4,7 +4,14 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { parseMotion, type MotionSpec } from '@shared/motion/spec'
 import { imageSources, loadMotionAssets, type MotionAssets } from '@renderer/motion/runtime'
-import { PREVIEW, type Artifact, type ArtifactContent, type ArtifactStat, type ArtifactWriteResult, type MotionAssetUrls } from '@shared/features/preview'
+import {
+  PREVIEW,
+  type Artifact,
+  type ArtifactContent,
+  type ArtifactStat,
+  type ArtifactWriteResult,
+  type MotionAssetUrls
+} from '@shared/features/preview'
 import { bridge } from '../../../core/api'
 import { Editor } from './Editor'
 import type { Edit } from './ElementForm'
@@ -126,7 +133,11 @@ export function MotionViewer({ artifact, sessionId }: { artifact: Artifact; sess
     let alive = true
     void (async () => {
       const srcs = imageSources(current)
-      const urls = srcs.length ? await bridge.invoke<MotionAssetUrls>(PREVIEW.motionAssets, artifact.id, srcs).catch(() => ({}) as MotionAssetUrls) : {}
+      const urls = srcs.length
+        ? await bridge
+            .invoke<MotionAssetUrls>(PREVIEW.motionAssets, artifact.id, srcs)
+            .catch(() => ({}) as MotionAssetUrls)
+        : {}
       const loadedAssets = await loadMotionAssets(current, (src) => urls[src] ?? src)
       if (alive) setAssets(loadedAssets)
     })()
@@ -152,7 +163,11 @@ export function MotionViewer({ artifact, sessionId }: { artifact: Artifact; sess
     setSaving(true)
     setSaveError(undefined)
     try {
-      const res = await bridge.invoke<ArtifactWriteResult>(PREVIEW.artifactWrite, artifact.id, `${JSON.stringify(cur, null, 2)}\n`)
+      const res = await bridge.invoke<ArtifactWriteResult>(
+        PREVIEW.artifactWrite,
+        artifact.id,
+        `${JSON.stringify(cur, null, 2)}\n`
+      )
       knownMtime.current = res.mtime
       setSaved(cur)
       setDiskChanged(false)
@@ -266,22 +281,39 @@ export function MotionViewer({ artifact, sessionId }: { artifact: Artifact; sess
           editing={editing}
           selectedId={sel.element}
           controllerRef={player}
-          onSelect={(hit) => setSel((s) => (hit ? { scene: hit.sceneIndex, element: hit.elementId } : { scene: s.scene }))}
+          onSelect={(hit) =>
+            setSel((s) => (hit ? { scene: hit.sceneIndex, element: hit.elementId } : { scene: s.scene }))
+          }
           onDrag={onDrag}
           actions={
             <>
               {editing && (
                 <>
-                  <button className="icon-btn" title="Desfazer (Ctrl+Z)" disabled={!history.canUndo} onClick={history.undo}>
+                  <button
+                    className="icon-btn"
+                    title="Desfazer (Ctrl+Z)"
+                    disabled={!history.canUndo}
+                    onClick={history.undo}
+                  >
                     ↶
                   </button>
-                  <button className="icon-btn" title="Refazer (Ctrl+Y)" disabled={!history.canRedo} onClick={history.redo}>
+                  <button
+                    className="icon-btn"
+                    title="Refazer (Ctrl+Y)"
+                    disabled={!history.canRedo}
+                    onClick={history.redo}
+                  >
                     ↷
                   </button>
                 </>
               )}
               {dirty && (
-                <button className="btn btn-primary" disabled={saving} title="Salvar (Ctrl+S)" onClick={() => void save()}>
+                <button
+                  className="btn btn-primary"
+                  disabled={saving}
+                  title="Salvar (Ctrl+S)"
+                  onClick={() => void save()}
+                >
                   {saving ? 'Salvando…' : 'Salvar'}
                 </button>
               )}

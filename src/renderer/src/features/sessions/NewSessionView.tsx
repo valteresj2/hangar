@@ -97,8 +97,12 @@ export function NewSessionView() {
   const togglePin = async (folder: string) => {
     if (!settings) return
     const has = settings.pinnedFolders.some((p) => samePath(p, folder))
-    const pinnedFolders = has ? settings.pinnedFolders.filter((p) => !samePath(p, folder)) : [folder, ...settings.pinnedFolders]
-    await api.patchSettings({ pinnedFolders }).catch((err) => showToast(`Falha ao fixar pasta: ${errorText(err)}`, 'error'))
+    const pinnedFolders = has
+      ? settings.pinnedFolders.filter((p) => !samePath(p, folder))
+      : [folder, ...settings.pinnedFolders]
+    await api
+      .patchSettings({ pinnedFolders })
+      .catch((err) => showToast(`Falha ao fixar pasta: ${errorText(err)}`, 'error'))
   }
 
   const chooseFolder = async () => {
@@ -220,7 +224,11 @@ export function NewSessionView() {
             className={styles.composerText}
             autoFocus
             rows={4}
-            placeholder={project ? `Descreva a tarefa para ${project.name}…` : 'Descreva a tarefa… (Enter envia, Shift+Enter quebra linha)'}
+            placeholder={
+              project
+                ? `Descreva a tarefa para ${project.name}…`
+                : 'Descreva a tarefa… (Enter envia, Shift+Enter quebra linha)'
+            }
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
             onKeyDown={(e) => {
@@ -231,7 +239,12 @@ export function NewSessionView() {
             }}
           />
           <div className={styles.composerBar}>
-            <select className={`input ${styles.selectSmall}`} value={model ?? ''} title="Modelo" onChange={(e) => setModel(e.target.value)}>
+            <select
+              className={`input ${styles.selectSmall}`}
+              value={model ?? ''}
+              title="Modelo"
+              onChange={(e) => setModel(e.target.value)}
+            >
               {modelOptions.map((m) => (
                 <option key={m} value={m}>
                   {m}

@@ -31,7 +31,13 @@ import {
   type SlashCommandInfo,
   type TranscriptEntry
 } from '../../../shared/features/engine'
-import { fromAssistantContent, parseQuestions, toolResultsFromUserContent, writtenPath, type EntryDraft } from './convert'
+import {
+  fromAssistantContent,
+  parseQuestions,
+  toolResultsFromUserContent,
+  writtenPath,
+  type EntryDraft
+} from './convert'
 import { claudeLaunch, loadSdk, MessageQueue, toCommandInfo } from './sdk'
 import { isValidImage, saveImage } from './images'
 import { isMotionPath, motionCard, motionInstructions } from './motion'
@@ -172,7 +178,12 @@ export class Runner {
       const info = providerInfo(effectiveProviderId(session))
       const message = maskSecrets(errorText(err), this.secrets)
       if (info.kind !== 'subscription' || isProviderFailure(message)) {
-        this.record({ kind: 'provider_error', providerId: info.id, providerName: info.name, message: `Falha ao iniciar o Claude Code com este perfil: ${message}` })
+        this.record({
+          kind: 'provider_error',
+          providerId: info.id,
+          providerName: info.name,
+          message: `Falha ao iniciar o Claude Code com este perfil: ${message}`
+        })
       } else {
         this.record({ kind: 'error', message: `Falha ao iniciar o Claude Code: ${message}` })
       }
@@ -192,7 +203,9 @@ export class Runner {
     const sdk = await loadSdk()
     const session = this.session()
     const defaults = settings().get()
-    const projectInstructions = session.projectId ? db('projects').get(session.projectId)?.instructions?.trim() : undefined
+    const projectInstructions = session.projectId
+      ? db('projects').get(session.projectId)?.instructions?.trim()
+      : undefined
     const instructions = [projectInstructions, ...collectSystemAppend(session)].filter(Boolean).join('\n\n')
     // The session's provider profile decides executable, environment and the flag settings that carry its variables.
     const providerId = effectiveProviderId(session)
@@ -200,7 +213,10 @@ export class Runner {
     this.provider = providerInfo(providerId)
     this.secrets = launch.secrets
     this.model = undefined
-    const flagSettings: SdkSettings = { ...(launch.options.settings ?? {}), ...(session.fastMode ? { fastMode: true } : {}) }
+    const flagSettings: SdkSettings = {
+      ...(launch.options.settings ?? {}),
+      ...(session.fastMode ? { fastMode: true } : {})
+    }
     const permissionMode = session.permissionMode ?? defaults.defaultPermissionMode
     this.bypassAllowed = permissionMode === 'bypassPermissions'
     this.restartAfterTurn = false
@@ -340,7 +356,8 @@ export class Runner {
     switch (m.subtype) {
       case 'init': {
         const session = db('sessions').get(this.sessionId)
-        if (session && session.sdkSessionId !== m.session_id) db('sessions').patch(this.sessionId, { sdkSessionId: m.session_id })
+        if (session && session.sdkSessionId !== m.session_id)
+          db('sessions').patch(this.sessionId, { sdkSessionId: m.session_id })
         this.model = m.model
         return
       }
@@ -349,7 +366,8 @@ export class Runner {
         return
       case 'status': {
         if (m.status === 'compacting') this.record({ kind: 'system', text: 'Compactando o contexto…' })
-        if (m.compact_result === 'failed') this.record({ kind: 'error', message: `Falha ao compactar: ${m.compact_error ?? ''}` })
+        if (m.compact_result === 'failed')
+          this.record({ kind: 'error', message: `Falha ao compactar: ${m.compact_error ?? ''}` })
         // Plan approval (ExitPlanMode) and similar flows switch the mode on the CLI side; mirror it.
         const mode = m.permissionMode as PermissionMode | undefined
         const current = db('sessions').get(this.sessionId)
@@ -359,7 +377,10 @@ export class Runner {
         return
       }
       case 'compact_boundary':
-        this.record({ kind: 'system', text: `Contexto compactado (${m.compact_metadata.pre_tokens.toLocaleString('pt-BR')} tokens antes).` })
+        this.record({
+          kind: 'system',
+          text: `Contexto compactado (${m.compact_metadata.pre_tokens.toLocaleString('pt-BR')} tokens antes).`
+        })
         return
       case 'local_command_output':
         this.record({ kind: 'assistant', text: m.content })
@@ -419,16 +440,22 @@ export class Runner {
       contextWindow,
       ...(errors.length && !wasInterrupt ? { errors: errors.map((e) => maskSecrets(e, this.secrets)) } : {}),
       ...(this.model ? { model: this.model } : {}),
-      ...(this.provider ? { providerId: this.provider.id, providerName: this.provider.name, providerKind: this.provider.kind } : {})
+      ...(this.provider
+        ? { providerId: this.provider.id, providerName: this.provider.name, providerKind: this.provider.kind }
+        : {})
     })
 
-    if (authAbort) this.record({ kind: 'system', text: 'Rodada interrompida: o provedor recusou as credenciais deste perfil.' })
+    if (authAbort)
+      this.record({ kind: 'system', text: 'Rodada interrompida: o provedor recusou as credenciais deste perfil.' })
     else if (wasInterrupt) this.record({ kind: 'system', text: 'Interrompido pelo usuário.' })
     else if (m.is_error && errors.some(isProviderFailure)) this.providerFailure(errors.join('\n'), { final: true })
     else if (errors.some((e) => /no conversation found/i.test(e))) {
       // The CLI lost the conversation we tried to resume: start fresh next time.
       db('sessions').patch(this.sessionId, { sdkSessionId: undefined })
-      this.record({ kind: 'error', message: 'Não foi possível retomar a conversa anterior; a próxima mensagem inicia uma nova conversa.' })
+      this.record({
+        kind: 'error',
+        message: 'Não foi possível retomar a conversa anterior; a próxima mensagem inicia uma nova conversa.'
+      })
     }
 
     this.providerErrorShown = false
@@ -456,7 +483,7 @@ export class Runner {
       providerId: info.id,
       providerName: info.name,
       message: maskSecrets(message, this.secrets),
-      ...((opts.retrying || (opts.fatal && !stopsTurn)) ? { retrying: true } : {})
+      ...(opts.retrying || (opts.fatal && !stopsTurn) ? { retrying: true } : {})
     })
     if (stopsTurn && !this.authAbort) {
       this.authAbort = true
@@ -515,7 +542,9 @@ export class Runner {
 
     let result: PermissionResult
     if (response.decision === 'deny') {
-      const message = response.message?.trim() || (request.questions ? 'O usuário dispensou a pergunta.' : 'O usuário negou esta ação.')
+      const message =
+        response.message?.trim() ||
+        (request.questions ? 'O usuário dispensou a pergunta.' : 'O usuário negou esta ação.')
       result = { behavior: 'deny', message, interrupt: opts.interrupt, decisionClassification: 'user_reject' }
     } else if (request.questions) {
       result = { behavior: 'allow', updatedInput: { ...p.input, answers: response.answers ?? {} } }
@@ -523,7 +552,12 @@ export class Runner {
       // "Always" is scoped to this session: rewrite the CLI's suggestions to the session destination.
       const updatedPermissions = p.suggestions.map((s) => ({ ...s, destination: 'session' as const }))
       if (updatedPermissions.length === 0) this.alwaysAllowed.add(request.toolName)
-      result = { behavior: 'allow', updatedInput: p.input, updatedPermissions, decisionClassification: 'user_permanent' }
+      result = {
+        behavior: 'allow',
+        updatedInput: p.input,
+        updatedPermissions,
+        decisionClassification: 'user_permanent'
+      }
     } else {
       result = { behavior: 'allow', updatedInput: p.input, decisionClassification: 'user_temporary' }
     }
@@ -625,12 +659,19 @@ function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
-async function buildContent(text: string, attachments: string[], pasted: PastedImage[], hidden?: string): Promise<UserContent> {
+async function buildContent(
+  text: string,
+  attachments: string[],
+  pasted: PastedImage[],
+  hidden?: string
+): Promise<UserContent> {
   if (attachments.length === 0 && pasted.length === 0 && !hidden) return text
   type Part =
-    | { type: 'text'; text: string }
-    | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
-  const parts: Part[] = pasted.map((img) => ({ type: 'image', source: { type: 'base64', media_type: img.mediaType, data: img.data } }))
+    { type: 'text'; text: string } | { type: 'image'; source: { type: 'base64'; media_type: string; data: string } }
+  const parts: Part[] = pasted.map((img) => ({
+    type: 'image',
+    source: { type: 'base64', media_type: img.mediaType, data: img.data }
+  }))
   const referenced: string[] = []
   for (const path of attachments) {
     const mediaType = IMAGE_TYPES[extname(path).toLowerCase()]
@@ -651,7 +692,9 @@ async function buildContent(text: string, attachments: string[], pasted: PastedI
     referenced.push(path)
   }
   const list = referenced.map((p) => `- ${p} (${basename(p)})`).join('\n')
-  const body = [text, referenced.length ? `Arquivos anexados (leia se precisar):\n${list}` : ''].filter(Boolean).join('\n\n')
+  const body = [text, referenced.length ? `Arquivos anexados (leia se precisar):\n${list}` : '']
+    .filter(Boolean)
+    .join('\n\n')
   if (body) parts.push({ type: 'text', text: body })
   if (hidden) parts.push({ type: 'text', text: hidden })
   return parts as UserContent

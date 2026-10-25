@@ -55,7 +55,8 @@ export function frontmatter(md: string): Record<string, string> {
     const [, key, value] = kv
     if (/^[|>][+-]?$/.test(value.trim())) {
       const block: string[] = []
-      while (i + 1 < lines.length && (/^\s+\S/.test(lines[i + 1]) || lines[i + 1].trim() === '')) block.push(lines[++i].trim())
+      while (i + 1 < lines.length && (/^\s+\S/.test(lines[i + 1]) || lines[i + 1].trim() === ''))
+        block.push(lines[++i].trim())
       out[key] = block.join(value.trim().startsWith('>') ? ' ' : '\n').trim()
     } else {
       out[key] = unquote(value)
@@ -92,8 +93,11 @@ type InstallRecord = { scope?: string; installPath?: string; version?: string; p
 
 export function listPlugins(): PluginInfo[] {
   const pluginsDir = join(claudeDir(), 'plugins')
-  const installed = readJson<{ plugins?: Record<string, InstallRecord | InstallRecord[]> }>(join(pluginsDir, 'installed_plugins.json'))
-  const enabledMap = readJson<{ enabledPlugins?: Record<string, boolean> }>(join(claudeDir(), 'settings.json'))?.enabledPlugins ?? {}
+  const installed = readJson<{ plugins?: Record<string, InstallRecord | InstallRecord[]> }>(
+    join(pluginsDir, 'installed_plugins.json')
+  )
+  const enabledMap =
+    readJson<{ enabledPlugins?: Record<string, boolean> }>(join(claudeDir(), 'settings.json'))?.enabledPlugins ?? {}
 
   const plugins: PluginInfo[] = []
   for (const [id, value] of Object.entries(installed?.plugins ?? {})) {

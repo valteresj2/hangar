@@ -76,5 +76,9 @@ export async function diffTrees(dir: string, from: string, to: string, limit: nu
   const stat = (await git(dir, ['diff', '--stat=120', '--find-renames', from, to])).trim()
   const patch = await git(dir, ['diff', '--no-ext-diff', '--find-renames', from, to])
   const truncated = patch.length > limit
-  return { stat, excerpt: truncated ? `${patch.slice(0, limit)}\n… [diff truncated for this comparison]` : patch, truncated }
+  return {
+    stat,
+    excerpt: truncated ? `${patch.slice(0, limit)}\n… [diff truncated for this comparison]` : patch,
+    truncated
+  }
 }

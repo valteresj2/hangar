@@ -15,7 +15,8 @@ function userData(): string {
 }
 
 const app = {
-  getPath: (name: string) => (name === 'home' ? (process.env.HANGAR_TEST_HOME ?? userData()) : join(userData(), name === 'userData' ? '' : name)),
+  getPath: (name: string) =>
+    name === 'home' ? (process.env.HANGAR_TEST_HOME ?? userData()) : join(userData(), name === 'userData' ? '' : name),
   getVersion: () => '0.0.0-test',
   getName: () => 'Hangar',
   isPackaged: false,
@@ -26,7 +27,8 @@ const app = {
 }
 
 /** Reversible, obviously fake "encryption": base64 of the reversed text, behind a prefix. */
-const encryptString = (text: string) => Buffer.from(`mock-enc:${Buffer.from([...text].reverse().join(''), 'utf8').toString('base64')}`, 'utf8')
+const encryptString = (text: string) =>
+  Buffer.from(`mock-enc:${Buffer.from([...text].reverse().join(''), 'utf8').toString('base64')}`, 'utf8')
 const decryptString = (buf: Buffer) => {
   const s = buf.toString('utf8')
   if (!s.startsWith('mock-enc:')) throw new Error('not encrypted by the mock')
@@ -51,10 +53,17 @@ const electron = {
   BrowserWindow: Object.assign(function BrowserWindow() {}, { getAllWindows: () => [], getFocusedWindow: () => null }),
   webContents: { getAllWebContents: () => [] },
   shell: { openExternal: async () => {}, openPath: async () => '', showItemInFolder: noop },
-  dialog: { showOpenDialog: async () => ({ canceled: true, filePaths: [] }), showSaveDialog: async () => ({ canceled: true }), showMessageBox: async () => ({ response: 0 }) },
+  dialog: {
+    showOpenDialog: async () => ({ canceled: true, filePaths: [] }),
+    showSaveDialog: async () => ({ canceled: true }),
+    showMessageBox: async () => ({ response: 0 })
+  },
   nativeTheme: { shouldUseDarkColors: false, themeSource: 'system', on: noop },
   Notification: Object.assign(function Notification() {}, { isSupported: () => false }),
-  session: { fromPartition: () => ({ setPermissionRequestHandler: noop, setPermissionCheckHandler: noop, on: noop }), defaultSession: { setPermissionRequestHandler: noop, on: noop } }
+  session: {
+    fromPartition: () => ({ setPermissionRequestHandler: noop, setPermissionCheckHandler: noop, on: noop }),
+    defaultSession: { setPermissionRequestHandler: noop, on: noop }
+  }
 }
 
 export default { ...electron, default: electron }

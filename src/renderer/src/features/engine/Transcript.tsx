@@ -38,7 +38,8 @@ interface Props {
 }
 
 export function Transcript(props: Props) {
-  const { entries, streamText, streamThinking, pending, busy, sessionId, onRespond, onRewound, onError, onAskFix } = props
+  const { entries, streamText, streamThinking, pending, busy, sessionId, onRespond, onRewound, onError, onAskFix } =
+    props
   const [lightbox, setLightbox] = useState<string>()
   const scroller = useRef<HTMLDivElement>(null)
   const content = useRef<HTMLDivElement>(null)
@@ -105,81 +106,81 @@ export function Transcript(props: Props) {
     <div className={styles.transcriptWrap}>
       <div className={styles.scroller} ref={scroller} onScroll={onScroll}>
         <div className={styles.transcript} ref={content}>
-        {entries.map((e) => {
-          switch (e.kind) {
-            case 'user':
-              return (
-                <UserMessage
-                  key={e.id}
-                  entry={e}
-                  sessionId={sessionId}
-                  busy={busy}
-                  onRewound={onRewound}
-                  onError={onError}
-                  onOpenImage={setLightbox}
-                />
-              )
-            case 'assistant':
-              return <Markdown key={e.id} text={e.text} />
-            case 'thinking':
-              return <Thinking key={e.id} text={e.text} />
-            case 'tool_use':
-              if (TASK_TOOLS.has(e.name) || e.name === 'AskUserQuestion') return null
-              return <ToolCard key={e.id} use={e} result={results.get(e.toolUseId)} running={busy} />
-            case 'permission_request': {
-              const req = e.request
-              if (pendingIds.has(req.requestId)) {
-                shownInline.add(req.requestId)
-                return req.questions ? (
-                  <QuestionCard key={e.id} request={req} onRespond={onRespond} />
-                ) : (
-                  <PermissionCard key={e.id} request={req} onRespond={onRespond} />
+          {entries.map((e) => {
+            switch (e.kind) {
+              case 'user':
+                return (
+                  <UserMessage
+                    key={e.id}
+                    entry={e}
+                    sessionId={sessionId}
+                    busy={busy}
+                    onRewound={onRewound}
+                    onError={onError}
+                    onOpenImage={setLightbox}
+                  />
                 )
+              case 'assistant':
+                return <Markdown key={e.id} text={e.text} />
+              case 'thinking':
+                return <Thinking key={e.id} text={e.text} />
+              case 'tool_use':
+                if (TASK_TOOLS.has(e.name) || e.name === 'AskUserQuestion') return null
+                return <ToolCard key={e.id} use={e} result={results.get(e.toolUseId)} running={busy} />
+              case 'permission_request': {
+                const req = e.request
+                if (pendingIds.has(req.requestId)) {
+                  shownInline.add(req.requestId)
+                  return req.questions ? (
+                    <QuestionCard key={e.id} request={req} onRespond={onRespond} />
+                  ) : (
+                    <PermissionCard key={e.id} request={req} onRespond={onRespond} />
+                  )
+                }
+                return <PermissionSummary key={e.id} request={req} decision={decisions.get(req.requestId)} />
               }
-              return <PermissionSummary key={e.id} request={req} decision={decisions.get(req.requestId)} />
+              case 'result':
+                return e.errors?.length ? (
+                  <div key={e.id} className={styles.error}>
+                    {e.errors.join('\n')}
+                  </div>
+                ) : null
+              case 'motion':
+                return <MotionCard key={e.id} entry={e} busy={busy} onAskFix={onAskFix} />
+              case 'provider_error':
+                return <ProviderErrorCard key={e.id} entry={e} sessionId={sessionId} />
+              case 'system':
+                return (
+                  <div key={e.id} className={styles.system}>
+                    {e.text}
+                  </div>
+                )
+              case 'error':
+                return (
+                  <div key={e.id} className={styles.error}>
+                    {e.message}
+                  </div>
+                )
+              default:
+                return null
             }
-            case 'result':
-              return e.errors?.length ? (
-                <div key={e.id} className={styles.error}>
-                  {e.errors.join('\n')}
-                </div>
-              ) : null
-            case 'motion':
-              return <MotionCard key={e.id} entry={e} busy={busy} onAskFix={onAskFix} />
-            case 'provider_error':
-              return <ProviderErrorCard key={e.id} entry={e} sessionId={sessionId} />
-            case 'system':
-              return (
-                <div key={e.id} className={styles.system}>
-                  {e.text}
-                </div>
+          })}
+          {pending
+            .filter((p) => !shownInline.has(p.requestId))
+            .map((p) =>
+              p.questions ? (
+                <QuestionCard key={p.requestId} request={p} onRespond={onRespond} />
+              ) : (
+                <PermissionCard key={p.requestId} request={p} onRespond={onRespond} />
               )
-            case 'error':
-              return (
-                <div key={e.id} className={styles.error}>
-                  {e.message}
-                </div>
-              )
-            default:
-              return null
-          }
-        })}
-        {pending
-          .filter((p) => !shownInline.has(p.requestId))
-          .map((p) =>
-            p.questions ? (
-              <QuestionCard key={p.requestId} request={p} onRespond={onRespond} />
-            ) : (
-              <PermissionCard key={p.requestId} request={p} onRespond={onRespond} />
-            )
+            )}
+          {streamThinking && <Thinking text={streamThinking} live />}
+          {streamText && <Markdown text={streamText} />}
+          {busy && pending.length === 0 && (
+            <div className={styles.working}>
+              <span className={styles.spinner} /> Trabalhando…
+            </div>
           )}
-        {streamThinking && <Thinking text={streamThinking} live />}
-        {streamText && <Markdown text={streamText} />}
-        {busy && pending.length === 0 && (
-          <div className={styles.working}>
-            <span className={styles.spinner} /> Trabalhando…
-          </div>
-        )}
         </div>
       </div>
       {lightbox && (

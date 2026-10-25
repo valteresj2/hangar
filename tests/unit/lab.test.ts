@@ -28,7 +28,8 @@ vi.mock('../../src/main/features/engine/sdk', () => ({
       return (async function* () {
         await turn.act?.(options.cwd)
         yield { type: 'assistant', message: { content: [{ type: 'text', text: turn.text }] } }
-        if (turn.result === 'error_during_execution') yield { type: 'result', subtype: 'error_during_execution', errors: ['boom'], total_cost_usd: 0.01 }
+        if (turn.result === 'error_during_execution')
+          yield { type: 'result', subtype: 'error_during_execution', errors: ['boom'], total_cost_usd: 0.01 }
         else yield { type: 'result', subtype: 'success', result: turn.text, total_cost_usd: 0.02 }
       })()
     }
@@ -46,7 +47,14 @@ beforeEach(() => {
   delete process.env.HANGAR_LAB_TEST_INSTRUCTION
 })
 
-const candidates: BlindCandidate[] = ['A', 'B', 'C'].map((id) => ({ anonId: id, finalAnswer: `answer ${id}`, diffStat: '', diffExcerpt: '', diffTruncated: false, errors: [] }))
+const candidates: BlindCandidate[] = ['A', 'B', 'C'].map((id) => ({
+  anonId: id,
+  finalAnswer: `answer ${id}`,
+  diffStat: '',
+  diffExcerpt: '',
+  diffTruncated: false,
+  errors: []
+}))
 
 describe('blind ids', () => {
   it('anonId counts A…Z, AA…', () => {
@@ -117,7 +125,12 @@ describe('proposer stage (runStage)', () => {
       act: async (cwd) => writeFile(join(cwd, 'harness', 'CLAUDE.md'), '# Base\n\nAlways run the tests.\n', 'utf8')
     })
     const out = await runStage(input('edit'))
-    expect(out).toMatchObject({ tree: { 'CLAUDE.md': '# Base\n\nAlways run the tests.\n' }, notes: 'Added a testing rule.', keptBase: false, fellBack: false })
+    expect(out).toMatchObject({
+      tree: { 'CLAUDE.md': '# Base\n\nAlways run the tests.\n' },
+      notes: 'Added a testing rule.',
+      keptBase: false,
+      fellBack: false
+    })
   })
 
   it('files off the harness surface trigger a retry; a second failure inherits the current harness', async () => {
@@ -135,8 +148,22 @@ describe('proposer stage (runStage)', () => {
 
   it('an invalid skill (no frontmatter) is retried and can be fixed on the second attempt', async () => {
     turns.push(
-      { text: 'v1', act: async (cwd) => { await mkdir(join(cwd, 'harness/.claude/skills/x'), { recursive: true }); await writeFile(join(cwd, 'harness/.claude/skills/x/SKILL.md'), 'no frontmatter', 'utf8') } },
-      { text: '<notes>fixed</notes>', act: async (cwd) => writeFile(join(cwd, 'harness/.claude/skills/x/SKILL.md'), '---\nname: x\ndescription: when x\n---\nbody', 'utf8') }
+      {
+        text: 'v1',
+        act: async (cwd) => {
+          await mkdir(join(cwd, 'harness/.claude/skills/x'), { recursive: true })
+          await writeFile(join(cwd, 'harness/.claude/skills/x/SKILL.md'), 'no frontmatter', 'utf8')
+        }
+      },
+      {
+        text: '<notes>fixed</notes>',
+        act: async (cwd) =>
+          writeFile(
+            join(cwd, 'harness/.claude/skills/x/SKILL.md'),
+            '---\nname: x\ndescription: when x\n---\nbody',
+            'utf8'
+          )
+      }
     )
     const out = await runStage(input('fix'))
     expect(out).toMatchObject({ notes: 'fixed', fellBack: false, attempts: 2 })

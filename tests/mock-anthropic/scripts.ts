@@ -46,7 +46,8 @@ export interface ScriptContext {
 
 export const MARKER = /\[\[script:([a-z0-9-]+)((?:\s+[a-z_]+=[^\s\]]+)*)\s*\]\]/gi
 
-export const TEXT_REPLY = 'Olá! Esta resposta veio do servidor Anthropic falso do Hangar, em pedaços, para testar o streaming.'
+export const TEXT_REPLY =
+  'Olá! Esta resposta veio do servidor Anthropic falso do Hangar, em pedaços, para testar o streaming.'
 
 let toolSeq = 0
 const toolId = () => `toolu_mock_${Date.now().toString(36)}_${(toolSeq++).toString(36)}`
@@ -126,10 +127,20 @@ function joinPath(dir: string, rel: string): string {
   return dir.replace(/[\\/]+$/, '') + sep + rel.replace(/[\\/]/g, sep)
 }
 
-const text = (t: string): ScriptReply => ({ kind: 'message', blocks: [{ type: 'text', text: t }], stopReason: 'end_turn' })
+const text = (t: string): ScriptReply => ({
+  kind: 'message',
+  blocks: [{ type: 'text', text: t }],
+  stopReason: 'end_turn'
+})
 
 /** Two-step tool script: ask for `tool` with `input`, then finish once the tool_result arrives. */
-function toolScript(ctx: ScriptContext, tool: string, input: Record<string, unknown>, intro: string, done: (r: { is_error?: boolean; text: string }) => string): ScriptResult {
+function toolScript(
+  ctx: ScriptContext,
+  tool: string,
+  input: Record<string, unknown>,
+  intro: string,
+  done: (r: { is_error?: boolean; text: string }) => string
+): ScriptResult {
   const results = lastToolResults(ctx.req)
   if (results.length) return text(done(results[0]))
   if (!hasTool(ctx.req, tool)) return text(`(mock) a ferramenta ${tool} não foi oferecida nesta requisição.`)
@@ -152,8 +163,10 @@ function selectorReply(ctx: ScriptContext): ScriptReply | undefined {
 }
 
 export function runScript(ctx: ScriptContext): ScriptResult {
-  if (ctx.token === 'mock-token-401') return { kind: 'error', status: 401, errorType: 'authentication_error', message: 'invalid x-api-key' }
-  if (ctx.token === 'mock-token-500') return { kind: 'error', status: 500, errorType: 'api_error', message: 'Internal server error' }
+  if (ctx.token === 'mock-token-401')
+    return { kind: 'error', status: 401, errorType: 'authentication_error', message: 'invalid x-api-key' }
+  if (ctx.token === 'mock-token-500')
+    return { kind: 'error', status: 500, errorType: 'api_error', message: 'Internal server error' }
 
   const script = findScript(ctx.req)
   const selector = selectorReply(ctx)
@@ -165,14 +178,20 @@ export function runScript(ctx: ScriptContext): ScriptResult {
     case 'text': {
       // `repeat=N` makes a long reply (numbered parts), e.g. to watch streaming across several CLI flushes.
       const n = Math.min(Math.max(Number(script.params.repeat ?? 1) || 1, 1), 200)
-      return text(n === 1 ? TEXT_REPLY : Array.from({ length: n }, (_, i) => `Parte ${i + 1}. ${TEXT_REPLY}`).join('\n\n'))
+      return text(
+        n === 1 ? TEXT_REPLY : Array.from({ length: n }, (_, i) => `Parte ${i + 1}. ${TEXT_REPLY}`).join('\n\n')
+      )
     }
 
     case 'thinking':
       return {
         kind: 'message',
         blocks: [
-          { type: 'thinking', thinking: 'Pensando no pedido de teste: basta responder com um texto curto.', signature: 'mock-signature-' + 'x'.repeat(40) },
+          {
+            type: 'thinking',
+            thinking: 'Pensando no pedido de teste: basta responder com um texto curto.',
+            signature: 'mock-signature-' + 'x'.repeat(40)
+          },
           { type: 'text', text: 'Resposta depois de pensar.' }
         ],
         stopReason: 'end_turn'
@@ -200,7 +219,10 @@ export function runScript(ctx: ScriptContext): ScriptResult {
         hasTool(ctx.req, 'Bash') || !hasTool(ctx.req, 'PowerShell') ? 'Bash' : 'PowerShell',
         { command: script.params.command ?? 'echo hangar-mock-shell', description: 'Comando de teste do mock' },
         'Vou rodar um comando.',
-        (r) => (r.is_error ? `O comando não rodou: ${r.text.slice(0, 200)}` : `Saída do comando: ${r.text.trim().slice(0, 200)}`)
+        (r) =>
+          r.is_error
+            ? `O comando não rodou: ${r.text.slice(0, 200)}`
+            : `Saída do comando: ${r.text.trim().slice(0, 200)}`
       )
 
     case 'error-401':

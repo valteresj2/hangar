@@ -10,7 +10,14 @@ import type { ExecChange, ExecReview } from '../../../shared/features/lab'
 
 const SETTINGS = '.claude/settings.json'
 /** Settings keys whose string value is a command Claude Code runs. */
-const COMMAND_KEYS = new Set(['command', 'apiKeyHelper', 'awsAuthRefresh', 'awsCredentialExport', 'otelHeadersHelper', 'url'])
+const COMMAND_KEYS = new Set([
+  'command',
+  'apiKeyHelper',
+  'awsAuthRefresh',
+  'awsCredentialExport',
+  'otelHeadersHelper',
+  'url'
+])
 const SCRIPT_EXT = /\.(sh|bash|zsh|fish|ps1|psm1|bat|cmd|py|js|mjs|cjs|ts|rb|pl|php|lua|exe|dll|jar)$/i
 const INLINE_COMMAND = /!`([^`\n]+)`/g
 
@@ -47,19 +54,31 @@ function surfaceOf(source: string | undefined): SettingsSurface {
   for (const rule of Array.isArray(doc?.permissions?.allow) ? doc.permissions.allow : []) {
     if (typeof rule === 'string') empty.allow.add(rule)
   }
-  for (const [k, v] of Object.entries(doc?.env && typeof doc.env === 'object' ? doc.env : {})) empty.env.set(k, String(v))
+  for (const [k, v] of Object.entries(doc?.env && typeof doc.env === 'object' ? doc.env : {}))
+    empty.env.set(k, String(v))
   const mode = doc?.permissions?.defaultMode
   if (typeof mode === 'string') empty.other.set('permissions.defaultMode', mode)
-  for (const key of ['enableAllProjectMcpServers', 'enabledMcpjsonServers', 'disableAllHooks', 'additionalDirectories']) {
+  for (const key of [
+    'enableAllProjectMcpServers',
+    'enabledMcpjsonServers',
+    'disableAllHooks',
+    'additionalDirectories'
+  ]) {
     if (doc?.[key] !== undefined) empty.other.set(key, JSON.stringify(doc[key]))
   }
-  for (const dir of Array.isArray(doc?.permissions?.additionalDirectories) ? doc.permissions.additionalDirectories : []) {
+  for (const dir of Array.isArray(doc?.permissions?.additionalDirectories)
+    ? doc.permissions.additionalDirectories
+    : []) {
     empty.other.set(`permissions.additionalDirectories:${dir}`, String(dir))
   }
   return empty
 }
 
-function diffMaps(base: Map<string, string>, next: Map<string, string>, emit: (key: string, change: ExecChange['change'], value: string) => void): void {
+function diffMaps(
+  base: Map<string, string>,
+  next: Map<string, string>,
+  emit: (key: string, change: ExecChange['change'], value: string) => void
+): void {
   for (const [k, v] of next) {
     if (!base.has(k)) emit(k, 'added', v)
     else if (base.get(k) !== v) emit(k, 'modified', v)
@@ -84,14 +103,25 @@ export function execChanges(base: HarnessTree, next: HarnessTree): ExecChange[] 
     const a = surfaceOf(base[SETTINGS])
     const b = surfaceOf(next[SETTINGS])
     if (!b.ok) {
-      out.push({ path: SETTINGS, change: 'modified', kind: 'command', detail: 'settings.json não é um JSON válido; revise o arquivo inteiro.' })
+      out.push({
+        path: SETTINGS,
+        change: 'modified',
+        kind: 'command',
+        detail: 'settings.json não é um JSON válido; revise o arquivo inteiro.'
+      })
     }
     diffMaps(a.commands, b.commands, (key, change, cmd) =>
       out.push({ path: SETTINGS, change, kind: key.startsWith('hooks') ? 'hook' : 'command', detail: `${key}: ${cmd}` })
     )
-    for (const rule of b.allow) if (!a.allow.has(rule)) out.push({ path: SETTINGS, change: 'added', kind: 'permission', detail: `permissions.allow: ${rule}` })
-    diffMaps(a.other, b.other, (key, change, value) => out.push({ path: SETTINGS, change, kind: 'permission', detail: `${key} = ${value}` }))
-    diffMaps(a.env, b.env, (key, change, value) => out.push({ path: SETTINGS, change, kind: 'env', detail: `env.${key} = ${value}` }))
+    for (const rule of b.allow)
+      if (!a.allow.has(rule))
+        out.push({ path: SETTINGS, change: 'added', kind: 'permission', detail: `permissions.allow: ${rule}` })
+    diffMaps(a.other, b.other, (key, change, value) =>
+      out.push({ path: SETTINGS, change, kind: 'permission', detail: `${key} = ${value}` })
+    )
+    diffMaps(a.env, b.env, (key, change, value) =>
+      out.push({ path: SETTINGS, change, kind: 'env', detail: `env.${key} = ${value}` })
+    )
   }
 
   const paths = new Set([...Object.keys(base), ...Object.keys(next)])
@@ -108,7 +138,14 @@ export function execChanges(base: HarnessTree, next: HarnessTree): ExecChange[] 
     }
   }
 
-  const rank: Record<ExecChange['kind'], number> = { hook: 0, command: 1, script: 2, 'inline-command': 3, permission: 4, env: 5 }
+  const rank: Record<ExecChange['kind'], number> = {
+    hook: 0,
+    command: 1,
+    script: 2,
+    'inline-command': 3,
+    permission: 4,
+    env: 5
+  }
   return out.sort((x, y) => rank[x.kind] - rank[y.kind])
 }
 

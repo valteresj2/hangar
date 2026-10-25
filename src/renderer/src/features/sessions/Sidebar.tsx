@@ -269,7 +269,9 @@ function ProjectsFooter({ projects, sessions }: { projects: Project[]; sessions:
       </div>
       {open && (
         <div className={styles.projectList}>
-          {sorted.length === 0 && <div className={styles.emptyHint}>Agrupe sessões por pasta com instruções próprias.</div>}
+          {sorted.length === 0 && (
+            <div className={styles.emptyHint}>Agrupe sessões por pasta com instruções próprias.</div>
+          )}
           {sorted.map((p) => {
             const count = sessions.filter((s) => s.projectId === p.id && !s.archived).length
             return (
@@ -372,7 +374,10 @@ export function Sidebar() {
     return () => setVisibleOrder(undefined)
   }, [q, titleHits, transcriptHits, layout, sortedGroups, collapsed])
 
-  const onMenu = useCallback((session: Session, at: MenuAnchor) => setMenu({ items: sessionMenu(session, groups, 'sidebar'), at }), [groups])
+  const onMenu = useCallback(
+    (session: Session, at: MenuAnchor) => setMenu({ items: sessionMenu(session, groups, 'sidebar'), at }),
+    [groups]
+  )
 
   const onDropSession = useCallback(
     (sessionId: string, target: DropTarget) => {
@@ -385,7 +390,11 @@ export function Sidebar() {
   const groupMenu = (g: Group, index: number): MenuItem[] => [
     { label: 'Renomear…', onSelect: () => openDialog({ kind: 'renameGroup', group: g }) },
     { label: 'Mover para cima', disabled: index === 0, onSelect: () => void reorderGroup(groups, g.id, index - 1) },
-    { label: 'Mover para baixo', disabled: index === sortedGroups.length - 1, onSelect: () => void reorderGroup(groups, g.id, index + 1) },
+    {
+      label: 'Mover para baixo',
+      disabled: index === sortedGroups.length - 1,
+      onSelect: () => void reorderGroup(groups, g.id, index + 1)
+    },
     { label: 'Novo grupo…', onSelect: () => openDialog({ kind: 'newGroup' }) },
     { separator: true },
     { label: 'Excluir grupo…', danger: true, onSelect: () => openDialog({ kind: 'deleteGroup', group: g }) }
@@ -400,7 +409,11 @@ export function Sidebar() {
   return (
     <div className={styles.sidebar}>
       <div className={styles.top}>
-        <button className={styles.newBtn} onClick={() => useUi.getState().selectSession(undefined)} title="Nova sessão (Ctrl+N)">
+        <button
+          className={styles.newBtn}
+          onClick={() => useUi.getState().selectSession(undefined)}
+          title="Nova sessão (Ctrl+N)"
+        >
           <PlusIcon />
           <span>Nova sessão</span>
           <kbd className={styles.kbd}>Ctrl+N</kbd>
@@ -433,7 +446,11 @@ export function Sidebar() {
         {q ? (
           <>
             <div className={styles.resultsLabel}>Títulos</div>
-            {titleHits.length ? titleHits.map((s) => item(s)) : <div className={styles.emptyHint}>Nenhum título corresponde.</div>}
+            {titleHits.length ? (
+              titleHits.map((s) => item(s))
+            ) : (
+              <div className={styles.emptyHint}>Nenhum título corresponde.</div>
+            )}
             <div className={styles.resultsLabel}>
               Nas transcrições {search.loading && <span className={styles.spinnerSmall} />}
             </div>
@@ -476,7 +493,11 @@ export function Sidebar() {
                   onGroupDrop={(dragged) => void reorderGroup(groups, dragged, i)}
                   onDropSession={onDropSession}
                 >
-                  {list.length ? list.map((s) => item(s)) : <div className={styles.emptyHint}>Arraste sessões para cá.</div>}
+                  {list.length ? (
+                    list.map((s) => item(s))
+                  ) : (
+                    <div className={styles.emptyHint}>Arraste sessões para cá.</div>
+                  )}
                 </Section>
               )
             })}
@@ -486,10 +507,16 @@ export function Sidebar() {
               open={!collapsed.recent}
               onToggle={() => toggle('recent')}
               drop={{ kind: 'recent' }}
-              onHeaderMenu={(at) => setMenu({ items: [{ label: 'Novo grupo…', onSelect: () => openDialog({ kind: 'newGroup' }) }], at })}
+              onHeaderMenu={(at) =>
+                setMenu({ items: [{ label: 'Novo grupo…', onSelect: () => openDialog({ kind: 'newGroup' }) }], at })
+              }
               onDropSession={onDropSession}
             >
-              {layout.recent.length ? layout.recent.map((s) => item(s)) : <div className={styles.emptyHint}>Nada por aqui.</div>}
+              {layout.recent.length ? (
+                layout.recent.map((s) => item(s))
+              ) : (
+                <div className={styles.emptyHint}>Nada por aqui.</div>
+              )}
             </Section>
             <Section
               title="Arquivadas"
@@ -499,7 +526,11 @@ export function Sidebar() {
               drop={{ kind: 'archived' }}
               onDropSession={onDropSession}
             >
-              {layout.archived.length ? layout.archived.map((s) => item(s)) : <div className={styles.emptyHint}>Nenhuma sessão arquivada.</div>}
+              {layout.archived.length ? (
+                layout.archived.map((s) => item(s))
+              ) : (
+                <div className={styles.emptyHint}>Nenhuma sessão arquivada.</div>
+              )}
             </Section>
           </>
         )}

@@ -46,7 +46,8 @@ function textLines(text: string, fontCss: string, maxWidth: number | undefined):
 export function elementSize(el: MotionElement, specFont?: string): { width: number; height: number } {
   switch (el.type) {
     case 'shape':
-      if (el.shape === 'line' || el.shape === 'arrow') return { width: el.width, height: Math.max((el.strokeWidth ?? 6) * 3, 24) }
+      if (el.shape === 'line' || el.shape === 'arrow')
+        return { width: el.width, height: Math.max((el.strokeWidth ?? 6) * 3, 24) }
       return { width: el.width, height: el.height ?? el.width }
     case 'image':
     case 'chart':
@@ -59,7 +60,10 @@ export function elementSize(el: MotionElement, specFont?: string): { width: numb
     }
     case 'counter': {
       const fontCss = `${el.fontWeight ?? 700} ${el.fontSize}px ${el.fontFamily ?? specFont ?? DEFAULT_FONT}`
-      const widest = [el.from, el.to].map((v) => `${el.prefix ?? ''}${v.toLocaleString('pt-BR', { minimumFractionDigits: el.decimals ?? 0, maximumFractionDigits: el.decimals ?? 0 })}${el.suffix ?? ''}`)
+      const widest = [el.from, el.to].map(
+        (v) =>
+          `${el.prefix ?? ''}${v.toLocaleString('pt-BR', { minimumFractionDigits: el.decimals ?? 0, maximumFractionDigits: el.decimals ?? 0 })}${el.suffix ?? ''}`
+      )
       return { width: Math.max(...widest.map((t) => measure(t, fontCss))), height: el.fontSize * 1.2 }
     }
   }
@@ -70,7 +74,13 @@ export function elementBounds(el: MotionElement, scene: MotionScene, t: number, 
   const state = elementState(el, t, scene.duration)
   if (!state) return undefined
   const size = elementSize(el, specFont)
-  return { cx: state.x, cy: state.y, width: size.width * state.scale, height: size.height * state.scale, rotation: state.rotation }
+  return {
+    cx: state.x,
+    cy: state.y,
+    width: size.width * state.scale,
+    height: size.height * state.scale,
+    rotation: state.rotation
+  }
 }
 
 function contains(b: Bounds, x: number, y: number): boolean {
@@ -84,7 +94,12 @@ function contains(b: Bounds, x: number, y: number): boolean {
 }
 
 /** Topmost element under (x, y) at global `time`, with its scene index. */
-export function hitTest(spec: MotionSpec, time: number, x: number, y: number): { sceneIndex: number; elementId: string } | undefined {
+export function hitTest(
+  spec: MotionSpec,
+  time: number,
+  x: number,
+  y: number
+): { sceneIndex: number; elementId: string } | undefined {
   const { index, local } = sceneAt(spec, time)
   const scene = spec.scenes[index]
   if (!scene) return undefined

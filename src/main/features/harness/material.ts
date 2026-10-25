@@ -18,14 +18,26 @@ function oneLine(text: string, max: number): string {
 
 function summarizeInput(name: string, input: Record<string, unknown>): string {
   const pick = (k: string) => (typeof input[k] === 'string' ? (input[k] as string) : undefined)
-  const main = pick('command') ?? pick('file_path') ?? pick('path') ?? pick('pattern') ?? pick('url') ?? pick('description') ?? pick('prompt')
+  const main =
+    pick('command') ??
+    pick('file_path') ??
+    pick('path') ??
+    pick('pattern') ??
+    pick('url') ??
+    pick('description') ??
+    pick('prompt')
   if (main) return oneLine(main, 300)
   if (name === 'TodoWrite') return 'updated the todo list'
   return oneLine(JSON.stringify(input), 300)
 }
 
 /** User requests, tool calls, errors and the final answer, limited to ~30k characters. */
-export function condenseTrajectory(entries: TranscriptEntry[]): { text: string; task: string; costUsd?: number; durationMs?: number } {
+export function condenseTrajectory(entries: TranscriptEntry[]): {
+  text: string
+  task: string
+  costUsd?: number
+  durationMs?: number
+} {
   const lines: string[] = []
   let task = ''
   let finalAnswer = ''
@@ -57,7 +69,9 @@ export function condenseTrajectory(entries: TranscriptEntry[]): { text: string; 
       case 'result':
         costUsd = e.costUsd
         durationMs += e.durationMs
-        lines.push(`TURN END: ${e.isError ? 'error' : 'ok'} · ${Math.round(e.durationMs / 1000)} s${e.errors?.length ? ` · ${oneLine(e.errors.join('; '), 400)}` : ''}`)
+        lines.push(
+          `TURN END: ${e.isError ? 'error' : 'ok'} · ${Math.round(e.durationMs / 1000)} s${e.errors?.length ? ` · ${oneLine(e.errors.join('; '), 400)}` : ''}`
+        )
         break
       case 'error':
         lines.push(`ERROR: ${oneLine(e.message, 600)}`)
@@ -81,8 +95,11 @@ export function condenseTrajectory(entries: TranscriptEntry[]): { text: string; 
 
 function git(cwd: string, args: string[]): Promise<string> {
   return new Promise((resolve, reject) => {
-    execFile('git', ['-C', cwd, ...args], { maxBuffer: 32 * 1024 * 1024, timeout: 30_000, windowsHide: true }, (err, stdout) =>
-      err ? reject(err) : resolve(stdout)
+    execFile(
+      'git',
+      ['-C', cwd, ...args],
+      { maxBuffer: 32 * 1024 * 1024, timeout: 30_000, windowsHide: true },
+      (err, stdout) => (err ? reject(err) : resolve(stdout))
     )
   })
 }
@@ -105,7 +122,9 @@ export async function gitChanges(dir: string): Promise<string> {
     .map((l) => l.slice(3))
   const parts = [
     stat.trim() ? `git diff --stat HEAD:\n${stat.trim()}` : 'No tracked file changed against HEAD.',
-    untracked.length ? `Untracked files:\n${untracked.slice(0, 50).join('\n')}${untracked.length > 50 ? `\n… +${untracked.length - 50}` : ''}` : '',
+    untracked.length
+      ? `Untracked files:\n${untracked.slice(0, 50).join('\n')}${untracked.length > 50 ? `\n… +${untracked.length - 50}` : ''}`
+      : '',
     diff.trim() ? `Diff excerpt:\n${clip(diff, CHANGES_MAX)}` : ''
   ]
   return parts.filter(Boolean).join('\n\n')

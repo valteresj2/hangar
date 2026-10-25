@@ -1,5 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import type { McpAddInput, McpListResult, McpLog, McpServer, McpToggleInput, McpTransport } from '@shared/features/settings'
+import type {
+  McpAddInput,
+  McpListResult,
+  McpLog,
+  McpServer,
+  McpToggleInput,
+  McpTransport
+} from '@shared/features/settings'
 import { api } from '../../../core/api'
 import { cliOutput, errorText, settingsApi } from '../api'
 import { Card, Dot, Segmented, Spinner, Switch, formatDateTime } from '../ui'
@@ -13,7 +20,14 @@ const SCOPE_LABEL: Record<McpServer['scope'], string> = {
   unknown: '?'
 }
 
-const HEALTH_TONE = { connected: 'ok', failed: 'bad', 'needs-auth': 'warn', pending: 'warn', disabled: 'neutral', unknown: 'neutral' } as const
+const HEALTH_TONE = {
+  connected: 'ok',
+  failed: 'bad',
+  'needs-auth': 'warn',
+  pending: 'warn',
+  disabled: 'neutral',
+  unknown: 'neutral'
+} as const
 
 // The CLI prints English status lines; translate the known prefixes and keep the details.
 const STATUS_PT: [RegExp, string][] = [
@@ -25,7 +39,10 @@ const STATUS_PT: [RegExp, string][] = [
   [/^Disabled for this project \(re-enable via \/mcp\)/i, 'Desligado neste projeto'],
   [/^Disabled for this project/i, 'Desligado neste projeto'],
   [/^Disabled everywhere by Hangar/i, 'Desligado em todos os projetos pelo Hangar'],
-  [/^Rejected \(see disabledMcpjsonServers in settings\)/i, 'Rejeitado por disabledMcpjsonServers num arquivo de configurações do Claude Code'],
+  [
+    /^Rejected \(see disabledMcpjsonServers in settings\)/i,
+    'Rejeitado por disabledMcpjsonServers num arquivo de configurações do Claude Code'
+  ],
   [/^Rejected/i, 'Rejeitado'],
   [/^Disabled/i, 'Desligado']
 ]
@@ -34,8 +51,10 @@ const STATUS_PT: [RegExp, string][] = [
 const MECHANISM_TEXT: Record<NonNullable<McpServer['disabledBy']>, string> = {
   project: 'Desligado só nesta pasta, pela lista disabledMcpServers do ~/.claude.json (a mesma do /mcp).',
   mcpjson: 'Servidor do .mcp.json rejeitado nesta pasta (disabledMcpjsonServers em .claude/settings.local.json).',
-  hangar: 'Removido do Claude Code com `claude mcp remove`; o Hangar guardou a configuração para re-adicionar ao ligar.',
-  settings: 'Rejeitado por disabledMcpjsonServers em .claude/settings.json ou ~/.claude/settings.json; edite esse arquivo para ligar.'
+  hangar:
+    'Removido do Claude Code com `claude mcp remove`; o Hangar guardou a configuração para re-adicionar ao ligar.',
+  settings:
+    'Rejeitado por disabledMcpjsonServers em .claude/settings.json ou ~/.claude/settings.json; edite esse arquivo para ligar.'
 }
 
 function statusPt(text: string): string {
@@ -153,12 +172,22 @@ function AddServerForm({ cwd, onDone }: { cwd?: string; onDone: () => void }) {
               onChange={(e) => setArgs(e.target.value)}
             />
             <label>Variáveis de ambiente</label>
-            <textarea className="input" value={env} placeholder="API_KEY=valor (uma por linha)" onChange={(e) => setEnv(e.target.value)} />
+            <textarea
+              className="input"
+              value={env}
+              placeholder="API_KEY=valor (uma por linha)"
+              onChange={(e) => setEnv(e.target.value)}
+            />
           </>
         ) : (
           <>
             <label>URL</label>
-            <input className="input" value={url} placeholder="https://exemplo.com/mcp" onChange={(e) => setUrl(e.target.value)} />
+            <input
+              className="input"
+              value={url}
+              placeholder="https://exemplo.com/mcp"
+              onChange={(e) => setUrl(e.target.value)}
+            />
             <label>Cabeçalhos</label>
             <textarea
               className="input"
@@ -169,7 +198,9 @@ function AddServerForm({ cwd, onDone }: { cwd?: string; onDone: () => void }) {
           </>
         )}
 
-        {message && <pre className={`${styles.pre} ${styles.formFull} ${message.ok ? '' : styles.errorText}`}>{message.text}</pre>}
+        {message && (
+          <pre className={`${styles.pre} ${styles.formFull} ${message.ok ? '' : styles.errorText}`}>{message.text}</pre>
+        )}
 
         <div className={styles.formActions}>
           {busy && <Spinner />}
@@ -307,7 +338,11 @@ function ServerItem({ server, cwd, onChanged }: { server: McpServer; cwd?: strin
         {server.disabledBy && <div className={styles.hint}>{MECHANISM_TEXT[server.disabledBy]}</div>}
         {notice && <div className={`${styles.hint} ${styles.okText}`}>{notice}</div>}
         {error && <div className={styles.errorText}>{error}</div>}
-        {details !== undefined && <pre className={styles.pre} style={{ marginTop: 8 }}>{details}</pre>}
+        {details !== undefined && (
+          <pre className={styles.pre} style={{ marginTop: 8 }}>
+            {details}
+          </pre>
+        )}
         {showLog && <LogViewer server={server} cwd={cwd} />}
       </div>
       <div className={`${styles.itemActions} ${styles.mcpActions}`}>
@@ -315,7 +350,11 @@ function ServerItem({ server, cwd, onChanged }: { server: McpServer; cwd?: strin
         {server.projectToggle && (
           <span
             className={styles.inline}
-            title={server.projectToggle === 'mcpjson' ? 'Aprovar ou rejeitar este servidor do .mcp.json nesta pasta' : 'Ligar ou desligar só nesta pasta'}
+            title={
+              server.projectToggle === 'mcpjson'
+                ? 'Aprovar ou rejeitar este servidor do .mcp.json nesta pasta'
+                : 'Ligar ou desligar só nesta pasta'
+            }
           >
             <span className={styles.hint}>Nesta pasta</span>
             <Switch

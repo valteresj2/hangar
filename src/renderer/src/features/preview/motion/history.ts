@@ -31,17 +31,27 @@ export function useHistory<T>(initial: T): History<T> {
     const now = Date.now()
     const merge = !!key && last.current.key === key && now - last.current.at < COALESCE_MS
     last.current = { key, at: now }
-    setState((s) => (s.present === next ? s : { past: merge ? s.past : [...s.past, s.present].slice(-LIMIT), present: next, future: [] }))
+    setState((s) =>
+      s.present === next
+        ? s
+        : { past: merge ? s.past : [...s.past, s.present].slice(-LIMIT), present: next, future: [] }
+    )
   }, [])
 
   const undo = useCallback(() => {
     last.current = { at: 0 }
-    setState((s) => (s.past.length ? { past: s.past.slice(0, -1), present: s.past[s.past.length - 1], future: [s.present, ...s.future] } : s))
+    setState((s) =>
+      s.past.length
+        ? { past: s.past.slice(0, -1), present: s.past[s.past.length - 1], future: [s.present, ...s.future] }
+        : s
+    )
   }, [])
 
   const redo = useCallback(() => {
     last.current = { at: 0 }
-    setState((s) => (s.future.length ? { past: [...s.past, s.present], present: s.future[0], future: s.future.slice(1) } : s))
+    setState((s) =>
+      s.future.length ? { past: [...s.past, s.present], present: s.future[0], future: s.future.slice(1) } : s
+    )
   }, [])
 
   const reset = useCallback((value: T) => {
@@ -49,5 +59,13 @@ export function useHistory<T>(initial: T): History<T> {
     setState({ past: [], present: value, future: [] })
   }, [])
 
-  return { value: state.present, canUndo: state.past.length > 0, canRedo: state.future.length > 0, set, undo, redo, reset }
+  return {
+    value: state.present,
+    canUndo: state.past.length > 0,
+    canRedo: state.future.length > 0,
+    set,
+    undo,
+    redo,
+    reset
+  }
 }

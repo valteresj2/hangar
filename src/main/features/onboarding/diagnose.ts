@@ -29,10 +29,19 @@ interface ExecResult {
   stderr: string
 }
 
-function run(file: string, args: string[], env: NodeJS.ProcessEnv = process.env, timeout = 30_000): Promise<ExecResult> {
+function run(
+  file: string,
+  args: string[],
+  env: NodeJS.ProcessEnv = process.env,
+  timeout = 30_000
+): Promise<ExecResult> {
   return new Promise((resolve) => {
-    execFile(file, args, { cwd: homedir(), env, timeout, windowsHide: true, maxBuffer: 1024 * 1024 }, (err, stdout, stderr) =>
-      resolve({ ok: !err, stdout: String(stdout), stderr: String(stderr) || (err && !stdout ? err.message : '') })
+    execFile(
+      file,
+      args,
+      { cwd: homedir(), env, timeout, windowsHide: true, maxBuffer: 1024 * 1024 },
+      (err, stdout, stderr) =>
+        resolve({ ok: !err, stdout: String(stdout), stderr: String(stderr) || (err && !stdout ? err.message : '') })
     )
   })
 }
@@ -73,21 +82,37 @@ async function checkClaude(): Promise<{ item: DiagnosticItem; exe?: string }> {
         id: 'claude',
         title,
         status: 'warn',
-        message: 'O comando claude não foi encontrado no PATH nem em ~/.local/bin. O Hangar vai usar o executável embutido no SDK.',
+        message:
+          'O comando claude não foi encontrado no PATH nem em ~/.local/bin. O Hangar vai usar o executável embutido no SDK.',
         action: { kind: 'openUrl', label: 'Instalar o Claude Code', url: 'https://code.claude.com/docs/en/setup' }
       }
     }
   }
   const res = await run(exe, ['--version'], cliEnv(), 20_000)
   if (!res.ok) {
-    return { exe, item: { id: 'claude', title, status: 'error', message: 'O executável do Claude Code foi encontrado mas não respondeu.', detail: `${exe}\n${maskSecrets(res.stderr.trim())}` } }
+    return {
+      exe,
+      item: {
+        id: 'claude',
+        title,
+        status: 'error',
+        message: 'O executável do Claude Code foi encontrado mas não respondeu.',
+        detail: `${exe}\n${maskSecrets(res.stderr.trim())}`
+      }
+    }
   }
   return { exe, item: { id: 'claude', title, status: 'ok', message: `Encontrado: ${res.stdout.trim()}.`, detail: exe } }
 }
 
 async function checkLogin(exe: string | undefined): Promise<DiagnosticItem> {
   const title = 'Login do Claude Code'
-  if (!exe) return { id: 'login', title, status: 'skip', message: 'Sem o comando claude não dá para consultar o login; ele será verificado no teste do provedor.' }
+  if (!exe)
+    return {
+      id: 'login',
+      title,
+      status: 'skip',
+      message: 'Sem o comando claude não dá para consultar o login; ele será verificado no teste do provedor.'
+    }
   const res = await run(exe, ['auth', 'status', '--json'], cliEnv())
   const text = res.stdout.trim()
   try {
@@ -109,7 +134,13 @@ async function checkLogin(exe: string | undefined): Promise<DiagnosticItem> {
       message: method === 'claude.ai' ? `Conectado com a assinatura Claude${plan}.` : `Conectado (${method}).`
     }
   } catch {
-    return { id: 'login', title, status: 'warn', message: 'Não foi possível ler o status de login (claude auth status).', detail: maskSecrets((res.stderr || text).trim()).slice(0, 400) }
+    return {
+      id: 'login',
+      title,
+      status: 'warn',
+      message: 'Não foi possível ler o status de login (claude auth status).',
+      detail: maskSecrets((res.stderr || text).trim()).slice(0, 400)
+    }
   }
 }
 
@@ -135,20 +166,28 @@ export async function gatewayInfo(): Promise<GatewayInfo> {
   let fileEnv: Record<string, unknown> = {}
   let apiKeyHelper = false
   try {
-    const json = JSON.parse(readFileSync(claudeSettingsFile(), 'utf8')) as { env?: Record<string, unknown>; apiKeyHelper?: unknown }
+    const json = JSON.parse(readFileSync(claudeSettingsFile(), 'utf8')) as {
+      env?: Record<string, unknown>
+      apiKeyHelper?: unknown
+    }
     if (json.env && typeof json.env === 'object') fileEnv = json.env
     apiKeyHelper = typeof json.apiKeyHelper === 'string' && json.apiKeyHelper.length > 0
   } catch {
     // no user settings file
   }
   const userEnv = await windowsUserEnv()
-  const settingsBaseUrl = typeof fileEnv.ANTHROPIC_BASE_URL === 'string' && fileEnv.ANTHROPIC_BASE_URL ? fileEnv.ANTHROPIC_BASE_URL : undefined
+  const settingsBaseUrl =
+    typeof fileEnv.ANTHROPIC_BASE_URL === 'string' && fileEnv.ANTHROPIC_BASE_URL
+      ? fileEnv.ANTHROPIC_BASE_URL
+      : undefined
   const processEnvBaseUrl = process.env.ANTHROPIC_BASE_URL || undefined
   const credentialVars = [
     ...new Set([
       ...CREDENTIAL_VARS.filter((n) => typeof fileEnv[n] === 'string' && fileEnv[n]).map((n) => `${n} (settings.json)`),
       ...userEnv.credentials.map((n) => `${n} (variável do usuário)`),
-      ...CREDENTIAL_VARS.filter((n) => n !== 'ANTHROPIC_API_KEY' && process.env[n]).map((n) => `${n} (ambiente do Hangar)`)
+      ...CREDENTIAL_VARS.filter((n) => n !== 'ANTHROPIC_API_KEY' && process.env[n]).map(
+        (n) => `${n} (ambiente do Hangar)`
+      )
     ])
   ]
   // A variable in the launch environment wins over ~/.claude/settings.json for ANTHROPIC_BASE_URL (the CLI logs
@@ -175,13 +214,27 @@ export async function gatewayInfo(): Promise<GatewayInfo> {
 
 function gatewayItem(g: GatewayInfo, profile: ProviderProfile): DiagnosticItem {
   const title = 'Gateway / endpoint'
-  const creds = g.credentialVars.length ? `Credenciais configuradas: ${g.credentialVars.join(', ')}.` : 'Nenhuma credencial de gateway configurada.'
+  const creds = g.credentialVars.length
+    ? `Credenciais configuradas: ${g.credentialVars.join(', ')}.`
+    : 'Nenhuma credencial de gateway configurada.'
   const helper = g.apiKeyHelper ? ' Há um apiKeyHelper no settings.json.' : ''
   if (!g.baseUrl) {
-    return { id: 'gateway', title, status: 'ok', message: 'Nenhum gateway configurado: o Claude Code fala direto com a Anthropic.', detail: creds + helper }
+    return {
+      id: 'gateway',
+      title,
+      status: 'ok',
+      message: 'Nenhum gateway configurado: o Claude Code fala direto com a Anthropic.',
+      detail: creds + helper
+    }
   }
   if (!g.isGateway) {
-    return { id: 'gateway', title, status: 'ok', message: `ANTHROPIC_BASE_URL aponta para a própria Anthropic (${g.baseUrl}).`, detail: creds + helper }
+    return {
+      id: 'gateway',
+      title,
+      status: 'ok',
+      message: `ANTHROPIC_BASE_URL aponta para a própria Anthropic (${g.baseUrl}).`,
+      detail: creds + helper
+    }
   }
   if (profile.id !== SUBSCRIPTION_PROFILE_ID && profile.kind === 'subscription') {
     return {
@@ -195,7 +248,11 @@ function gatewayItem(g: GatewayInfo, profile: ProviderProfile): DiagnosticItem {
     }
   }
   const where =
-    g.source === 'settings' ? 'no ~/.claude/settings.json' : g.source === 'userEnv' ? 'nas variáveis de ambiente do Windows' : 'no ambiente em que o Hangar foi aberto'
+    g.source === 'settings'
+      ? 'no ~/.claude/settings.json'
+      : g.source === 'userEnv'
+        ? 'nas variáveis de ambiente do Windows'
+        : 'no ambiente em que o Hangar foi aberto'
   return {
     id: 'gateway',
     title,
@@ -220,7 +277,8 @@ function directEnv(): { env: NodeJS.ProcessEnv; settingsEnv: Record<string, stri
   delete env.ANTHROPIC_AUTH_TOKEN
   const settingsEnv: Record<string, string> = { ANTHROPIC_BASE_URL: ANTHROPIC_API }
   try {
-    const fileEnv = (JSON.parse(readFileSync(claudeSettingsFile(), 'utf8')) as { env?: Record<string, unknown> }).env ?? {}
+    const fileEnv =
+      (JSON.parse(readFileSync(claudeSettingsFile(), 'utf8')) as { env?: Record<string, unknown> }).env ?? {}
     for (const name of ['ANTHROPIC_AUTH_TOKEN', 'ANTHROPIC_API_KEY']) if (name in fileEnv) settingsEnv[name] = ''
   } catch {
     // no user settings file
@@ -306,7 +364,8 @@ export async function applyDirectFix(): Promise<DirectFixResult> {
     const existing = listProviders().find(
       (p) => p.kind === 'subscription' && p.id !== SUBSCRIPTION_PROFILE_ID && (!p.baseUrl || isAnthropicApi(p.baseUrl))
     )
-    const profile = existing ?? saveProvider({ name: DIRECT_PROFILE_NAME, kind: 'subscription', baseUrl: ANTHROPIC_API })
+    const profile =
+      existing ?? saveProvider({ name: DIRECT_PROFILE_NAME, kind: 'subscription', baseUrl: ANTHROPIC_API })
     setDefaultProvider(profile.id)
     const test = await testProvider(profile.id)
     return {

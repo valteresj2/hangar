@@ -3,7 +3,15 @@ import { useRef, useState } from 'react'
 import type { Session } from '@shared/contracts'
 import styles from './sessions.module.css'
 
-export function RenameInput({ initial, onDone, className }: { initial: string; onDone: (title?: string) => void; className?: string }) {
+export function RenameInput({
+  initial,
+  onDone,
+  className
+}: {
+  initial: string
+  onDone: (title?: string) => void
+  className?: string
+}) {
   const [value, setValue] = useState(initial)
   const done = useRef(false)
   const finish = (title?: string) => {
@@ -31,7 +39,8 @@ export function RenameInput({ initial, onDone, className }: { initial: string; o
 
 export function StatusDot({ session }: { session: Session }) {
   if (session.status === 'working') return <span className={styles.spinner} title="Trabalhando" />
-  if (session.status === 'waiting') return <span className={`${styles.dot} ${styles.dotWaiting}`} title="Aguardando você" />
+  if (session.status === 'waiting')
+    return <span className={`${styles.dot} ${styles.dotWaiting}`} title="Aguardando você" />
   if (session.status === 'error') return <span className={`${styles.dot} ${styles.dotError}`} title="Erro" />
   if (session.unread) return <span className={`${styles.dot} ${styles.dotUnread}`} title="Não lida" />
   return <span className={styles.dotSpace} />

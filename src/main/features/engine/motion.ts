@@ -52,8 +52,19 @@ export function motionCard(path: string): EntryDraft {
   try {
     const { spec, errors } = parseMotion(readFileSync(path, 'utf8'))
     if (!spec) return { kind: 'motion', path, errors }
-    return { kind: 'motion', path, title: spec.title, duration: totalDuration(spec), scenes: spec.scenes.length, errors: [] }
+    return {
+      kind: 'motion',
+      path,
+      title: spec.title,
+      duration: totalDuration(spec),
+      scenes: spec.scenes.length,
+      errors: []
+    }
   } catch (err) {
-    return { kind: 'motion', path, errors: [`Não foi possível ler o arquivo: ${err instanceof Error ? err.message : String(err)}`] }
+    return {
+      kind: 'motion',
+      path,
+      errors: [`Não foi possível ler o arquivo: ${err instanceof Error ? err.message : String(err)}`]
+    }
   }
 }

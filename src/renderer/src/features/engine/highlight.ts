@@ -40,7 +40,11 @@ export async function highlight(code: string, lang: string | undefined): Promise
 
   let html: string
   try {
-    html = hl.codeToHtml(code, { lang: language, themes: { light: 'github-light', dark: 'github-dark' }, defaultColor: false })
+    html = hl.codeToHtml(code, {
+      lang: language,
+      themes: { light: 'github-light', dark: 'github-dark' },
+      defaultColor: false
+    })
   } catch {
     // A grammar the JS engine cannot run: remember it and show plain text.
     failedLangs.add(language)
@@ -55,6 +59,13 @@ export async function highlight(code: string, lang: string | undefined): Promise
 export function langForPath(path: string): string | undefined {
   const ext = path.split('.').pop()?.toLowerCase()
   if (!ext || ext === path.toLowerCase()) return undefined
-  const map: Record<string, string> = { ps1: 'powershell', psm1: 'powershell', yml: 'yaml', md: 'markdown', h: 'c', hpp: 'cpp' }
+  const map: Record<string, string> = {
+    ps1: 'powershell',
+    psm1: 'powershell',
+    yml: 'yaml',
+    md: 'markdown',
+    h: 'c',
+    hpp: 'cpp'
+  }
   return map[ext] ?? ext
 }

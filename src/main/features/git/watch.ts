@@ -15,7 +15,11 @@ interface Watched {
 const watched = new Map<string, Watched>()
 const timers = new Map<string, NodeJS.Timeout>()
 
-const keyOf = (cwd: string) => cwd.replace(/[\\/]+/g, '/').replace(/\/$/, '').toLowerCase()
+const keyOf = (cwd: string) =>
+  cwd
+    .replace(/[\\/]+/g, '/')
+    .replace(/\/$/, '')
+    .toLowerCase()
 
 /** Debounced `git:event:changed` for `cwd`. */
 export function notifyChanged(cwd: string): void {

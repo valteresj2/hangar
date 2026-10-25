@@ -14,7 +14,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { startMockAnthropic, type MockAnthropic } from '../mock-anthropic/server.ts'
 
-export const REPO_ROOT =resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
+export const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..', '..')
 export const MOCK_TOKEN = 'mock-token'
 
 /** The Claude Code binary shipped with the Agent SDK (same one CI has after `npm ci`). */
@@ -34,7 +34,12 @@ function cleanEnv(extra: Record<string, string>): Record<string, string> {
   const env: Record<string, string> = {}
   for (const [k, v] of Object.entries(process.env)) {
     if (v === undefined) continue
-    if (/^(ANTHROPIC_|CLAUDE_CODE_|CLAUDE_AGENT_SDK_|CLAUDE_CONFIG_DIR$|CLAUDECODE$|ELECTRON_RENDERER_URL$|ELECTRON_RUN_AS_NODE$|AWS_BEARER_TOKEN)/.test(k)) continue
+    if (
+      /^(ANTHROPIC_|CLAUDE_CODE_|CLAUDE_AGENT_SDK_|CLAUDE_CONFIG_DIR$|CLAUDECODE$|ELECTRON_RENDERER_URL$|ELECTRON_RUN_AS_NODE$|AWS_BEARER_TOKEN)/.test(
+        k
+      )
+    )
+      continue
     env[k] = v
   }
   return { ...env, ...extra }
@@ -65,7 +70,8 @@ export const test = base.extend<Fixtures>({
   mock: async ({}, use) => {
     const mock = await startMockAnthropic({ log: process.env.MOCK_LOG ? (l) => console.log(`[mock] ${l}`) : undefined })
     await use(mock)
-    if (mock.unknown.length) console.log(`[mock] unknown routes: ${mock.unknown.map((r) => `${r.method} ${r.path}`).join(', ')}`)
+    if (mock.unknown.length)
+      console.log(`[mock] unknown routes: ${mock.unknown.map((r) => `${r.method} ${r.path}`).join(', ')}`)
     await mock.close()
   },
 
@@ -79,7 +85,17 @@ export const test = base.extend<Fixtures>({
     const claudeExe = bundledClaude()
     writeFileSync(
       join(userData, 'hangar-data', 'settings.json'),
-      JSON.stringify({ onboardingDone: true, theme: 'light', notifications: false, minimizeToTray: false, ...(claudeExe ? { claudeExecutablePath: claudeExe } : {}) }, null, 2)
+      JSON.stringify(
+        {
+          onboardingDone: true,
+          theme: 'light',
+          notifications: false,
+          minimizeToTray: false,
+          ...(claudeExe ? { claudeExecutablePath: claudeExe } : {})
+        },
+        null,
+        2
+      )
     )
 
     const app = await electron.launch({
@@ -93,8 +109,11 @@ export const test = base.extend<Fixtures>({
     page.on('dialog', (d) => void d.accept())
     await page.waitForSelector('#root > *')
 
-    const invoke = <T,>(channel: string, ...args: unknown[]) =>
-      page.evaluate(([c, a]) => window.hangar.invoke(c as string, ...(a as unknown[])), [channel, args] as const) as Promise<T>
+    const invoke = <T>(channel: string, ...args: unknown[]) =>
+      page.evaluate(([c, a]) => window.hangar.invoke(c as string, ...(a as unknown[])), [
+        channel,
+        args
+      ] as const) as Promise<T>
 
     const useMockProvider: Hangar['useMockProvider'] = async (opts = {}) => {
       const profile = await invoke<{ id: string }>('settings:providerSave', {
@@ -112,7 +131,11 @@ export const test = base.extend<Fixtures>({
     const openNewSession: Hangar['openNewSession'] = async (opts = {}) => {
       const cwd = opts.cwd ?? work
       const title = opts.title ?? `E2E ${Date.now().toString(36)}`
-      const session = await invoke<{ id: string; cwd: string }>('sessions:create', { cwd, title, permissionMode: opts.permissionMode ?? 'default' })
+      const session = await invoke<{ id: string; cwd: string }>('sessions:create', {
+        cwd,
+        title,
+        permissionMode: opts.permissionMode ?? 'default'
+      })
       await page.getByText(title, { exact: true }).first().click()
       await expect(page.getByPlaceholder(/Responder ao Claude/)).toBeVisible()
       return session
@@ -124,12 +147,28 @@ export const test = base.extend<Fixtures>({
     if (failed) {
       await page
         .screenshot({ path: testInfo.outputPath('failure.png') })
-        .then(() => testInfo.attachments.push({ name: 'screenshot', path: testInfo.outputPath('failure.png'), contentType: 'image/png' }))
+        .then(() =>
+          testInfo.attachments.push({
+            name: 'screenshot',
+            path: testInfo.outputPath('failure.png'),
+            contentType: 'image/png'
+          })
+        )
         .catch(() => {})
-      await app.context().tracing.stop({ path: testInfo.outputPath('trace.zip') }).catch(() => {})
-      testInfo.attachments.push({ name: 'trace', path: testInfo.outputPath('trace.zip'), contentType: 'application/zip' })
+      await app
+        .context()
+        .tracing.stop({ path: testInfo.outputPath('trace.zip') })
+        .catch(() => {})
+      testInfo.attachments.push({
+        name: 'trace',
+        path: testInfo.outputPath('trace.zip'),
+        contentType: 'application/zip'
+      })
     } else {
-      await app.context().tracing.stop().catch(() => {})
+      await app
+        .context()
+        .tracing.stop()
+        .catch(() => {})
     }
     await app.close().catch(() => {})
     // Claude Code children may hold files for a moment after the app quits.

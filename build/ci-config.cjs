@@ -32,7 +32,9 @@ if (provider === 'generic') {
   const owner = (env.UPDATE_GITHUB_OWNER || 'valteresj2').trim()
   const repo = (env.UPDATE_GITHUB_REPO || 'hangar-releases').trim()
   if (owner === 'valteresj2' && repo === 'hangar') {
-    console.error('valteresj2/hangar is private: installed apps could not download updates. Use a public releases repo.')
+    console.error(
+      'valteresj2/hangar is private: installed apps could not download updates. Use a public releases repo.'
+    )
     process.exit(1)
   }
   config.publish = { provider: 'github', owner, repo, releaseType: 'release' }
@@ -57,7 +59,10 @@ if (azureSet.length === 4) {
       process.exit(1)
     }
   }
-  config.win = { ...config.win, azureSignOptions: Object.fromEntries(Object.entries(azure).map(([k, v]) => [k, v.trim()])) }
+  config.win = {
+    ...config.win,
+    azureSignOptions: Object.fromEntries(Object.entries(azure).map(([k, v]) => [k, v.trim()]))
+  }
   notes.push(`signing: Azure Trusted Signing (${azure.codeSigningAccountName}/${azure.certificateProfileName})`)
 } else if (azureSet.length > 0) {
   console.error('Azure Trusted Signing needs AZURE_SIGNING_ENDPOINT, _ACCOUNT, _PROFILE and _PUBLISHER together.')

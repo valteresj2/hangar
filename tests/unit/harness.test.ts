@@ -80,7 +80,12 @@ describe('readHarness / writeHarness', () => {
 
   it('reads only text harness files', async () => {
     const tree = await readHarness(dir)
-    expect(Object.keys(tree).sort()).toEqual(['.claude/commands/ship.md', '.claude/settings.json', '.claude/skills/old/SKILL.md', 'CLAUDE.md'])
+    expect(Object.keys(tree).sort()).toEqual([
+      '.claude/commands/ship.md',
+      '.claude/settings.json',
+      '.claude/skills/old/SKILL.md',
+      'CLAUDE.md'
+    ])
     expect(tree['CLAUDE.md']).toBe('# Projeto\n')
   })
 
@@ -116,7 +121,9 @@ describe('readHarness / writeHarness', () => {
   })
 
   it('refuses trees with paths off the harness surface, before touching anything', async () => {
-    await expect(writeHarness(dir, { 'CLAUDE.md': 'changed', 'src/evil.ts': 'x' })).rejects.toThrow(/Fora da superfície de harness: src\/evil\.ts/)
+    await expect(writeHarness(dir, { 'CLAUDE.md': 'changed', 'src/evil.ts': 'x' })).rejects.toThrow(
+      /Fora da superfície de harness: src\/evil\.ts/
+    )
     await expect(writeHarness(dir, { '../outside/CLAUDE.md': 'x' })).rejects.toThrow(/Fora da superfície/)
     expect(read('CLAUDE.md')).toBe('# Projeto\n')
     expect(existsSync(join(dir, 'src/evil.ts'))).toBe(false)

@@ -96,7 +96,13 @@ async function readTreeDir(dir: string): Promise<{ tree: HarnessTree; rejected: 
 }
 
 function slug(text: string): string {
-  return text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '').slice(0, 40) || 'item'
+  return (
+    text
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '')
+      .slice(0, 40) || 'item'
+  )
 }
 
 /** Writes the evidence directory and returns the layout text for the mission. */
@@ -109,7 +115,11 @@ async function buildContext(dir: string, input: StageInput): Promise<string> {
   for (const run of input.runs) {
     const d = join(dir, 'runs', run.label)
     await mkdir(d, { recursive: true })
-    const meta = [`status: ${run.status}`, run.costUsd !== undefined ? `cost_usd: ${run.costUsd.toFixed(4)}` : '', run.durationMs !== undefined ? `duration_s: ${Math.round(run.durationMs / 1000)}` : '']
+    const meta = [
+      `status: ${run.status}`,
+      run.costUsd !== undefined ? `cost_usd: ${run.costUsd.toFixed(4)}` : '',
+      run.durationMs !== undefined ? `duration_s: ${Math.round(run.durationMs / 1000)}` : ''
+    ]
     await writeFile(join(d, 'trajectory.md'), `${meta.filter(Boolean).join('\n')}\n\n${run.trajectory}\n`, 'utf8')
     await writeFile(join(d, 'final.md'), `${run.finalAnswer || '(no final answer)'}\n`, 'utf8')
     await writeFile(join(d, 'changes.patch'), `${run.changes || '(no file changes)'}\n`, 'utf8')
@@ -125,7 +135,9 @@ async function buildContext(dir: string, input: StageInput): Promise<string> {
   await writeFile(
     join(lib, 'lessons.md'),
     lessons.length
-      ? lessons.map((l) => `- when ${l.cue}: ${l.lesson}\n  evidence: ${l.evidence} (confidence: ${l.confidence})`).join('\n') + '\n'
+      ? lessons
+          .map((l) => `- when ${l.cue}: ${l.lesson}\n  evidence: ${l.evidence} (confidence: ${l.confidence})`)
+          .join('\n') + '\n'
       : '(no lessons recorded for this project yet)\n',
     'utf8'
   )
@@ -142,7 +154,9 @@ async function buildContext(dir: string, input: StageInput): Promise<string> {
     ...input.runs.map((r) => `    runs/${r.label}/`.padEnd(37) + 'trajectory.md, final.md, changes.patch of that run'),
     ...input.candidates.map((c) => `    candidates/${c.label}/`.padEnd(37) + 'harness/ and notes.md of that candidate'),
     '    library/lessons.md               lessons recorded in earlier work on this project',
-    ...(input.examples.length ? ['    library/snapshots/               harnesses adopted in earlier Lab rounds (examples)'] : [])
+    ...(input.examples.length
+      ? ['    library/snapshots/               harnesses adopted in earlier Lab rounds (examples)']
+      : [])
   ]
   return lines.join('\n')
 }
@@ -168,7 +182,8 @@ async function callProposer(dir: string, prompt: string, model: string, signal: 
     }
     if (WRITE_TOOLS.has(toolName)) {
       const rel = inside(input.file_path)
-      if (!rel?.startsWith('harness/')) return { behavior: 'deny', message: 'Only files under harness/ can be changed.' }
+      if (!rel?.startsWith('harness/'))
+        return { behavior: 'deny', message: 'Only files under harness/ can be changed.' }
       const harnessRel = rel.slice('harness/'.length)
       if (!isHarnessPath(harnessRel)) {
         return {

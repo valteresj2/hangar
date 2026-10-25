@@ -42,7 +42,8 @@ function keyName(code: string): string | undefined {
 
 const MODIFIER_KEYS = new Set(['Control', 'Shift', 'Alt', 'Meta', 'AltGraph', 'OS'])
 
-export type RecordResult = { kind: 'partial'; preview: string } | { kind: 'done'; accelerator: string } | { kind: 'invalid'; reason: string }
+export type RecordResult =
+  { kind: 'partial'; preview: string } | { kind: 'done'; accelerator: string } | { kind: 'invalid'; reason: string }
 
 /** Interprets one keydown while recording. Needs Ctrl, Alt or Win plus a key (F-keys may stand alone). */
 export function recordKey(e: KeyboardEvent): RecordResult {

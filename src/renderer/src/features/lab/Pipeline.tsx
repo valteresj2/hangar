@@ -51,7 +51,11 @@ export function PipelineTimeline({ phases }: { phases: LabPhaseView[] }) {
   )
 }
 
-const DIM_LABEL: Record<LabStage['dim'], string> = { INV: 'INV · como o agente trabalha', DOM: 'DOM · o que um especialista sabe', COMPOSE: 'Compositor' }
+const DIM_LABEL: Record<LabStage['dim'], string> = {
+  INV: 'INV · como o agente trabalha',
+  DOM: 'DOM · o que um especialista sabe',
+  COMPOSE: 'Compositor'
+}
 
 function stageTitle(s: LabStage): string {
   if (s.dim === 'COMPOSE') return s.step ? `Checkpoint ${s.step}` : 'Composição'
@@ -66,13 +70,23 @@ function TreeDiff({ base, tree }: { base: HarnessTree; tree: HarnessTree }) {
     <div className={styles.treeDiff}>
       <div className={styles.diffSummary}>
         {changes.map((c) => (
-          <button key={c.path} className={styles.diffChip} onClick={() => setOpen(open === c.path ? undefined : c.path)}>
-            <span className={styles[c.kind]}>{c.kind === 'added' ? 'novo' : c.kind === 'removed' ? 'removido' : 'alterado'}</span> {c.path}{' '}
-            <span className={styles.plus}>+{c.added}</span> <span className={styles.minus}>−{c.removed}</span>
+          <button
+            key={c.path}
+            className={styles.diffChip}
+            onClick={() => setOpen(open === c.path ? undefined : c.path)}
+          >
+            <span className={styles[c.kind]}>
+              {c.kind === 'added' ? 'novo' : c.kind === 'removed' ? 'removido' : 'alterado'}
+            </span>{' '}
+            {c.path} <span className={styles.plus}>+{c.added}</span> <span className={styles.minus}>−{c.removed}</span>
           </button>
         ))}
       </div>
-      {open && <DiffBlock text={createTwoFilesPatch(`base/${open}`, open, base[open] ?? '', tree[open] ?? '', '', '', { context: 3 })} />}
+      {open && (
+        <DiffBlock
+          text={createTwoFilesPatch(`base/${open}`, open, base[open] ?? '', tree[open] ?? '', '', '', { context: 3 })}
+        />
+      )}
     </div>
   )
 }

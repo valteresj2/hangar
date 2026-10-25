@@ -43,26 +43,26 @@ export function AboutSection() {
   return (
     <>
       <UpdaterPanel />
-      
-    <Card>
-      <Row label="Hangar" hint="App desktop para rodar e acompanhar sessões do Claude Code.">
-        <span>v{info.version}</span>
-      </Row>
-      <Row label="Electron">
-        <span>{info.electron}</span>
-      </Row>
-      <Row label="Chromium">
-        <span>{info.chrome}</span>
-      </Row>
-      <Row label="Node.js">
-        <span>{info.node}</span>
-      </Row>
-      <Row label="Pasta de dados" hint={<span className={styles.path}>{info.dataDir}</span>}>
-        <button className="btn" onClick={() => void api.openPath(info.dataDir)}>
-          Abrir
-        </button>
-      </Row>
-    </Card>
+
+      <Card>
+        <Row label="Hangar" hint="App desktop para rodar e acompanhar sessões do Claude Code.">
+          <span>v{info.version}</span>
+        </Row>
+        <Row label="Electron">
+          <span>{info.electron}</span>
+        </Row>
+        <Row label="Chromium">
+          <span>{info.chrome}</span>
+        </Row>
+        <Row label="Node.js">
+          <span>{info.node}</span>
+        </Row>
+        <Row label="Pasta de dados" hint={<span className={styles.path}>{info.dataDir}</span>}>
+          <button className="btn" onClick={() => void api.openPath(info.dataDir)}>
+            Abrir
+          </button>
+        </Row>
+      </Card>
     </>
   )
 }

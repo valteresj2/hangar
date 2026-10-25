@@ -42,11 +42,19 @@ function StatusLine({ state }: { state: UpdaterState }) {
         </span>
       )
     case 'available':
-      return <span>Nova versão disponível: <strong>{state.availableVersion}</strong></span>
+      return (
+        <span>
+          Nova versão disponível: <strong>{state.availableVersion}</strong>
+        </span>
+      )
     case 'downloading':
       return <span>Baixando a versão {state.availableVersion}…</span>
     case 'downloaded':
-      return <span>Versão <strong>{state.availableVersion}</strong> pronta para instalar.</span>
+      return (
+        <span>
+          Versão <strong>{state.availableVersion}</strong> pronta para instalar.
+        </span>
+      )
     case 'error':
       return <span className={styles.errorText}>{state.error}</span>
   }
@@ -77,7 +85,11 @@ export function UpdaterPanel() {
         </div>
         <div className={styles.actions}>
           {state.status === 'available' && (
-            <button className="btn btn-primary" disabled={busy} onClick={() => run(() => bridge.invoke(UPDATER.download))}>
+            <button
+              className="btn btn-primary"
+              disabled={busy}
+              onClick={() => run(() => bridge.invoke(UPDATER.download))}
+            >
               Baixar atualização
             </button>
           )}
@@ -113,12 +125,13 @@ export function UpdaterPanel() {
         </div>
       )}
 
-      {state.releaseNotes && (state.status === 'available' || state.status === 'downloading' || state.status === 'downloaded') && (
-        <details className={styles.notes}>
-          <summary>Novidades da versão {state.availableVersion}</summary>
-          <pre>{state.releaseNotes}</pre>
-        </details>
-      )}
+      {state.releaseNotes &&
+        (state.status === 'available' || state.status === 'downloading' || state.status === 'downloaded') && (
+          <details className={styles.notes}>
+            <summary>Novidades da versão {state.availableVersion}</summary>
+            <pre>{state.releaseNotes}</pre>
+          </details>
+        )}
 
       <label className={styles.option}>
         <input

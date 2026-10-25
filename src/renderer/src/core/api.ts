@@ -6,8 +6,10 @@ export const bridge = window.hangar
 
 export const api = {
   list: <K extends CollectionName>(name: K) => bridge.invoke<Collections[K][]>(CORE.storeList, name),
-  get: <K extends CollectionName>(name: K, id: string) => bridge.invoke<Collections[K] | undefined>(CORE.storeGet, name, id),
-  put: <K extends CollectionName>(name: K, row: Collections[K]) => bridge.invoke<Collections[K]>(CORE.storePut, name, row),
+  get: <K extends CollectionName>(name: K, id: string) =>
+    bridge.invoke<Collections[K] | undefined>(CORE.storeGet, name, id),
+  put: <K extends CollectionName>(name: K, row: Collections[K]) =>
+    bridge.invoke<Collections[K]>(CORE.storePut, name, row),
   patch: <K extends CollectionName>(name: K, id: string, patch: Partial<Collections[K]>) =>
     bridge.invoke<Collections[K] | undefined>(CORE.storePatch, name, id, patch),
   remove: (name: CollectionName, id: string) => bridge.invoke<boolean>(CORE.storeDelete, name, id),

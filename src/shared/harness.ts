@@ -225,7 +225,9 @@ export const LAB_SEQUENTIAL_MAX = 3
 
 /** Task executions and proposer/composer calls of an automatic round (before retries). */
 export function labRoundPlan(mode: Exclude<LabMode, 'manual'>, depth: number): { executions: number; calls: number } {
-  return mode === 'parallel' ? { executions: 2 + 2 * depth, calls: 2 * depth + 1 } : { executions: 1 + 3 * depth, calls: 3 * depth }
+  return mode === 'parallel'
+    ? { executions: 2 + 2 * depth, calls: 2 * depth + 1 }
+    : { executions: 1 + 3 * depth, calls: 3 * depth }
 }
 
 /** Lab rounds: base + 1..MAX_LAB_VARIANTS variants. */

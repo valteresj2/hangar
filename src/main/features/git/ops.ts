@@ -166,7 +166,13 @@ export async function commit(cwd: string, message: string): Promise<string> {
 export async function branches(cwd: string): Promise<GitBranch[]> {
   const root = await requireRoot(cwd)
   const fmt = '%(refname)%1f%(HEAD)%1f%(upstream:short)%1f%(committerdate:unix)'
-  const { stdout } = await git(root, ['for-each-ref', `--format=${fmt}`, '--sort=-committerdate', 'refs/heads', 'refs/remotes'])
+  const { stdout } = await git(root, [
+    'for-each-ref',
+    `--format=${fmt}`,
+    '--sort=-committerdate',
+    'refs/heads',
+    'refs/remotes'
+  ])
   const out: GitBranch[] = []
   for (const line of stdout.split('\n')) {
     if (!line) continue
@@ -251,7 +257,9 @@ export async function prStatus(cwd: string): Promise<GitPrStatus> {
   if (!(await hasGh())) return { available: false }
   const root = await requireRoot(cwd)
   try {
-    const { stdout } = await run('gh', root, ['pr', 'view', '--json', 'number,title,state,url,isDraft'], { timeout: 20_000 })
+    const { stdout } = await run('gh', root, ['pr', 'view', '--json', 'number,title,state,url,isDraft'], {
+      timeout: 20_000
+    })
     const pr = JSON.parse(stdout) as Omit<GitPrStatus, 'available'>
     return { available: true, ...pr }
   } catch {

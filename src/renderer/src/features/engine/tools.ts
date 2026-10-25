@@ -47,7 +47,8 @@ export function toolSummary(name: string, input: Record<string, unknown>): strin
   if (SHELL_TOOLS.has(name)) return str(input.description) ?? firstLine(str(input.command) ?? '')
   const path = str(input.file_path) ?? str(input.notebook_path) ?? str(input.path)
   if (path && name !== 'Grep' && name !== 'Glob') return shortPath(path)
-  if (name === 'Grep' || name === 'Glob') return [str(input.pattern), path && `em ${shortPath(path)}`].filter(Boolean).join(' ')
+  if (name === 'Grep' || name === 'Glob')
+    return [str(input.pattern), path && `em ${shortPath(path)}`].filter(Boolean).join(' ')
   if (name === 'WebFetch') return str(input.url) ?? ''
   if (name === 'WebSearch') return str(input.query) ?? ''
   if (name === 'Agent' || name === 'Task') return str(input.description) ?? str(input.subagent_type) ?? ''
@@ -96,7 +97,8 @@ export function latestTodos(entries: TranscriptEntry[]): TodoItem[] | undefined 
       if (!task) continue
       if (input.status === 'deleted') tasks.delete(input.taskId)
       else {
-        if (typeof input.status === 'string' && STATUSES.has(input.status)) task.status = input.status as TodoItem['status']
+        if (typeof input.status === 'string' && STATUSES.has(input.status))
+          task.status = input.status as TodoItem['status']
         task.content = str(input.subject) ?? task.content
         task.activeForm = str(input.activeForm) ?? task.activeForm
       }

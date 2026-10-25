@@ -23,10 +23,12 @@ const SECTIONS: { id: SettingsSectionId; label: string; render: () => ReactNode 
 ]
 
 /** Last opened section, kept across open/close (not persisted). */
-export const useSettingsSection = create<{ section: SettingsSectionId; setSection(s: SettingsSectionId): void }>((set) => ({
-  section: 'general',
-  setSection: (section) => set({ section })
-}))
+export const useSettingsSection = create<{ section: SettingsSectionId; setSection(s: SettingsSectionId): void }>(
+  (set) => ({
+    section: 'general',
+    setSection: (section) => set({ section })
+  })
+)
 
 export function SettingsView({ onClose }: { onClose: () => void }) {
   const { section, setSection } = useSettingsSection()

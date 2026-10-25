@@ -45,7 +45,9 @@ export function App() {
       <div className={styles.main}>
         <TopBar session={session} />
         <div className={styles.body}>
-          <main className={styles.center}>{session ? <ChatView key={session.id} session={session} /> : <NewSessionView />}</main>
+          <main className={styles.center}>
+            {session ? <ChatView key={session.id} session={session} /> : <NewSessionView />}
+          </main>
           {session && sidePanelOpen && <SidePanel session={session} />}
         </div>
       </div>

@@ -90,7 +90,11 @@ export function TrayQuickEntryCard({ settings }: { settings: Settings }) {
         label="Minimizar para a bandeja ao fechar"
         hint="Fechar a janela deixa o Hangar rodando na bandeja (notificações e tarefas agendadas continuam). Use “Sair” no menu do ícone para encerrar."
       >
-        <Switch label="Minimizar para a bandeja" checked={settings.minimizeToTray} onChange={(minimizeToTray) => patch({ minimizeToTray })} />
+        <Switch
+          label="Minimizar para a bandeja"
+          checked={settings.minimizeToTray}
+          onChange={(minimizeToTray) => patch({ minimizeToTray })}
+        />
       </Row>
       <Row
         label="Quick Entry"
@@ -99,14 +103,20 @@ export function TrayQuickEntryCard({ settings }: { settings: Settings }) {
             <span className={styles.errorText}>{status.error}</span>
           ) : status?.registered ? (
             <span className={styles.inline}>
-              <Dot tone="ok" /> Ativo: {formatAccelerator(status.accelerator)} abre uma caixa para começar uma sessão de qualquer lugar.
+              <Dot tone="ok" /> Ativo: {formatAccelerator(status.accelerator)} abre uma caixa para começar uma sessão de
+              qualquer lugar.
             </span>
           ) : (
             'Atalho global que abre uma caixa para começar uma sessão de qualquer lugar.'
           )
         }
       >
-        {enabled && <ShortcutRecorder value={settings.quickEntryShortcut} onChange={(quickEntryShortcut) => patch({ quickEntryShortcut })} />}
+        {enabled && (
+          <ShortcutRecorder
+            value={settings.quickEntryShortcut}
+            onChange={(quickEntryShortcut) => patch({ quickEntryShortcut })}
+          />
+        )}
         <Switch
           label="Quick Entry"
           checked={enabled}

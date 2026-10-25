@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useState } from 'react'
 import type { PermissionMode } from '@shared/contracts'
-import { SETTINGS, type CronCheck, type ScheduledTask, type ScheduledTaskInput, type ScheduleRun } from '@shared/features/settings'
+import {
+  SETTINGS,
+  type CronCheck,
+  type ScheduledTask,
+  type ScheduledTaskInput,
+  type ScheduleRun
+} from '@shared/features/settings'
 import { api, bridge } from '../../../core/api'
 import { useUi } from '../../../core/ui'
 import { errorText, settingsApi } from '../api'
@@ -18,7 +24,11 @@ const CRON_PRESETS: { label: string; cron: string }[] = [
 
 const EMPTY: ScheduledTaskInput = { name: '', cron: '0 9 * * 1-5', cwd: '', prompt: '', enabled: true }
 
-const RESULT_LABEL: Record<ScheduleRun['result'], string> = { running: 'Em execução', success: 'Sucesso', error: 'Erro' }
+const RESULT_LABEL: Record<ScheduleRun['result'], string> = {
+  running: 'Em execução',
+  success: 'Sucesso',
+  error: 'Erro'
+}
 const RESULT_TONE = { running: 'warn', success: 'ok', error: 'bad' } as const
 
 function openSession(sessionId: string): void {
@@ -65,13 +75,27 @@ function ScheduleForm({ initial, onClose }: { initial: ScheduledTaskInput; onClo
     <Card title={initial.id ? 'Editar tarefa' : 'Nova tarefa'}>
       <div className={styles.form}>
         <label>Nome</label>
-        <input className="input" value={draft.name} placeholder="Revisão diária" onChange={(e) => set({ name: e.target.value })} />
+        <input
+          className="input"
+          value={draft.name}
+          placeholder="Revisão diária"
+          onChange={(e) => set({ name: e.target.value })}
+        />
 
         <label>Quando (cron)</label>
         <div>
           <div className={styles.inline}>
-            <input className="input" value={draft.cron} placeholder="min hora dia mês dia-da-semana" onChange={(e) => set({ cron: e.target.value })} />
-            <select className={styles.select} value="" onChange={(e) => e.target.value && set({ cron: e.target.value })}>
+            <input
+              className="input"
+              value={draft.cron}
+              placeholder="min hora dia mês dia-da-semana"
+              onChange={(e) => set({ cron: e.target.value })}
+            />
+            <select
+              className={styles.select}
+              value=""
+              onChange={(e) => e.target.value && set({ cron: e.target.value })}
+            >
               <option value="">Modelos…</option>
               {CRON_PRESETS.map((p) => (
                 <option key={p.cron} value={p.cron}>
@@ -93,7 +117,12 @@ function ScheduleForm({ initial, onClose }: { initial: ScheduledTaskInput; onClo
 
         <label>Pasta</label>
         <div className={styles.inline}>
-          <input className="input" value={draft.cwd} placeholder="C:\projetos\meu-app" onChange={(e) => set({ cwd: e.target.value })} />
+          <input
+            className="input"
+            value={draft.cwd}
+            placeholder="C:\projetos\meu-app"
+            onChange={(e) => set({ cwd: e.target.value })}
+          />
           <button className="btn" onClick={() => void pick()}>
             Escolher…
           </button>
@@ -178,7 +207,9 @@ function ScheduleItem({ task, onEdit }: { task: ScheduledTask; onEdit: () => voi
 
   const toggle = (enabled: boolean) => {
     const { id, name, cron, cwd, prompt, model, permissionMode } = task
-    void settingsApi.saveSchedule({ id, name, cron, cwd, prompt, model, permissionMode, enabled }).catch((err) => setError(errorText(err)))
+    void settingsApi
+      .saveSchedule({ id, name, cron, cwd, prompt, model, permissionMode, enabled })
+      .catch((err) => setError(errorText(err)))
   }
 
   const remove = async () => {
@@ -206,7 +237,8 @@ function ScheduleItem({ task, onEdit }: { task: ScheduledTask; onEdit: () => voi
             {task.prompt.length > 140 ? `${task.prompt.slice(0, 140)}…` : task.prompt}
           </div>
           <div className={styles.itemSub}>
-            Última: {formatDateTime(task.lastRunAt)} · Próxima: {task.enabled ? formatDateTime(task.nextRunAt) : 'desativada'}
+            Última: {formatDateTime(task.lastRunAt)} · Próxima:{' '}
+            {task.enabled ? formatDateTime(task.nextRunAt) : 'desativada'}
             {task.history?.length ? (
               <>
                 {' · '}
@@ -281,7 +313,8 @@ export function SchedulesSection() {
     <>
       <div className={styles.toolbar}>
         <span className="muted" style={{ flex: 1 }}>
-          Rode um prompt numa pasta em horários definidos. Cada execução cria uma nova sessão. O Hangar precisa estar aberto.
+          Rode um prompt numa pasta em horários definidos. Cada execução cria uma nova sessão. O Hangar precisa estar
+          aberto.
         </span>
         {!editing && (
           <button className="btn btn-primary" onClick={() => setEditing({ ...EMPTY })}>

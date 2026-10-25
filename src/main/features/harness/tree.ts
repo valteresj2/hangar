@@ -54,7 +54,8 @@ async function harnessFiles(dir: string): Promise<string[]> {
   for (const top of ['CLAUDE.md', '.claude/CLAUDE.md', '.claude/settings.json']) {
     if (existsSync(join(dir, top))) out.push(top)
   }
-  for (const sub of ['.claude/skills', '.claude/agents', '.claude/commands', '.claude/scripts']) await walk(dir, sub, out)
+  for (const sub of ['.claude/skills', '.claude/agents', '.claude/commands', '.claude/scripts'])
+    await walk(dir, sub, out)
   return out
 }
 

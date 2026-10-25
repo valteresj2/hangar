@@ -82,7 +82,10 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
   const url = new URL(req.url ?? '/', 'http://localhost')
   let parts: string[]
   try {
-    parts = url.pathname.split('/').filter(Boolean).map((p) => decodeURIComponent(p))
+    parts = url.pathname
+      .split('/')
+      .filter(Boolean)
+      .map((p) => decodeURIComponent(p))
   } catch {
     return send(res, 400, 'Bad request')
   }

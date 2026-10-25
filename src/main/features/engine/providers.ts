@@ -39,7 +39,9 @@ export function effectiveProviderId(session?: Session): string {
 export function providerInfo(id: string): ProviderInfo {
   const p = profiles().find((profile) => profile.id === id)
   if (p) return { id: p.id, name: p.name, kind: p.kind }
-  return id === SUBSCRIPTION_PROFILE_ID ? { id, name: BUILTIN_SUBSCRIPTION.name, kind: 'subscription' } : { id, name: id, kind: 'gateway' }
+  return id === SUBSCRIPTION_PROFILE_ID
+    ? { id, name: BUILTIN_SUBSCRIPTION.name, kind: 'subscription' }
+    : { id, name: id, kind: 'gateway' }
 }
 
 /** Authentication, authorization, endpoint and connection errors: the profile's configuration, not the task. */

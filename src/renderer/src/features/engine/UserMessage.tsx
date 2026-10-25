@@ -1,5 +1,11 @@
 import { memo, useEffect, useState, type ReactNode } from 'react'
-import { ENGINE, type ForkResult, type RewindPreview, type RewindResult, type TranscriptEntry } from '@shared/features/engine'
+import {
+  ENGINE,
+  type ForkResult,
+  type RewindPreview,
+  type RewindResult,
+  type TranscriptEntry
+} from '@shared/features/engine'
 import { bridge } from '../../core/api'
 import { savedImageUrl } from './pasted'
 import styles from './engine.module.css'
@@ -66,7 +72,14 @@ function RewindPanel({
     let alive = true
     bridge.invoke<RewindPreview>(ENGINE.rewindPreview, sessionId, entry.id).then(
       (p) => alive && setPreview(p),
-      (err) => alive && setPreview({ canRewindConversation: false, canRewindFiles: false, filesChanged: [], filesError: errorText(err) })
+      (err) =>
+        alive &&
+        setPreview({
+          canRewindConversation: false,
+          canRewindFiles: false,
+          filesChanged: [],
+          filesError: errorText(err)
+        })
     )
     return () => {
       alive = false
@@ -91,7 +104,8 @@ function RewindPanel({
     <div className={styles.rewindPanel}>
       <div className={styles.permTitle}>Voltar a conversa para antes desta mensagem?</div>
       <div className="muted">
-        Esta mensagem e tudo o que veio depois saem da conversa. O texto volta para o campo de mensagem, para você editar e reenviar.
+        Esta mensagem e tudo o que veio depois saem da conversa. O texto volta para o campo de mensagem, para você
+        editar e reenviar.
       </div>
       {!preview ? (
         <div className={styles.working}>
@@ -120,9 +134,15 @@ function RewindPanel({
             : `Mudanças em arquivos não podem ser desfeitas automaticamente${preview.filesError ? ` (${preview.filesError})` : ''}.`}
         </div>
       )}
-      <div className={styles.permReason}>Comandos de terminal (Bash/PowerShell) e edições de subagentes não são desfeitos.</div>
+      <div className={styles.permReason}>
+        Comandos de terminal (Bash/PowerShell) e edições de subagentes não são desfeitos.
+      </div>
       <div className={styles.permActions}>
-        <button className="btn btn-primary" disabled={!preview?.canRewindConversation || working} onClick={() => void confirm()}>
+        <button
+          className="btn btn-primary"
+          disabled={!preview?.canRewindConversation || working}
+          onClick={() => void confirm()}
+        >
           {working ? 'Voltando…' : 'Voltar para aqui'}
         </button>
         <button className="btn" onClick={onCancel} disabled={working}>
@@ -142,7 +162,14 @@ interface Props {
   onOpenImage(url: string): void
 }
 
-export const UserMessage = memo(function UserMessage({ entry, sessionId, busy, onRewound, onError, onOpenImage }: Props) {
+export const UserMessage = memo(function UserMessage({
+  entry,
+  sessionId,
+  busy,
+  onRewound,
+  onError,
+  onOpenImage
+}: Props) {
   const [rewinding, setRewinding] = useState(false)
   const [forking, setForking] = useState(false)
 
@@ -189,7 +216,9 @@ export const UserMessage = memo(function UserMessage({ entry, sessionId, busy, o
           <button
             className={styles.userAction}
             disabled={busy}
-            title={busy ? 'Pare a geração primeiro' : 'Descarta esta mensagem e as seguintes e devolve o texto para edição'}
+            title={
+              busy ? 'Pare a geração primeiro' : 'Descarta esta mensagem e as seguintes e devolve o texto para edição'
+            }
             onClick={() => setRewinding(true)}
           >
             ✎ Editar e reenviar daqui

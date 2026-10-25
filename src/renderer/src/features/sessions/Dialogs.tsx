@@ -22,7 +22,17 @@ import { useSessionsUi, type SessionsDialog } from './store'
 import { errorText, relativeTime, shortFolder } from './util'
 import styles from './sessions.module.css'
 
-function Modal({ title, children, onClose, wide }: { title: string; children: ReactNode; onClose: () => void; wide?: boolean }) {
+function Modal({
+  title,
+  children,
+  onClose,
+  wide
+}: {
+  title: string
+  children: ReactNode
+  onClose: () => void
+  wide?: boolean
+}) {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -36,7 +46,12 @@ function Modal({ title, children, onClose, wide }: { title: string; children: Re
 
   return (
     <div className={styles.backdrop} onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className={`${styles.modal} ${wide ? styles.modalWide : ''}`} role="dialog" aria-modal="true" aria-label={title}>
+      <div
+        className={`${styles.modal} ${wide ? styles.modalWide : ''}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
+      >
         <div className={styles.modalTitle}>{title}</div>
         {children}
       </div>
@@ -48,7 +63,14 @@ function Actions({ children }: { children: ReactNode }) {
   return <div className={styles.modalActions}>{children}</div>
 }
 
-function NameDialog(props: { title: string; label: string; initial?: string; confirm: string; onSubmit: (name: string) => Promise<unknown>; onClose: () => void }) {
+function NameDialog(props: {
+  title: string
+  label: string
+  initial?: string
+  confirm: string
+  onSubmit: (name: string) => Promise<unknown>
+  onClose: () => void
+}) {
   const [name, setName] = useState(props.initial ?? '')
   const submit = async () => {
     if (!name.trim()) return
@@ -79,7 +101,14 @@ function NameDialog(props: { title: string; label: string; initial?: string; con
   )
 }
 
-function ConfirmDialog(props: { title: string; message: ReactNode; confirm: string; onConfirm: () => Promise<unknown>; onClose: () => void; children?: ReactNode }) {
+function ConfirmDialog(props: {
+  title: string
+  message: ReactNode
+  confirm: string
+  onConfirm: () => Promise<unknown>
+  onClose: () => void
+  children?: ReactNode
+}) {
   const [busy, setBusy] = useState(false)
   return (
     <Modal title={props.title} onClose={props.onClose}>
@@ -121,7 +150,10 @@ function ProjectDialog({ project, onClose }: { project?: Project; onClose: () =>
 
   const submit = async () => {
     if (!valid) return
-    const saved = await saveProject({ name: name.trim(), cwd: cwd.trim(), instructions: instructions.trim() || undefined }, project)
+    const saved = await saveProject(
+      { name: name.trim(), cwd: cwd.trim(), instructions: instructions.trim() || undefined },
+      project
+    )
     if (saved) onClose()
   }
 
@@ -134,7 +166,12 @@ function ProjectDialog({ project, onClose }: { project?: Project; onClose: () =>
       <label className={styles.field}>
         <span>Pasta</span>
         <div className={styles.row}>
-          <input className="input" value={cwd} onChange={(e) => setCwd(e.target.value)} placeholder="C:\caminho\do\projeto" />
+          <input
+            className="input"
+            value={cwd}
+            onChange={(e) => setCwd(e.target.value)}
+            placeholder="C:\caminho\do\projeto"
+          />
           <button className="btn" onClick={() => void pick()}>
             Escolher…
           </button>
@@ -214,10 +251,17 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
   return (
     <Modal title="Importar sessões do Claude Code" onClose={onClose} wide>
       <div className={styles.modalBody}>
-        <span className="muted">Sessões encontradas em %USERPROFILE%\.claude\projects. Ao abrir, a conversa é retomada.</span>
+        <span className="muted">
+          Sessões encontradas em %USERPROFILE%\.claude\projects. Ao abrir, a conversa é retomada.
+        </span>
       </div>
       <div className={styles.row}>
-        <input className="input" placeholder="Filtrar por título ou pasta" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <input
+          className="input"
+          placeholder="Filtrar por título ou pasta"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
         <button className="btn" disabled={!importable.length} onClick={toggleAll}>
           {allChecked ? 'Desmarcar todas' : 'Marcar todas'}
         </button>
@@ -227,7 +271,11 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
         {!error && !rows && <div className={styles.importEmpty}>Procurando sessões…</div>}
         {rows && visible.length === 0 && <div className={styles.importEmpty}>Nenhuma sessão encontrada.</div>}
         {visible.map((r) => (
-          <label key={r.sdkSessionId} className={`${styles.importRow} ${r.imported ? styles.importDone : ''}`} title={r.cwd}>
+          <label
+            key={r.sdkSessionId}
+            className={`${styles.importRow} ${r.imported ? styles.importDone : ''}`}
+            title={r.cwd}
+          >
             <input
               type="checkbox"
               disabled={r.imported}
@@ -245,7 +293,9 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
         ))}
       </div>
       <Actions>
-        <span className="muted">{selected.size ? `${selected.size} selecionada${selected.size > 1 ? 's' : ''}` : ''}</span>
+        <span className="muted">
+          {selected.size ? `${selected.size} selecionada${selected.size > 1 ? 's' : ''}` : ''}
+        </span>
         <div className={styles.spacer} />
         <button className="btn" onClick={onClose}>
           Cancelar
@@ -258,7 +308,13 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
-function DeleteSessionDialog({ dialog, onClose }: { dialog: Extract<SessionsDialog, { kind: 'delete' }>; onClose: () => void }) {
+function DeleteSessionDialog({
+  dialog,
+  onClose
+}: {
+  dialog: Extract<SessionsDialog, { kind: 'delete' }>
+  onClose: () => void
+}) {
   const { session } = dialog
   const [removeWt, setRemoveWt] = useState(false)
   return (
@@ -360,7 +416,11 @@ function Toasts() {
   return (
     <div className={styles.toasts}>
       {toasts.map((t) => (
-        <div key={t.id} className={`${styles.toast} ${t.tone === 'error' ? styles.toastError : ''}`} onClick={() => dismiss(t.id)}>
+        <div
+          key={t.id}
+          className={`${styles.toast} ${t.tone === 'error' ? styles.toastError : ''}`}
+          onClick={() => dismiss(t.id)}
+        >
           {t.text}
         </div>
       ))}

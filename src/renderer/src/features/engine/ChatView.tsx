@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Session } from '@shared/contracts'
-import { ENGINE, type OutputMode, type PermissionResponse, type RewindResult, type SendOptions, type TodoItem, type TranscriptEntry } from '@shared/features/engine'
+import {
+  ENGINE,
+  type OutputMode,
+  type PermissionResponse,
+  type RewindResult,
+  type SendOptions,
+  type TodoItem,
+  type TranscriptEntry
+} from '@shared/features/engine'
 import { bridge } from '../../core/api'
 import { useUi } from '../../core/ui'
 import { Composer, type ComposerDraft } from './Composer'
@@ -24,7 +32,9 @@ function TodoPanel({ todos }: { todos: TodoItem[] }) {
         <ul className={styles.todoList}>
           {todos.map((t, i) => (
             <li key={i} className={styles[`todo_${t.status}`]}>
-              <span className={styles.todoBox}>{t.status === 'completed' ? '✓' : t.status === 'in_progress' ? '◐' : ''}</span>
+              <span className={styles.todoBox}>
+                {t.status === 'completed' ? '✓' : t.status === 'in_progress' ? '◐' : ''}
+              </span>
               {t.status === 'in_progress' && t.activeForm ? t.activeForm : t.content}
             </li>
           ))}
@@ -47,7 +57,8 @@ function Footer({ entries }: { entries: TranscriptEntry[] }) {
     return undefined
   }, [entries])
   if (!last) return null
-  const pct = last.contextTokens && last.contextWindow ? Math.round((last.contextTokens / last.contextWindow) * 100) : undefined
+  const pct =
+    last.contextTokens && last.contextWindow ? Math.round((last.contextTokens / last.contextWindow) * 100) : undefined
   // Claude Code prices tokens at Anthropic list prices; a key, gateway or cloud account bills its own way.
   const estimated = !!last.providerKind && last.providerKind !== 'subscription'
   return (
@@ -58,15 +69,25 @@ function Footer({ entries }: { entries: TranscriptEntry[] }) {
         </span>
       )}
       <span title="Duração da última rodada">{(last.durationMs / 1000).toFixed(1)} s</span>
-      <span title={estimated ? 'Estimativa pelos preços de lista da Anthropic; o provedor pode cobrar diferente' : 'Custo estimado acumulado desta execução'}>
+      <span
+        title={
+          estimated
+            ? 'Estimativa pelos preços de lista da Anthropic; o provedor pode cobrar diferente'
+            : 'Custo estimado acumulado desta execução'
+        }
+      >
         US$ {last.costUsd.toFixed(4)}
         {estimated ? ' (estimado)' : ''}
       </span>
       <span title="Tokens da última rodada (entrada + cache / saída)">
-        {formatTokens(last.inputTokens + last.cacheReadTokens + last.cacheCreationTokens)} ↑ · {formatTokens(last.outputTokens)} ↓
+        {formatTokens(last.inputTokens + last.cacheReadTokens + last.cacheCreationTokens)} ↑ ·{' '}
+        {formatTokens(last.outputTokens)} ↓
       </span>
       {pct !== undefined && (
-        <span className={styles.context} title={`Contexto: ${last.contextTokens?.toLocaleString('pt-BR')} de ${last.contextWindow?.toLocaleString('pt-BR')} tokens`}>
+        <span
+          className={styles.context}
+          title={`Contexto: ${last.contextTokens?.toLocaleString('pt-BR')} de ${last.contextWindow?.toLocaleString('pt-BR')} tokens`}
+        >
           <span className={styles.contextBar}>
             <span style={{ width: `${Math.min(pct, 100)}%` }} />
           </span>
@@ -78,14 +99,29 @@ function Footer({ entries }: { entries: TranscriptEntry[] }) {
 }
 
 const SUGGESTIONS: { icon: string; label: string; text: string; output?: OutputMode }[] = [
-  { icon: '🎬', label: 'Criar uma animação (Motion)', text: 'Crie uma animação de 20 segundos explicando ', output: 'motion' },
+  {
+    icon: '🎬',
+    label: 'Criar uma animação (Motion)',
+    text: 'Crie uma animação de 20 segundos explicando ',
+    output: 'motion'
+  },
   { icon: '🧭', label: 'Explicar este projeto', text: 'Explique a estrutura deste projeto e como rodá-lo.' },
-  { icon: '🐞', label: 'Procurar bugs', text: 'Procure bugs prováveis no código desta pasta e liste os mais importantes, com arquivo e linha.' },
-  { icon: '🧪', label: 'Escrever testes', text: 'Escreva testes para a parte mais importante e menos testada deste projeto.' }
+  {
+    icon: '🐞',
+    label: 'Procurar bugs',
+    text: 'Procure bugs prováveis no código desta pasta e liste os mais importantes, com arquivo e linha.'
+  },
+  {
+    icon: '🧪',
+    label: 'Escrever testes',
+    text: 'Escreva testes para a parte mais importante e menos testada deste projeto.'
+  }
 ]
 
 function errorText(err: unknown): string {
-  return err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err)
+  return err instanceof Error
+    ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+    : String(err)
 }
 
 /** Transcript + composer for one session. */
@@ -108,7 +144,8 @@ export function ChatView({ session }: { session: Session }) {
 
   // After a fork, main asks us to open the new session.
   useEffect(
-    () => bridge.on(ENGINE.evSelect, ({ sessionId }: { sessionId: string }) => useUi.getState().selectSession(sessionId)),
+    () =>
+      bridge.on(ENGINE.evSelect, ({ sessionId }: { sessionId: string }) => useUi.getState().selectSession(sessionId)),
     []
   )
 
@@ -137,7 +174,9 @@ export function ChatView({ session }: { session: Session }) {
   const onAskFix = useCallback(
     (text: string) => {
       setError(undefined)
-      bridge.invoke(ENGINE.send, session.id, text, { output: 'motion' } satisfies SendOptions).catch((err) => setError(errorText(err)))
+      bridge
+        .invoke(ENGINE.send, session.id, text, { output: 'motion' } satisfies SendOptions)
+        .catch((err) => setError(errorText(err)))
     },
     [session.id]
   )
@@ -147,16 +186,24 @@ export function ChatView({ session }: { session: Session }) {
     setDraft({ text, nonce: Date.now() })
   }
 
-  const onRewound = useCallback((result: RewindResult) => {
-    setDraft({ text: result.text, nonce: Date.now() })
-    setOutput(result.output)
-    setAttachments(result.attachments ?? [])
-    setImages(
-      (result.images ?? []).map((img) => ({ ...img, id: crypto.randomUUID(), url: `data:${img.mediaType};base64,${img.data}` }))
-    )
-    if (result.filesError) setError(`A conversa voltou, mas os arquivos não foram restaurados: ${result.filesError}`)
-    else if (result.filesRestored?.length) setNotice(`Arquivos restaurados: ${result.filesRestored.map((f) => f.split(/[\\/]/).pop()).join(', ')}`)
-  }, [setOutput])
+  const onRewound = useCallback(
+    (result: RewindResult) => {
+      setDraft({ text: result.text, nonce: Date.now() })
+      setOutput(result.output)
+      setAttachments(result.attachments ?? [])
+      setImages(
+        (result.images ?? []).map((img) => ({
+          ...img,
+          id: crypto.randomUUID(),
+          url: `data:${img.mediaType};base64,${img.data}`
+        }))
+      )
+      if (result.filesError) setError(`A conversa voltou, mas os arquivos não foram restaurados: ${result.filesError}`)
+      else if (result.filesRestored?.length)
+        setNotice(`Arquivos restaurados: ${result.filesRestored.map((f) => f.split(/[\\/]/).pop()).join(', ')}`)
+    },
+    [setOutput]
+  )
 
   const onDropFiles = (list: FileList) => {
     const withPath: string[] = []
@@ -175,7 +222,8 @@ export function ChatView({ session }: { session: Session }) {
 
   const onStop = useCallback(() => void bridge.invoke(ENGINE.interrupt, session.id), [session.id])
   const onRespond = useCallback(
-    (requestId: string, response: PermissionResponse) => void bridge.invoke(ENGINE.respondPermission, session.id, requestId, response),
+    (requestId: string, response: PermissionResponse) =>
+      void bridge.invoke(ENGINE.respondPermission, session.id, requestId, response),
     [session.id]
   )
 

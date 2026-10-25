@@ -95,8 +95,19 @@ function finalContent(blocks: Block[]): Record<string, unknown>[] {
   return blocks.map((b) => ({ ...b }))
 }
 
-async function streamReply(res: ServerResponse, reply: ScriptReply, model: string, inputTokens: number, delayMs: number): Promise<void> {
-  res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-cache', connection: 'keep-alive', 'request-id': `req_mock_${Date.now()}` })
+async function streamReply(
+  res: ServerResponse,
+  reply: ScriptReply,
+  model: string,
+  inputTokens: number,
+  delayMs: number
+): Promise<void> {
+  res.writeHead(200, {
+    'content-type': 'text/event-stream',
+    'cache-control': 'no-cache',
+    connection: 'keep-alive',
+    'request-id': `req_mock_${Date.now()}`
+  })
   const send = async (event: string, data: Record<string, unknown>) => {
     if (res.destroyed) return
     res.write(`event: ${event}\ndata: ${JSON.stringify({ type: event, ...data })}\n\n`)
@@ -104,27 +115,45 @@ async function streamReply(res: ServerResponse, reply: ScriptReply, model: strin
   }
   const id = `msg_mock_${Date.now().toString(36)}`
   await send('message_start', {
-    message: { id, type: 'message', role: 'assistant', model, content: [], stop_reason: null, stop_sequence: null, usage: usage(inputTokens, 1) }
+    message: {
+      id,
+      type: 'message',
+      role: 'assistant',
+      model,
+      content: [],
+      stop_reason: null,
+      stop_sequence: null,
+      usage: usage(inputTokens, 1)
+    }
   })
   await send('ping', {})
   let outputTokens = 0
   for (const [index, block] of reply.blocks.entries()) {
     if (block.type === 'text') {
       await send('content_block_start', { index, content_block: { type: 'text', text: '' } })
-      for (const piece of chunks(block.text)) await send('content_block_delta', { index, delta: { type: 'text_delta', text: piece } })
+      for (const piece of chunks(block.text))
+        await send('content_block_delta', { index, delta: { type: 'text_delta', text: piece } })
     } else if (block.type === 'thinking') {
       await send('content_block_start', { index, content_block: { type: 'thinking', thinking: '', signature: '' } })
-      for (const piece of chunks(block.thinking, 30)) await send('content_block_delta', { index, delta: { type: 'thinking_delta', thinking: piece } })
+      for (const piece of chunks(block.thinking, 30))
+        await send('content_block_delta', { index, delta: { type: 'thinking_delta', thinking: piece } })
       await send('content_block_delta', { index, delta: { type: 'signature_delta', signature: block.signature } })
     } else {
-      await send('content_block_start', { index, content_block: { type: 'tool_use', id: block.id, name: block.name, input: {} } })
+      await send('content_block_start', {
+        index,
+        content_block: { type: 'tool_use', id: block.id, name: block.name, input: {} }
+      })
       await send('content_block_delta', { index, delta: { type: 'input_json_delta', partial_json: '' } })
-      for (const piece of chunks(JSON.stringify(block.input), 40)) await send('content_block_delta', { index, delta: { type: 'input_json_delta', partial_json: piece } })
+      for (const piece of chunks(JSON.stringify(block.input), 40))
+        await send('content_block_delta', { index, delta: { type: 'input_json_delta', partial_json: piece } })
     }
     outputTokens += estimateTokens(block)
     await send('content_block_stop', { index })
   }
-  await send('message_delta', { delta: { stop_reason: reply.stopReason, stop_sequence: null }, usage: { output_tokens: outputTokens } })
+  await send('message_delta', {
+    delta: { stop_reason: reply.stopReason, stop_sequence: null },
+    usage: { output_tokens: outputTokens }
+  })
   await send('message_stop', {})
   res.end()
 }
@@ -156,7 +185,9 @@ export async function startMockAnthropic(opts: MockOptions = {}): Promise<MockAn
     const modelMatch = /^\/v1\/models\/([^/]+)$/.exec(path)
     if (req.method === 'GET' && modelMatch) {
       const m = MOCK_MODELS.find((x) => x.id === decodeURIComponent(modelMatch[1]))
-      return m ? sendJson(res, 200, { type: 'model', ...m, created_at: '2025-01-01T00:00:00Z' }) : sendJson(res, 404, errorBody('not_found_error', 'model not found'))
+      return m
+        ? sendJson(res, 200, { type: 'model', ...m, created_at: '2025-01-01T00:00:00Z' })
+        : sendJson(res, 404, errorBody('not_found_error', 'model not found'))
     }
     if (req.method === 'POST' && path === '/v1/messages/count_tokens') {
       const b = (body ?? {}) as MessagesRequest

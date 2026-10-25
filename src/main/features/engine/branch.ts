@@ -38,7 +38,10 @@ function cwdOf(s: Session): string {
   return s.worktree?.path ?? s.cwd
 }
 
-async function findUserEntry(sessionId: string, entryId: string): Promise<{ entries: TranscriptEntry[]; idx: number; entry: UserEntry }> {
+async function findUserEntry(
+  sessionId: string,
+  entryId: string
+): Promise<{ entries: TranscriptEntry[]; idx: number; entry: UserEntry }> {
   const entries = await history(sessionId)
   const idx = entries.findIndex((e) => e.id === entryId)
   const entry = entries[idx]
@@ -89,13 +92,16 @@ export async function rewindPreview(sessionId: string, entryId: string): Promise
   const s = sessionOf(sessionId)
   const { entries, idx } = await findUserEntry(sessionId, entryId)
   const none = { canRewindFiles: false, filesChanged: [] }
-  if (!s.sdkSessionId) return { canRewindConversation: true, ...none, filesError: 'Ainda não há sessão do Claude Code.' }
+  if (!s.sdkSessionId)
+    return { canRewindConversation: true, ...none, filesError: 'Ainda não há sessão do Claude Code.' }
   const chain = await chainOf(s)
   const at = locate(chain, entries, idx)
-  if (at < 0) return { canRewindConversation: false, ...none, filesError: 'Mensagem não encontrada na sessão do Claude Code.' }
+  if (at < 0)
+    return { canRewindConversation: false, ...none, filesError: 'Mensagem não encontrada na sessão do Claude Code.' }
   try {
     const r = await runnerFor(sessionId).rewindFiles(chain[at].uuid, true)
-    if (!r.canRewind) return { canRewindConversation: true, ...none, filesError: r.error ?? 'Sem checkpoint de arquivos.' }
+    if (!r.canRewind)
+      return { canRewindConversation: true, ...none, filesError: r.error ?? 'Sem checkpoint de arquivos.' }
     return {
       canRewindConversation: true,
       canRewindFiles: true,
@@ -172,16 +178,17 @@ export async function fork(sessionId: string, entryId: string): Promise<ForkResu
     const next = chain.findIndex((m, i) => i > at && isPrompt(m))
     const cut = (next < 0 ? chain.length : next) - 1
     const { forkSession, getSessionMessages } = await loadSdk()
-    sdkSessionId = (await forkSession(s.sdkSessionId, { dir: cwdOf(s), upToMessageId: chain[cut].uuid, title })).sessionId
+    sdkSessionId = (await forkSession(s.sdkSessionId, { dir: cwdOf(s), upToMessageId: chain[cut].uuid, title }))
+      .sessionId
     // The fork gets fresh UUIDs in the same order; carry them over so the fork can be rewound/forked too.
     const forked = await getSessionMessages(sdkSessionId, { dir: cwdOf(s) })
     if (forked.length === cut + 1) forked.forEach((m, i) => remap.set(chain[i].uuid, m.uuid))
   }
 
   const id = randomUUID()
-  const copy = entries.slice(0, end).map((e) =>
-    e.kind === 'user' && e.sdkUuid ? { ...e, sdkUuid: remap.get(e.sdkUuid) } : e
-  ) as TranscriptEntry[]
+  const copy = entries
+    .slice(0, end)
+    .map((e) => (e.kind === 'user' && e.sdkUuid ? { ...e, sdkUuid: remap.get(e.sdkUuid) } : e)) as TranscriptEntry[]
   writeEntries(id, copy)
 
   const now = Date.now()

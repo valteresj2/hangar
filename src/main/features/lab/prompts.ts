@@ -169,7 +169,10 @@ Do not diagnose commands, retries, reading order, output paths, budgeting, scrip
 owns procedure; stay on practitioner knowledge.`
 
 export function proposeJob(dim: 'INV' | 'DOM', opts: { k: number; index: number; roundT?: number }): string {
-  let where = opts.k > 1 ? `You are candidate ${opts.index} of ${opts.k} on this dimension, drawn independently from the same evidence.` : ''
+  let where =
+    opts.k > 1
+      ? `You are candidate ${opts.index} of ${opts.k} on this dimension, drawn independently from the same evidence.`
+      : ''
   if (opts.roundT) {
     where +=
       `\n\nThis is round ${opts.roundT}. You are editing the checkpoint the previous round produced, not the original ` +
@@ -257,7 +260,9 @@ export function composeRoundJob(t: number, K: number): string {
         "change between rounds), this round's INV and DOM candidates with their runs, and every earlier round's " +
         "candidates, checkpoints and runs. The previous checkpoint's own run is this round's on-policy evidence: it " +
         'shows what the harness you are editing actually does.' +
-        (t === 1 ? "\n\nThis is the FIRST round, so the only evidence is the base run and this round's two candidates." : ''),
+        (t === 1
+          ? "\n\nThis is the FIRST round, so the only evidence is the base run and this round's two candidates."
+          : ''),
       '# YOUR JOB\n\n' +
         (final
           ? 'Compose THE FINAL harness, from the WHOLE history rather than just this round.\n'

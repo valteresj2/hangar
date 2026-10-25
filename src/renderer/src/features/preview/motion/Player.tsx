@@ -1,6 +1,15 @@
 // Motion player: a responsive canvas drawn with the shared runtime, transport controls and a scene timeline.
 // In edit mode a click selects the element under the cursor and dragging moves it.
-import { useCallback, useEffect, useImperativeHandle, useLayoutEffect, useRef, useState, type ReactNode, type Ref } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type ReactNode,
+  type Ref
+} from 'react'
 import { sceneAt, sceneStart, totalDuration, type MotionSpec } from '@shared/motion/spec'
 import { drawFrame, type MotionAssets } from '@renderer/motion/runtime'
 import { elementBounds, hitTest } from './geometry'
@@ -36,7 +45,9 @@ function formatTime(t: number): string {
 
 function isTyping(target: EventTarget | null): boolean {
   const el = target as HTMLElement | null
-  return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+  return (
+    !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT' || el.isContentEditable)
+  )
 }
 
 export function Player({ spec, assets, editing, selectedId, onSelect, onDrag, controllerRef, actions }: Props) {
@@ -61,7 +72,9 @@ export function Player({ spec, assets, editing, selectedId, onSelect, onDrag, co
     [total]
   )
 
-  useImperativeHandle(controllerRef, () => ({ seek, pause: () => setPlaying(false), time: () => timeRef.current }), [seek])
+  useImperativeHandle(controllerRef, () => ({ seek, pause: () => setPlaying(false), time: () => timeRef.current }), [
+    seek
+  ])
 
   // Keep the playhead inside the animation when the spec changes (reload from disk, edits).
   useEffect(() => {
@@ -164,7 +177,10 @@ export function Player({ spec, assets, editing, selectedId, onSelect, onDrag, co
   // ---- canvas selection / dragging ----
   const specPoint = (e: React.PointerEvent) => {
     const rect = canvasRef.current!.getBoundingClientRect()
-    return { x: ((e.clientX - rect.left) / rect.width) * spec.width, y: ((e.clientY - rect.top) / rect.height) * spec.height }
+    return {
+      x: ((e.clientX - rect.left) / rect.width) * spec.width,
+      y: ((e.clientY - rect.top) / rect.height) * spec.height
+    }
   }
 
   const onCanvasPointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -230,7 +246,12 @@ export function Player({ spec, assets, editing, selectedId, onSelect, onDrag, co
   const progress = total > 0 ? (time / total) * 100 : 0
 
   return (
-    <div ref={rootRef} className={`${styles.player} ${fullscreen ? styles.fullscreen : ''}`} tabIndex={0} onKeyDown={onKeyDown}>
+    <div
+      ref={rootRef}
+      className={`${styles.player} ${fullscreen ? styles.fullscreen : ''}`}
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+    >
       <div ref={stageRef} className={styles.stage}>
         <div className={styles.canvasBox} style={{ width: box.width, height: box.height }}>
           <canvas
@@ -270,7 +291,10 @@ export function Player({ spec, assets, editing, selectedId, onSelect, onDrag, co
             <div
               key={scene.id}
               className={styles.segment}
-              style={{ left: `${(sceneStart(spec, i) / (total || 1)) * 100}%`, width: `${(scene.duration / (total || 1)) * 100}%` }}
+              style={{
+                left: `${(sceneStart(spec, i) / (total || 1)) * 100}%`,
+                width: `${(scene.duration / (total || 1)) * 100}%`
+              }}
             />
           ))}
           <div className={styles.progress} style={{ width: `${progress}%` }} />
@@ -282,13 +306,22 @@ export function Player({ spec, assets, editing, selectedId, onSelect, onDrag, co
         <button className="icon-btn" title={playing ? 'Pausar (Espaço)' : 'Tocar (Espaço)'} onClick={togglePlay}>
           {playing ? '❚❚' : '▶'}
         </button>
-        <button className={`icon-btn ${loop ? styles.on : ''}`} title={loop ? 'Repetir: ligado' : 'Repetir: desligado'} onClick={() => setLoop((v) => !v)}>
+        <button
+          className={`icon-btn ${loop ? styles.on : ''}`}
+          title={loop ? 'Repetir: ligado' : 'Repetir: desligado'}
+          onClick={() => setLoop((v) => !v)}
+        >
           ⟲
         </button>
         <span className={styles.clock}>
           {formatTime(time)} / {formatTime(total)}
         </span>
-        <select className={styles.speed} value={speed} title="Velocidade" onChange={(e) => setSpeed(Number(e.target.value))}>
+        <select
+          className={styles.speed}
+          value={speed}
+          title="Velocidade"
+          onChange={(e) => setSpeed(Number(e.target.value))}
+        >
           {SPEEDS.map((s) => (
             <option key={s} value={s}>
               {s.toLocaleString('pt-BR')}×
@@ -297,7 +330,11 @@ export function Player({ spec, assets, editing, selectedId, onSelect, onDrag, co
         </select>
         <div className={styles.flex} />
         {actions}
-        <button className="icon-btn" title={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'} onClick={toggleFullscreen}>
+        <button
+          className="icon-btn"
+          title={fullscreen ? 'Sair da tela cheia' : 'Tela cheia'}
+          onClick={toggleFullscreen}
+        >
           ⛶
         </button>
       </div>

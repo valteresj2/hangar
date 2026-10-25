@@ -74,7 +74,11 @@ export function ChangesPanel({ session }: { session: Session }) {
   const [view, setView] = useState<'diff' | 'log'>('diff')
   const [log, setLog] = useState<GitCommit[]>([])
   const [pr, setPr] = useState<GitPrStatus>()
-  const [collapsed, setCollapsed] = useState<Record<Group, boolean>>({ staged: false, unstaged: false, untracked: false })
+  const [collapsed, setCollapsed] = useState<Record<Group, boolean>>({
+    staged: false,
+    unstaged: false,
+    untracked: false
+  })
   const seq = useRef(0)
 
   const refresh = useCallback(async () => {
@@ -142,7 +146,10 @@ export function ChangesPanel({ session }: { session: Session }) {
   useEffect(() => {
     if (!status?.isRepo || !status.branch) return setPr(undefined)
     let alive = true
-    gitApi.prStatus(cwd).then((p) => alive && setPr(p), () => undefined)
+    gitApi.prStatus(cwd).then(
+      (p) => alive && setPr(p),
+      () => undefined
+    )
     return () => {
       alive = false
     }
@@ -172,7 +179,14 @@ export function ChangesPanel({ session }: { session: Session }) {
         ? `Excluir ${what} do disco? Arquivos não rastreados não podem ser recuperados.`
         : `Descartar as alterações em ${what}? Esta ação não pode ser desfeita.`
     )
-    if (ok) void act('discard', () => gitApi.discard(cwd, changes.map((c) => c.path), untracked))
+    if (ok)
+      void act('discard', () =>
+        gitApi.discard(
+          cwd,
+          changes.map((c) => c.path),
+          untracked
+        )
+      )
   }
 
   const commit = () => {
@@ -233,10 +247,7 @@ export function ChangesPanel({ session }: { session: Session }) {
     return (
       <div key={group} className={styles.group}>
         <div className={styles.groupHeader}>
-          <button
-            className={styles.groupToggle}
-            onClick={() => setCollapsed((c) => ({ ...c, [group]: !c[group] }))}
-          >
+          <button className={styles.groupToggle} onClick={() => setCollapsed((c) => ({ ...c, [group]: !c[group] }))}>
             <span className={styles.chevron}>{isCollapsed ? '▸' : '▾'}</span>
             {GROUP_LABEL[group]}
             <span className={styles.count}>{list.length}</span>
@@ -301,7 +312,10 @@ export function ChangesPanel({ session }: { session: Session }) {
                     {group === 'staged' ? '−' : '+'}
                   </button>
                 </span>
-                <span className={`${styles.badge} ${styles[`st${c.status === '?' ? 'Q' : c.status}`] ?? ''}`} title={STATUS_TITLE[c.status]}>
+                <span
+                  className={`${styles.badge} ${styles[`st${c.status === '?' ? 'Q' : c.status}`] ?? ''}`}
+                  title={STATUS_TITLE[c.status]}
+                >
                   {c.status === '?' ? 'U' : c.status === 'U' ? '!' : c.status}
                 </span>
               </div>
@@ -330,11 +344,7 @@ export function ChangesPanel({ session }: { session: Session }) {
         )}
         <div className={styles.spacer} />
         {pr?.number && (
-          <button
-            className={styles.prChip}
-            title={pr.title}
-            onClick={() => pr.url && void api.openExternal(pr.url)}
-          >
+          <button className={styles.prChip} title={pr.title} onClick={() => pr.url && void api.openExternal(pr.url)}>
             PR #{pr.number} · {pr.isDraft ? 'rascunho' : (pr.state ?? '').toLowerCase()}
           </button>
         )}
@@ -414,7 +424,10 @@ export function ChangesPanel({ session }: { session: Session }) {
             <div className={styles.diffToolbar}>
               <span className={styles.diffPath} title={selectedChange.path}>
                 {selectedChange.path}
-                <span className="muted"> · {selected.group === 'staged' ? 'staged' : selected.group === 'untracked' ? 'novo' : 'working tree'}</span>
+                <span className="muted">
+                  {' '}
+                  · {selected.group === 'staged' ? 'staged' : selected.group === 'untracked' ? 'novo' : 'working tree'}
+                </span>
               </span>
               <div className={styles.segmented}>
                 <button className={mode === 'unified' ? styles.segActive : ''} onClick={() => setDiffMode('unified')}>
@@ -427,7 +440,9 @@ export function ChangesPanel({ session }: { session: Session }) {
               <button
                 className="icon-btn"
                 title="Abrir no editor"
-                onClick={() => void gitApi.openInEditor(absPath(selectedChange)).catch((e) => setError(errorMessage(e)))}
+                onClick={() =>
+                  void gitApi.openInEditor(absPath(selectedChange)).catch((e) => setError(errorMessage(e)))
+                }
               >
                 ↗
               </button>

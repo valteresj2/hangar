@@ -15,7 +15,9 @@ export const onboardingFeature: Feature = {
     ipcMain.handle(ONBOARDING.applyDirectFix, () => applyDirectFix())
     ipcMain.handle(ONBOARDING.providerSummary, (): ProviderSummary => {
       const all = listProviders()
-      const p = all.find((x) => x.id === settings().get().defaultProviderId) ?? all.find((x) => x.id === SUBSCRIPTION_PROFILE_ID)!
+      const p =
+        all.find((x) => x.id === settings().get().defaultProviderId) ??
+        all.find((x) => x.id === SUBSCRIPTION_PROFILE_ID)!
       return { id: p.id, name: p.name, kind: p.kind, customProfiles: all.length - 1 }
     })
   }

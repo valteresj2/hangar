@@ -30,7 +30,12 @@ export function mediaTypeFor(path: string): PastedImage['mediaType'] | undefined
 }
 
 export function isValidImage(img: PastedImage): boolean {
-  return img.mediaType in EXT && typeof img.data === 'string' && img.data.length > 0 && img.data.length <= (MAX_IMAGE_BYTES * 4) / 3 + 4
+  return (
+    img.mediaType in EXT &&
+    typeof img.data === 'string' &&
+    img.data.length > 0 &&
+    img.data.length <= (MAX_IMAGE_BYTES * 4) / 3 + 4
+  )
 }
 
 /** Writes a pasted image next to the session's other images and returns its absolute path. */

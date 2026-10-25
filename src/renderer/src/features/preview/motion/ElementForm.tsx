@@ -24,10 +24,23 @@ const ENTER: { value: EnterPreset | ''; label: string }[] = [
   { value: 'typewriter', label: 'typewriter (texto)' },
   { value: 'draw', label: 'draw (linha/seta)' }
 ]
-const EXIT = ENTER.filter((o) => o.value !== 'typewriter' && o.value !== 'draw') as { value: ExitPreset | ''; label: string }[]
+const EXIT = ENTER.filter((o) => o.value !== 'typewriter' && o.value !== 'draw') as {
+  value: ExitPreset | ''
+  label: string
+}[]
 const WEIGHTS = ['', '300', '400', '500', '600', '700', '800', '900'].map((w) => ({ value: w, label: w || 'padrão' }))
 export const FONT_LIST_ID = 'hangar-motion-fonts'
-export const FONTS = ['Segoe UI', 'Arial', 'Georgia', 'Consolas', 'Verdana', 'Tahoma', 'Times New Roman', 'Trebuchet MS', 'Courier New']
+export const FONTS = [
+  'Segoe UI',
+  'Arial',
+  'Georgia',
+  'Consolas',
+  'Verdana',
+  'Tahoma',
+  'Times New Roman',
+  'Trebuchet MS',
+  'Courier New'
+]
 
 export function findElement(doc: MotionSpec, sceneIndex: number, id: string): MotionElement | undefined {
   return doc.scenes[sceneIndex]?.elements.find((e) => e.id === id)
@@ -58,7 +71,11 @@ function ChartData({ el, update }: { el: ChartElement; update(mutate: (c: ChartE
                     onChange={(e) => update((c) => (c.series[k].color = e.target.value), `series-color-${k}`)}
                   />
                   {el.series.length > 1 && (
-                    <button className={styles.mini} title="Remover série" onClick={() => update((c) => c.series.splice(k, 1), `series-del`)}>
+                    <button
+                      className={styles.mini}
+                      title="Remover série"
+                      onClick={() => update((c) => c.series.splice(k, 1), `series-del`)}
+                    >
                       ×
                     </button>
                   )}
@@ -72,7 +89,11 @@ function ChartData({ el, update }: { el: ChartElement; update(mutate: (c: ChartE
           {el.labels.map((label, i) => (
             <tr key={i}>
               <td>
-                <input className={`input ${styles.cell}`} value={label} onChange={(e) => update((c) => (c.labels[i] = e.target.value), `label-${i}`)} />
+                <input
+                  className={`input ${styles.cell}`}
+                  value={label}
+                  onChange={(e) => update((c) => (c.labels[i] = e.target.value), `label-${i}`)}
+                />
               </td>
               {series.map((s, k) => (
                 <td key={k}>
@@ -120,7 +141,15 @@ function ChartData({ el, update }: { el: ChartElement; update(mutate: (c: ChartE
           + Linha
         </button>
         {el.chart !== 'pie' && (
-          <button className="btn" onClick={() => update((c) => c.series.push({ name: `Série ${c.series.length + 1}`, values: c.labels.map(() => 0) }), 'series-add')}>
+          <button
+            className="btn"
+            onClick={() =>
+              update(
+                (c) => c.series.push({ name: `Série ${c.series.length + 1}`, values: c.labels.map(() => 0) }),
+                'series-add'
+              )
+            }
+          >
             + Série
           </button>
         )}
@@ -139,11 +168,18 @@ export function ElementForm({ el, sceneIndex, edit }: { el: MotionElement; scene
       else target[prop] = value
     }, key(prop))
   const any = el as unknown as Record<string, unknown>
-  const num = (prop: string, label: string, opts: { optional?: boolean; step?: number; min?: number; max?: number } = {}) => (
-    <NumField label={label} value={any[prop] as number | undefined} onChange={(v) => set(prop, v)} {...opts} />
-  )
+  const num = (
+    prop: string,
+    label: string,
+    opts: { optional?: boolean; step?: number; min?: number; max?: number } = {}
+  ) => <NumField label={label} value={any[prop] as number | undefined} onChange={(v) => set(prop, v)} {...opts} />
   const color = (prop: string, label: string, optional = false) => (
-    <ColorField label={label} value={any[prop] as string | undefined} onChange={(v) => set(prop, v)} optional={optional} />
+    <ColorField
+      label={label}
+      value={any[prop] as string | undefined}
+      onChange={(v) => set(prop, v)}
+      optional={optional}
+    />
   )
   const text = (prop: string, label: string, opts: { optional?: boolean; multiline?: boolean; list?: string } = {}) => (
     <TextField label={label} value={any[prop] as string | undefined} onChange={(v) => set(prop, v)} {...opts} />
@@ -164,11 +200,29 @@ export function ElementForm({ el, sceneIndex, edit }: { el: MotionElement; scene
       }, key(which))
     return (
       <div className={styles.grid}>
-        <SelectField label="Tipo" value={value?.type as string | undefined} options={which === 'enter' ? ENTER : EXIT} onChange={(v) => update({ type: v })} />
+        <SelectField
+          label="Tipo"
+          value={value?.type as string | undefined}
+          options={which === 'enter' ? ENTER : EXIT}
+          onChange={(v) => update({ type: v })}
+        />
         {value && (
           <>
-            <NumField label="Duração (s)" value={value.duration} step={0.1} min={0} optional placeholder="0,6" onChange={(v) => update({ duration: v })} />
-            <SelectField label="Easing" value={value.easing} options={EASINGS} onChange={(v) => update({ easing: v })} />
+            <NumField
+              label="Duração (s)"
+              value={value.duration}
+              step={0.1}
+              min={0}
+              optional
+              placeholder="0,6"
+              onChange={(v) => update({ duration: v })}
+            />
+            <SelectField
+              label="Easing"
+              value={value.easing}
+              options={EASINGS}
+              onChange={(v) => update({ easing: v })}
+            />
           </>
         )}
       </div>
@@ -190,7 +244,12 @@ export function ElementForm({ el, sceneIndex, edit }: { el: MotionElement; scene
               {text('text', 'Texto', { multiline: true })}
               {num('fontSize', 'Tamanho da fonte', { min: 1 })}
               {color('color', 'Cor')}
-              <SelectField label="Peso" value={any.fontWeight === undefined ? undefined : String(any.fontWeight)} options={WEIGHTS} onChange={(v) => set('fontWeight', v ? Number(v) : undefined)} />
+              <SelectField
+                label="Peso"
+                value={any.fontWeight === undefined ? undefined : String(any.fontWeight)}
+                options={WEIGHTS}
+                onChange={(v) => set('fontWeight', v ? Number(v) : undefined)}
+              />
               {text('fontFamily', 'Fonte', { optional: true, list: FONT_LIST_ID })}
               <SelectField
                 label="Alinhamento"
@@ -267,7 +326,11 @@ export function ElementForm({ el, sceneIndex, edit }: { el: MotionElement; scene
               {num('decimals', 'Decimais', { optional: true, min: 0, max: 6 })}
               {text('valuePrefix', 'Prefixo', { optional: true })}
               {text('valueSuffix', 'Sufixo', { optional: true })}
-              <CheckField label="Mostrar valores" value={el.showValues ?? el.chart !== 'line'} onChange={(v) => set('showValues', v)} />
+              <CheckField
+                label="Mostrar valores"
+                value={el.showValues ?? el.chart !== 'line'}
+                onChange={(v) => set('showValues', v)}
+              />
             </>
           )}
           {el.type === 'counter' && (
@@ -280,7 +343,12 @@ export function ElementForm({ el, sceneIndex, edit }: { el: MotionElement; scene
               {num('countDuration', 'Contagem (s)', { optional: true, step: 0.1, min: 0 })}
               {num('fontSize', 'Tamanho da fonte', { min: 1 })}
               {color('color', 'Cor')}
-              <SelectField label="Peso" value={any.fontWeight === undefined ? undefined : String(any.fontWeight)} options={WEIGHTS} onChange={(v) => set('fontWeight', v ? Number(v) : undefined)} />
+              <SelectField
+                label="Peso"
+                value={any.fontWeight === undefined ? undefined : String(any.fontWeight)}
+                options={WEIGHTS}
+                onChange={(v) => set('fontWeight', v ? Number(v) : undefined)}
+              />
               {text('fontFamily', 'Fonte', { optional: true, list: FONT_LIST_ID })}
             </>
           )}

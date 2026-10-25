@@ -51,7 +51,14 @@ const ACTIONS: PaletteItem[] = [
       ui().selectSession(undefined)
     }
   },
-  { id: 'settings', group: 'Ações', label: 'Abrir configurações', keys: 'Ctrl+,', icon: '⚙', run: () => ui().setSettingsOpen(true) },
+  {
+    id: 'settings',
+    group: 'Ações',
+    label: 'Abrir configurações',
+    keys: 'Ctrl+,',
+    icon: '⚙',
+    run: () => ui().setSettingsOpen(true)
+  },
   {
     id: 'sidebar',
     group: 'Ações',
@@ -63,16 +70,14 @@ const ACTIONS: PaletteItem[] = [
       ui().toggleSidebar()
     }
   },
-  ...PANEL_TABS.map(
-    ({ tab, label, icon }): PaletteItem => ({
-      id: `panel-${tab}`,
-      group: 'Ações',
-      label: `Abrir painel: ${label}`,
-      keys: tab === 'terminal' ? 'Ctrl+`' : undefined,
-      icon,
-      run: () => openPanel(tab)
-    })
-  ),
+  ...PANEL_TABS.map(({ tab, label, icon }): PaletteItem => ({
+    id: `panel-${tab}`,
+    group: 'Ações',
+    label: `Abrir painel: ${label}`,
+    keys: tab === 'terminal' ? 'Ctrl+`' : undefined,
+    icon,
+    run: () => openPanel(tab)
+  })),
   { id: 'theme', group: 'Ações', label: 'Alternar tema (claro/escuro)', icon: '◐', run: () => void toggleTheme() },
   {
     id: 'import',
@@ -138,7 +143,10 @@ function Palette() {
       return [...ACTIONS, ...sessionItems.filter((i) => !i.hint?.startsWith('arquivada')).slice(0, 15)]
     }
     return [...ACTIONS, ...sessionItems]
-      .map((item) => ({ item, score: fuzzyScore(query, `${item.label} ${item.group === 'Sessões' ? (item.hint ?? '') : ''}`) }))
+      .map((item) => ({
+        item,
+        score: fuzzyScore(query, `${item.label} ${item.group === 'Sessões' ? (item.hint ?? '') : ''}`)
+      }))
       .filter((r): r is { item: PaletteItem; score: number } => r.score !== undefined)
       .sort((a, b) => b.score - a.score)
       .slice(0, 50)
@@ -180,7 +188,13 @@ function Palette() {
   let lastGroup: string | undefined
   return (
     <div className={styles.backdrop} onMouseDown={close}>
-      <div className={styles.panel} onMouseDown={(e) => e.stopPropagation()} onKeyDown={onKeyDown} role="dialog" aria-label="Paleta de comandos">
+      <div
+        className={styles.panel}
+        onMouseDown={(e) => e.stopPropagation()}
+        onKeyDown={onKeyDown}
+        role="dialog"
+        aria-label="Paleta de comandos"
+      >
         <input
           className={styles.search}
           autoFocus

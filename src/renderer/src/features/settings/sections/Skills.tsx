@@ -27,7 +27,13 @@ export function SkillsSection() {
   return (
     <>
       <div className={styles.toolbar}>
-        <input className="input" style={{ flex: 1 }} placeholder="Filtrar skills…" value={filter} onChange={(e) => setFilter(e.target.value)} />
+        <input
+          className="input"
+          style={{ flex: 1 }}
+          placeholder="Filtrar skills…"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
         {claudeDir && (
           <button className="btn" onClick={() => void api.openPath(`${claudeDir}${sep}skills`)}>
             Abrir pasta de skills
@@ -44,7 +50,9 @@ export function SkillsSection() {
             <Spinner />
           </div>
         ) : shown.length === 0 ? (
-          <div className={styles.empty}>{q ? 'Nenhuma skill encontrada.' : 'Nenhuma skill instalada em ~/.claude/skills.'}</div>
+          <div className={styles.empty}>
+            {q ? 'Nenhuma skill encontrada.' : 'Nenhuma skill instalada em ~/.claude/skills.'}
+          </div>
         ) : (
           <div className={styles.list}>
             {shown.map((s) => (

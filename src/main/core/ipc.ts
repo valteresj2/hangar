@@ -19,7 +19,9 @@ export function registerCoreIpc(ctx: FeatureContext): void {
   ipcMain.handle(CORE.pickFolder, async (_e, defaultPath?: string) => {
     const win = ctx.mainWindow()
     const opts = { properties: ['openDirectory', 'createDirectory'] as const, defaultPath }
-    const res = win ? await dialog.showOpenDialog(win, { ...opts, properties: [...opts.properties] }) : await dialog.showOpenDialog({ ...opts, properties: [...opts.properties] })
+    const res = win
+      ? await dialog.showOpenDialog(win, { ...opts, properties: [...opts.properties] })
+      : await dialog.showOpenDialog({ ...opts, properties: [...opts.properties] })
     return res.canceled ? undefined : res.filePaths[0]
   })
   ipcMain.handle(CORE.openExternal, (_e, url: string) => openExternalLink(url, ctx.mainWindow()))

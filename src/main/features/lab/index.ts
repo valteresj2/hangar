@@ -35,9 +35,13 @@ export const labFeature: Feature = {
     ipcMain.handle(LAB.create, (_e, input: CreateLabRoundInput) => createRound(input))
     ipcMain.handle(LAB.cancel, (_e, roundId: string) => cancelRound(roundId))
     ipcMain.handle(LAB.candidates, (_e, roundId: string) => blindCandidates(roundId))
-    ipcMain.handle(LAB.choose, (_e, roundId: string, anonId: string, why: string) => chooseCandidate(roundId, anonId, why))
+    ipcMain.handle(LAB.choose, (_e, roundId: string, anonId: string, why: string) =>
+      chooseCandidate(roundId, anonId, why)
+    )
     ipcMain.handle(LAB.askClaude, (_e, roundId: string) => askClaudeToChoose(roundId))
-    ipcMain.handle(LAB.adopt, (_e, roundId: string, apply: boolean, confirmExec?: string) => adopt(roundId, apply, confirmExec))
+    ipcMain.handle(LAB.adopt, (_e, roundId: string, apply: boolean, confirmExec?: string) =>
+      adopt(roundId, apply, confirmExec)
+    )
     ipcMain.handle(LAB.adoptReview, (_e, roundId: string) => adoptReview(roundId))
     ipcMain.handle(LAB.createReview, (_e, input: CreateLabRoundInput) => createReview(input))
     ipcMain.handle(LAB.reflect, (_e, roundId: string) => reflectRound(roundId))

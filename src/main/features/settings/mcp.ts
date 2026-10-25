@@ -9,7 +9,18 @@
 // - for user-scope servers "everywhere": `claude mcp remove`, keeping the config in Hangar to re-add with add-json.
 
 import { app } from 'electron'
-import { closeSync, existsSync, mkdirSync, openSync, readdirSync, readFileSync, readSync, renameSync, statSync, writeFileSync } from 'node:fs'
+import {
+  closeSync,
+  existsSync,
+  mkdirSync,
+  openSync,
+  readdirSync,
+  readFileSync,
+  readSync,
+  renameSync,
+  statSync,
+  writeFileSync
+} from 'node:fs'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import type {
@@ -62,7 +73,10 @@ function projectEntries(root: ClaudeJson, cwd: string): ProjectEntry[] {
 }
 
 /** name -> (scope, config) from ~/.claude.json and <cwd>/.mcp.json. Local wins over project wins over user. */
-function configuredServers(root: ClaudeJson | undefined, cwd: string | undefined): Map<string, { scope: McpScope; config: ServerConfig }> {
+function configuredServers(
+  root: ClaudeJson | undefined,
+  cwd: string | undefined
+): Map<string, { scope: McpScope; config: ServerConfig }> {
   const out = new Map<string, { scope: McpScope; config: ServerConfig }>()
   const add = (servers: unknown, scope: McpScope) => {
     if (!servers || typeof servers !== 'object') return
@@ -132,7 +146,8 @@ const transportOf = (c: ServerConfig | undefined) => c?.type ?? (c?.command ? 's
 export async function mcpList(cwd?: string): Promise<McpListResult> {
   const res = await runClaude(['mcp', 'list'], { cwd, timeout: 120_000 })
   const raw = (res.stdout + (res.stderr ? `\n${res.stderr}` : '')).trim()
-  if (!res.ok && !res.stdout) return { ok: false, servers: [], raw, cwd, error: res.stderr.trim() || 'Falha ao executar claude mcp list.' }
+  if (!res.ok && !res.stdout)
+    return { ok: false, servers: [], raw, cwd, error: res.stderr.trim() || 'Falha ao executar claude mcp list.' }
 
   const root = readJson<ClaudeJson>(claudeJsonFile())
   const configured = configuredServers(root, cwd)
@@ -174,7 +189,12 @@ export async function mcpList(cwd?: string): Promise<McpListResult> {
         scope,
         target: describe(config),
         health: disabledBy ? 'disabled' : 'unknown',
-        statusText: disabledBy === 'settings' ? 'Rejected (see disabledMcpjsonServers in settings)' : disabledBy ? 'Disabled for this project' : '',
+        statusText:
+          disabledBy === 'settings'
+            ? 'Rejected (see disabledMcpjsonServers in settings)'
+            : disabledBy
+              ? 'Disabled for this project'
+              : '',
         disabledBy
       })
     )
@@ -220,7 +240,10 @@ export async function mcpAdd(input: McpAddInput): Promise<CliResult> {
     if (input.headers && Object.keys(input.headers).length) config.headers = input.headers
   }
   // add-json takes the whole config as one argument, which avoids the variadic -e/-H parsing pitfalls of `mcp add`.
-  return runClaude(['mcp', 'add-json', '-s', input.scope, name, JSON.stringify(config)], { cwd: input.cwd, timeout: 60_000 })
+  return runClaude(['mcp', 'add-json', '-s', input.scope, name, JSON.stringify(config)], {
+    cwd: input.cwd,
+    timeout: 60_000
+  })
 }
 
 export function mcpRemove(name: string, scope?: string, cwd?: string): Promise<CliResult> {
@@ -271,7 +294,11 @@ function editLocalSettingsLists(cwd: string, name: string, enabled: boolean): vo
   writeJsonAtomic(file, next)
 
   const root = readJson<ClaudeJson>(claudeJsonFile())
-  const legacy = root ? projectEntries(root, cwd).some((e) => strings(e.disabledMcpjsonServers).includes(name) || strings(e.enabledMcpjsonServers).includes(name)) : false
+  const legacy = root
+    ? projectEntries(root, cwd).some(
+        (e) => strings(e.disabledMcpjsonServers).includes(name) || strings(e.enabledMcpjsonServers).includes(name)
+      )
+    : false
   if (legacy) {
     editProjectLists(
       cwd,
@@ -293,7 +320,9 @@ export async function mcpSetEnabled(input: McpToggleInput): Promise<McpToggleRes
         editProjectLists(cwd, [{ field: 'disabledMcpServers', present: !enabled }], name)
         return {
           ok: true,
-          message: enabled ? 'Ligado neste projeto.' : 'Desligado neste projeto (disabledMcpServers no ~/.claude.json, o mesmo que o /mcp usa).'
+          message: enabled
+            ? 'Ligado neste projeto.'
+            : 'Desligado neste projeto (disabledMcpServers no ~/.claude.json, o mesmo que o /mcp usa).'
         }
       }
       editLocalSettingsLists(cwd, name, enabled)
@@ -316,11 +345,17 @@ export async function mcpSetEnabled(input: McpToggleInput): Promise<McpToggleRes
         writeJsonAtomic(hangarDisabledFile(), store)
         return { ok: false, message: (res.stderr || res.stdout).trim() || 'Falha ao remover.' }
       }
-      return { ok: true, message: 'Desligado em todos os projetos: removido com `claude mcp remove`; a configuração ficou guardada no Hangar.' }
+      return {
+        ok: true,
+        message:
+          'Desligado em todos os projetos: removido com `claude mcp remove`; a configuração ficou guardada no Hangar.'
+      }
     }
     const entry = store[name]
     if (!entry) return { ok: false, message: 'Configuração guardada não encontrada.' }
-    const res = await runClaude(['mcp', 'add-json', '-s', 'user', name, JSON.stringify(entry.config)], { timeout: 60_000 })
+    const res = await runClaude(['mcp', 'add-json', '-s', 'user', name, JSON.stringify(entry.config)], {
+      timeout: 60_000
+    })
     if (!res.ok) return { ok: false, message: (res.stderr || res.stdout).trim() || 'Falha ao adicionar.' }
     const { [name]: _restored, ...rest } = store
     writeJsonAtomic(hangarDisabledFile(), rest)
@@ -405,8 +440,20 @@ export function mcpLog(name: string, cwd?: string): McpLog {
     }
     let lines = buf.toString('utf8').split(/\r?\n/).filter(Boolean)
     if (start > 0) lines = lines.slice(1) // first line is probably cut
-    return { dir, file: newest.file, modifiedAt: newest.mtime, lines: lines.slice(-1000).map(formatLogLine), truncated: start > 0 || lines.length > 1000 }
+    return {
+      dir,
+      file: newest.file,
+      modifiedAt: newest.mtime,
+      lines: lines.slice(-1000).map(formatLogLine),
+      truncated: start > 0 || lines.length > 1000
+    }
   } catch (err) {
-    return { dir, file: newest.file, lines: [], truncated: false, error: err instanceof Error ? err.message : String(err) }
+    return {
+      dir,
+      file: newest.file,
+      lines: [],
+      truncated: false,
+      error: err instanceof Error ? err.message : String(err)
+    }
   }
 }

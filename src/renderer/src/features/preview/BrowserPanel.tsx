@@ -132,7 +132,11 @@ function SessionBrowser({ session }: { session: Session }) {
             onAuxClick={(e) => e.button === 1 && closeTab(sessionId, tab.id)}
             title={tab.url || 'Nova aba'}
           >
-            {tab.loading ? <span className={styles.spinner} /> : tab.favicon ? <img className={styles.favicon} src={tab.favicon} alt="" /> : null}
+            {tab.loading ? (
+              <span className={styles.spinner} />
+            ) : tab.favicon ? (
+              <img className={styles.favicon} src={tab.favicon} alt="" />
+            ) : null}
             <span className={styles.tabTitle}>{tabLabel(tab)}</span>
             <button
               className={styles.tabClose}
@@ -152,10 +156,20 @@ function SessionBrowser({ session }: { session: Session }) {
       </div>
 
       <div className={styles.toolbar}>
-        <button className="icon-btn" title="Voltar" disabled={!active?.canGoBack} onClick={() => call((el) => el.goBack())}>
+        <button
+          className="icon-btn"
+          title="Voltar"
+          disabled={!active?.canGoBack}
+          onClick={() => call((el) => el.goBack())}
+        >
           ←
         </button>
-        <button className="icon-btn" title="Avançar" disabled={!active?.canGoForward} onClick={() => call((el) => el.goForward())}>
+        <button
+          className="icon-btn"
+          title="Avançar"
+          disabled={!active?.canGoForward}
+          onClick={() => call((el) => el.goForward())}
+        >
           →
         </button>
         {active?.loading ? (
@@ -163,7 +177,12 @@ function SessionBrowser({ session }: { session: Session }) {
             ✕
           </button>
         ) : (
-          <button className="icon-btn" title="Recarregar" disabled={!active?.url} onClick={() => call((el) => el.reload())}>
+          <button
+            className="icon-btn"
+            title="Recarregar"
+            disabled={!active?.url}
+            onClick={() => call((el) => el.reload())}
+          >
             ⟳
           </button>
         )}

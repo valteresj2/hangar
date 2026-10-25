@@ -73,7 +73,9 @@ export function SessionHeader({ session }: { session: Session }) {
       <button className="icon-btn" title="Mais ações" onClick={(e) => setMenu(anchorBelow(e.currentTarget))}>
         <MoreIcon />
       </button>
-      {menu && <ContextMenu items={sessionMenu(session, groups, 'header')} at={menu} onClose={() => setMenu(undefined)} />}
+      {menu && (
+        <ContextMenu items={sessionMenu(session, groups, 'header')} at={menu} onClose={() => setMenu(undefined)} />
+      )}
       <SessionsOverlay />
     </span>
   )

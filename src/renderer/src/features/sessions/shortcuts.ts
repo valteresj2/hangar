@@ -27,7 +27,8 @@ async function step(dir: 1 | -1): Promise<void> {
   if (!order.length) return
   const current = useUi.getState().activeSessionId
   const index = order.findIndex((s) => s.id === current)
-  const next = index < 0 ? (dir === 1 ? order[0] : order[order.length - 1]) : order[(index + dir + order.length) % order.length]
+  const next =
+    index < 0 ? (dir === 1 ? order[0] : order[order.length - 1]) : order[(index + dir + order.length) % order.length]
   openSession(next)
 }
 

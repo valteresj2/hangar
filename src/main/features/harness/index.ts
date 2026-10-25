@@ -90,7 +90,13 @@ export function diffTrees(from: HarnessTree, to: HarnessTree): TreeDiffFile[] {
         })
       return { header: `@@ -${h.oldStart},${h.oldLines} +${h.newStart},${h.newLines} @@`, lines }
     })
-    out.push({ path, status: a === undefined ? 'added' : b === undefined ? 'removed' : 'modified', additions, deletions, hunks })
+    out.push({
+      path,
+      status: a === undefined ? 'added' : b === undefined ? 'removed' : 'modified',
+      additions,
+      deletions,
+      hunks
+    })
   }
   return out
 }
@@ -135,7 +141,13 @@ async function reflectSession(sessionId: string, opts: ReflectSessionOptions = {
     source
   }
   const { parsed, raw } = await runReflection(input, opts.model)
-  const reflection: Reflection = { id: nanoid(10), projectCwd: project, createdAt: Date.now(), edits: parsed.edits, source }
+  const reflection: Reflection = {
+    id: nanoid(10),
+    projectCwd: project,
+    createdAt: Date.now(),
+    edits: parsed.edits,
+    source
+  }
   putReflection(reflection)
   // One run without a contrast can't support high confidence (the prompt says so too).
   const exp = parsed.experience && {
@@ -191,20 +203,28 @@ export const harnessFeature: Feature = {
       await deleteHarnessFile(dir, rel)
       filesChanged(dir)
     })
-    ipcMain.handle(HARNESS.createFromTemplate, (_e, dir: string, kind: TemplateKind, name?: string) => createFromTemplate(dir, kind, name))
+    ipcMain.handle(HARNESS.createFromTemplate, (_e, dir: string, kind: TemplateKind, name?: string) =>
+      createFromTemplate(dir, kind, name)
+    )
     ipcMain.handle(HARNESS.snapshots, (_e, projectCwd: string) => getSnapshots(projectCwd))
     ipcMain.handle(HARNESS.snapshotCreate, async (_e, projectCwd: string, label: string, dir?: string, note?: string) =>
       createSnapshot(projectCwd, label, 'manual', await readTree(dir ?? projectCwd), note)
     )
-    ipcMain.handle(HARNESS.snapshotRestore, (_e, projectCwd: string, id: string, dir?: string) => restoreSnapshot(projectCwd, id, dir))
+    ipcMain.handle(HARNESS.snapshotRestore, (_e, projectCwd: string, id: string, dir?: string) =>
+      restoreSnapshot(projectCwd, id, dir)
+    )
     ipcMain.handle(HARNESS.snapshotDelete, (_e, projectCwd: string, id: string) => removeSnapshot(projectCwd, id))
     ipcMain.handle(HARNESS.diff, (_e, from: HarnessTree, to: HarnessTree) => diffTrees(from, to))
     ipcMain.handle(HARNESS.lessons, (_e, projectCwd: string) => getLessons(projectCwd))
     ipcMain.handle(HARNESS.saveLesson, (_e, lesson: Lesson, reflectionId?: string) => saveLesson(lesson, reflectionId))
-    ipcMain.handle(HARNESS.updateLesson, (_e, projectCwd: string, id: string, patch: LessonPatch) => updateLesson(projectCwd, id, patch))
+    ipcMain.handle(HARNESS.updateLesson, (_e, projectCwd: string, id: string, patch: LessonPatch) =>
+      updateLesson(projectCwd, id, patch)
+    )
     ipcMain.handle(HARNESS.deleteLesson, (_e, projectCwd: string, id: string) => removeLesson(projectCwd, id))
     ipcMain.handle(HARNESS.reflections, (_e, projectCwd: string) => getReflections(projectCwd))
-    ipcMain.handle(HARNESS.reflectSession, (_e, sessionId: string, opts?: ReflectSessionOptions) => reflectSession(sessionId, opts))
+    ipcMain.handle(HARNESS.reflectSession, (_e, sessionId: string, opts?: ReflectSessionOptions) =>
+      reflectSession(sessionId, opts)
+    )
 
     registerSystemAppend('harness-lessons', sessionLessons)
 

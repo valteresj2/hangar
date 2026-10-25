@@ -11,7 +11,16 @@ import { KIND_LABEL, useProvidersState } from './Providers'
 import { TrayQuickEntryCard } from './TrayQuickEntry'
 import styles from '../settings.module.css'
 
-export const MODEL_SUGGESTIONS = ['opus', 'sonnet', 'haiku', 'fable', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5', 'claude-fable-5-1']
+export const MODEL_SUGGESTIONS = [
+  'opus',
+  'sonnet',
+  'haiku',
+  'fable',
+  'claude-opus-5-5',
+  'claude-sonnet-5-5',
+  'claude-haiku-5-5',
+  'claude-fable-5-1'
+]
 
 export const EFFORTS: { value: Effort; label: string }[] = [
   { value: 'low', label: 'Baixo' },
@@ -83,7 +92,8 @@ function CliCard({ settings }: { settings: Settings }) {
 
   useEffect(() => void refresh(), [refresh, settings.claudeExecutablePath])
 
-  const setPath = (path: string | undefined) => void api.patchSettings({ claudeExecutablePath: path?.trim() || undefined })
+  const setPath = (path: string | undefined) =>
+    void api.patchSettings({ claudeExecutablePath: path?.trim() || undefined })
 
   const browse = async () => {
     const file = await settingsApi.pickFile(info?.path)
@@ -99,7 +109,13 @@ function CliCard({ settings }: { settings: Settings }) {
           <button className="btn" title="Verifica executável, login, gateway, provedor e git" onClick={openDiagnostics}>
             Rodar diagnóstico
           </button>
-          {loading ? <Spinner /> : <button className="btn" onClick={() => void refresh()}>Verificar</button>}
+          {loading ? (
+            <Spinner />
+          ) : (
+            <button className="btn" onClick={() => void refresh()}>
+              Verificar
+            </button>
+          )}
         </>
       }
     >
@@ -115,7 +131,11 @@ function CliCard({ settings }: { settings: Settings }) {
           )
         }
       >
-        <LazyInput value={settings.claudeExecutablePath ?? ''} placeholder={info?.path ?? 'claude'} onCommit={setPath} />
+        <LazyInput
+          value={settings.claudeExecutablePath ?? ''}
+          placeholder={info?.path ?? 'claude'}
+          onCommit={setPath}
+        />
         <button className="btn" onClick={() => void browse()}>
           Procurar…
         </button>
@@ -201,11 +221,18 @@ export function GeneralSection() {
       </Card>
 
       <Card title="Notificações">
-        <Row label="Notificar quando uma sessão terminar ou precisar de você" hint="Só aparecem com a janela do Hangar fora de foco.">
+        <Row
+          label="Notificar quando uma sessão terminar ou precisar de você"
+          hint="Só aparecem com a janela do Hangar fora de foco."
+        >
           <button className="btn" onClick={() => void settingsApi.testNotification()}>
             Testar
           </button>
-          <Switch label="Notificações" checked={settings.notifications} onChange={(notifications) => patch({ notifications })} />
+          <Switch
+            label="Notificações"
+            checked={settings.notifications}
+            onChange={(notifications) => patch({ notifications })}
+          />
         </Row>
       </Card>
 
@@ -213,7 +240,11 @@ export function GeneralSection() {
 
       <Card title="Padrões de novas sessões">
         <Row label="Modelo" hint="Alias (opus, sonnet…) ou id completo do modelo.">
-          <LazyInput value={settings.defaultModel} list="hangar-models" onCommit={(v) => v.trim() && patch({ defaultModel: v.trim() })} />
+          <LazyInput
+            value={settings.defaultModel}
+            list="hangar-models"
+            onCommit={(v) => v.trim() && patch({ defaultModel: v.trim() })}
+          />
           <datalist id="hangar-models">
             {MODEL_SUGGESTIONS.map((m) => (
               <option key={m} value={m} />
@@ -221,7 +252,11 @@ export function GeneralSection() {
           </datalist>
         </Row>
         <Row label="Esforço">
-          <select className={styles.select} value={settings.defaultEffort} onChange={(e) => patch({ defaultEffort: e.target.value as Effort })}>
+          <select
+            className={styles.select}
+            value={settings.defaultEffort}
+            onChange={(e) => patch({ defaultEffort: e.target.value as Effort })}
+          >
             {EFFORTS.map((o) => (
               <option key={o.value} value={o.value}>
                 {o.label}

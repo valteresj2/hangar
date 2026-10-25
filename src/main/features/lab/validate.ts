@@ -45,7 +45,9 @@ export function validateTree(tree: HarnessTree, fallback: HarnessTree, stageId?:
   const off = paths.filter((p) => !isHarnessPath(p))
   if (off.length) problems.push(`Off the harness surface: ${off.slice(0, 6).join(', ')}.`)
 
-  const skillDirs = new Set(paths.map((p) => /^\.claude\/skills\/([^/]+)\//.exec(p)?.[1]).filter((d): d is string => !!d))
+  const skillDirs = new Set(
+    paths.map((p) => /^\.claude\/skills\/([^/]+)\//.exec(p)?.[1]).filter((d): d is string => !!d)
+  )
   for (const dir of skillDirs) {
     const skill = tree[`.claude/skills/${dir}/SKILL.md`]
     if (skill === undefined) {
@@ -55,8 +57,10 @@ export function validateTree(tree: HarnessTree, fallback: HarnessTree, stageId?:
     const fm = frontmatter(skill)
     if (!fm) problems.push(`.claude/skills/${dir}/SKILL.md has no YAML frontmatter (--- name / description ---).`)
     else {
-      if (fm.name !== dir) problems.push(`.claude/skills/${dir}/SKILL.md: frontmatter name must be "${dir}" (got "${fm.name ?? ''}").`)
-      if (!fm.description) problems.push(`.claude/skills/${dir}/SKILL.md: frontmatter needs a description (the trigger).`)
+      if (fm.name !== dir)
+        problems.push(`.claude/skills/${dir}/SKILL.md: frontmatter name must be "${dir}" (got "${fm.name ?? ''}").`)
+      if (!fm.description)
+        problems.push(`.claude/skills/${dir}/SKILL.md: frontmatter needs a description (the trigger).`)
     }
   }
 
@@ -69,7 +73,8 @@ export function validateTree(tree: HarnessTree, fallback: HarnessTree, stageId?:
   if (settings !== undefined) {
     try {
       const parsed: unknown = JSON.parse(settings)
-      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) problems.push('.claude/settings.json must be a JSON object.')
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+        problems.push('.claude/settings.json must be a JSON object.')
     } catch (err) {
       problems.push(`.claude/settings.json is not valid JSON: ${err instanceof Error ? err.message : String(err)}`)
     }

@@ -67,7 +67,9 @@ describe('parseReflection', () => {
   })
 
   it('NO_ENTRY: edit rows but no lesson', () => {
-    const r = parseReflection('<edits>\ncomponent: CLAUDE.md\ncandidates: B\nchange: x\nobserved: y\nverdict: hurt\n</edits>\n\nNO_ENTRY')
+    const r = parseReflection(
+      '<edits>\ncomponent: CLAUDE.md\ncandidates: B\nchange: x\nobserved: y\nverdict: hurt\n</edits>\n\nNO_ENTRY'
+    )
     expect(r.edits).toHaveLength(1)
     expect(r.edits[0].verdict).toBe('hurt')
     expect(r.experience).toBeUndefined()
@@ -75,7 +77,10 @@ describe('parseReflection', () => {
 
   it('an incomplete experience is not a lesson; unknown confidence defaults to low', () => {
     expect(parseReflection('<experience>\ncue: x\nlesson: y\n</experience>').experience).toBeUndefined()
-    expect(parseReflection('<experience>\ncue: x\nlesson: y\nevidence: z\nconfidence: maybe\n</experience>').experience?.confidence).toBe('low')
+    expect(
+      parseReflection('<experience>\ncue: x\nlesson: y\nevidence: z\nconfidence: maybe\n</experience>').experience
+        ?.confidence
+    ).toBe('low')
   })
 
   it('tolerates a truncated (unterminated) block and odd verdicts', () => {
@@ -90,7 +95,10 @@ describe('parseReflection', () => {
 
 describe('treeDiffText', () => {
   it('lists added, removed and changed harness files', () => {
-    const text = treeDiffText({ 'CLAUDE.md': 'a\n', '.claude/commands/x.md': 'x' }, { 'CLAUDE.md': 'b\n', '.claude/agents/r.md': 'r' })
+    const text = treeDiffText(
+      { 'CLAUDE.md': 'a\n', '.claude/commands/x.md': 'x' },
+      { 'CLAUDE.md': 'b\n', '.claude/agents/r.md': 'r' }
+    )
     expect(text).toContain('### CLAUDE.md (modified)')
     expect(text).toContain('-a')
     expect(text).toContain('+b')

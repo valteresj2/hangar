@@ -153,7 +153,7 @@ export function buildPrompt(input: ReflectInput): string {
     '# THE ONE LESSON THAT TRANSFERS\n\n' +
       'Now write at most one durable entry, and only if the record supports it.\n\n' +
       'The `cue` describes the SHAPE OF SITUATION the lesson applies to, so it can fire on a different ' +
-      'matter. Not this task\'s facts -- the pattern. The `lesson` is the operation to perform on the ' +
+      "matter. Not this task's facts -- the pattern. The `lesson` is the operation to perform on the " +
       'harness (or the working practice it encodes), stated so it can be applied and checked, and it must ' +
       'name the component it concerns (e.g. "CLAUDE.md", "skill <name>", "a PostToolUse hook in ' +
       '.claude/settings.json").\n\n' +
@@ -194,7 +194,8 @@ export function buildPrompt(input: ReflectInput): string {
 
 // ---- Parsing ----
 
-const FIELD_RE = /^\s*[-*]?\s*\**(component|candidates|change|observed|verdict|cue|lesson|evidence|confidence)\**\s*:\s?(.*)$/i
+const FIELD_RE =
+  /^\s*[-*]?\s*\**(component|candidates|change|observed|verdict|cue|lesson|evidence|confidence)\**\s*:\s?(.*)$/i
 
 /** Parses "key: value" lines; lines without a known key continue the previous value. */
 function parseFields(block: string): Record<string, string>[] {

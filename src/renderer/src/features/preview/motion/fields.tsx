@@ -52,15 +52,34 @@ export function NumField(props: {
   )
 }
 
-export function TextField(props: { label: string; value: string | undefined; onChange(v: string | undefined): void; optional?: boolean; multiline?: boolean; list?: string; wide?: boolean }) {
+export function TextField(props: {
+  label: string
+  value: string | undefined
+  onChange(v: string | undefined): void
+  optional?: boolean
+  multiline?: boolean
+  list?: string
+  wide?: boolean
+}) {
   const { label, value, onChange, optional, multiline, list, wide } = props
   const handle = (v: string) => onChange(optional && v === '' ? undefined : v)
   return (
     <Field label={label} wide={wide || multiline}>
       {multiline ? (
-        <textarea className={`input ${styles.control} ${styles.textarea}`} value={value ?? ''} rows={3} onChange={(e) => handle(e.target.value)} />
+        <textarea
+          className={`input ${styles.control} ${styles.textarea}`}
+          value={value ?? ''}
+          rows={3}
+          onChange={(e) => handle(e.target.value)}
+        />
       ) : (
-        <input className={`input ${styles.control}`} value={value ?? ''} list={list} placeholder={optional ? 'padrão' : undefined} onChange={(e) => handle(e.target.value)} />
+        <input
+          className={`input ${styles.control}`}
+          value={value ?? ''}
+          list={list}
+          placeholder={optional ? 'padrão' : undefined}
+          onChange={(e) => handle(e.target.value)}
+        />
       )}
     </Field>
   )
@@ -76,7 +95,17 @@ function toHex(color: string | undefined): string {
 }
 
 /** Color picker plus free text (named colors, rgba() …). */
-export function ColorField({ label, value, onChange, optional }: { label: string; value: string | undefined; onChange(v: string | undefined): void; optional?: boolean }) {
+export function ColorField({
+  label,
+  value,
+  onChange,
+  optional
+}: {
+  label: string
+  value: string | undefined
+  onChange(v: string | undefined): void
+  optional?: boolean
+}) {
   return (
     <Field label={label}>
       <div className={styles.colorRow}>
@@ -92,11 +121,20 @@ export function ColorField({ label, value, onChange, optional }: { label: string
   )
 }
 
-export function SelectField<T extends string>(props: { label: string; value: T | undefined; options: { value: T | ''; label: string }[]; onChange(v: T | undefined): void }) {
+export function SelectField<T extends string>(props: {
+  label: string
+  value: T | undefined
+  options: { value: T | ''; label: string }[]
+  onChange(v: T | undefined): void
+}) {
   const { label, value, options, onChange } = props
   return (
     <Field label={label}>
-      <select className={`input ${styles.control}`} value={value ?? ''} onChange={(e) => onChange((e.target.value || undefined) as T | undefined)}>
+      <select
+        className={`input ${styles.control}`}
+        value={value ?? ''}
+        onChange={(e) => onChange((e.target.value || undefined) as T | undefined)}
+      >
         {options.map((o) => (
           <option key={o.value} value={o.value}>
             {o.label}

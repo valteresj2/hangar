@@ -1,12 +1,26 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { parseMotion, sceneAt, sceneStart, totalDuration, type MotionElement, type MotionSpec } from '@shared/motion/spec'
+import {
+  parseMotion,
+  sceneAt,
+  sceneStart,
+  totalDuration,
+  type MotionElement,
+  type MotionSpec
+} from '@shared/motion/spec'
 import { elementState, imageSources } from '@renderer/motion/runtime'
 
 const example = readFileSync(new URL('../../docs/motion/example.motion.json', import.meta.url), 'utf8')
 
 function spec(scenes: { duration: number; elements?: unknown[] }[], extra: Record<string, unknown> = {}): MotionSpec {
-  const { spec: s, errors } = parseMotion(JSON.stringify({ version: 1, title: 't', scenes: scenes.map((x, i) => ({ id: `s${i}`, elements: [], ...x })), ...extra }))
+  const { spec: s, errors } = parseMotion(
+    JSON.stringify({
+      version: 1,
+      title: 't',
+      scenes: scenes.map((x, i) => ({ id: `s${i}`, elements: [], ...x })),
+      ...extra
+    })
+  )
   expect(errors).toEqual([])
   return s!
 }
@@ -17,7 +31,9 @@ describe('parseMotion', () => {
     expect(errors).toEqual([])
     expect(s?.title).toBe('Hangar em 12 segundos')
     expect(s?.scenes.map((x) => x.id)).toEqual(['intro', 'numbers', 'closing'])
-    expect(s?.scenes.flatMap((x) => x.elements.map((e) => e.type))).toEqual(expect.arrayContaining(['shape', 'text', 'chart', 'counter']))
+    expect(s?.scenes.flatMap((x) => x.elements.map((e) => e.type))).toEqual(
+      expect.arrayContaining(['shape', 'text', 'chart', 'counter'])
+    )
   })
 
   it('reports invalid JSON instead of throwing', () => {
@@ -28,19 +44,48 @@ describe('parseMotion', () => {
 
   it('requires at least one scene and a positive duration', () => {
     expect(parseMotion(JSON.stringify({ scenes: [] })).errors).toContain('"scenes" precisa ter ao menos uma cena.')
-    expect(parseMotion(JSON.stringify({ scenes: [{ duration: 0, elements: [] }] })).errors).toContain('Cena 1: "duration" precisa ser > 0.')
+    expect(parseMotion(JSON.stringify({ scenes: [{ duration: 0, elements: [] }] })).errors).toContain(
+      'Cena 1: "duration" precisa ser > 0.'
+    )
     expect(parseMotion('[]').errors.length).toBeGreaterThan(0)
   })
 
   it('rejects unknown element types and elements without x/y', () => {
-    const r = parseMotion(JSON.stringify({ scenes: [{ duration: 1, elements: [{ type: 'video', x: 0, y: 0 }, { id: 'a', type: 'text', text: 'x' }] }] }))
+    const r = parseMotion(
+      JSON.stringify({
+        scenes: [
+          {
+            duration: 1,
+            elements: [
+              { type: 'video', x: 0, y: 0 },
+              { id: 'a', type: 'text', text: 'x' }
+            ]
+          }
+        ]
+      })
+    )
     expect(r.spec).toBeUndefined()
-    expect(r.errors).toEqual(['Cena 1, elemento 1: "type" inválido.', 'Cena 1, elemento a: "x" e "y" são obrigatórios.'])
+    expect(r.errors).toEqual([
+      'Cena 1, elemento 1: "type" inválido.',
+      'Cena 1, elemento a: "x" e "y" são obrigatórios.'
+    ])
   })
 
   it('fills defaults, clamps fps and keeps unknown fields and existing ids', () => {
     const r = parseMotion(
-      JSON.stringify({ fps: 500, scenes: [{ duration: 2, custom: 7, elements: [{ type: 'shape', shape: 'rect', x: 1, y: 2, width: 3 }, { id: 'keep', type: 'shape', shape: 'circle', x: 0, y: 0, width: 1 }] }] })
+      JSON.stringify({
+        fps: 500,
+        scenes: [
+          {
+            duration: 2,
+            custom: 7,
+            elements: [
+              { type: 'shape', shape: 'rect', x: 1, y: 2, width: 3 },
+              { id: 'keep', type: 'shape', shape: 'circle', x: 0, y: 0, width: 1 }
+            ]
+          }
+        ]
+      })
     )
     expect(r.errors).toEqual([])
     const s = r.spec!
@@ -96,7 +141,11 @@ describe('elementState', () => {
   })
 
   it('slides up from 80 px below and slides out on exit', () => {
-    const el = { ...base, enter: { type: 'slide-up', duration: 1, easing: 'linear' }, exit: { type: 'slide-up', duration: 1, easing: 'linear' } } as MotionElement
+    const el = {
+      ...base,
+      enter: { type: 'slide-up', duration: 1, easing: 'linear' },
+      exit: { type: 'slide-up', duration: 1, easing: 'linear' }
+    } as MotionElement
     expect(elementState(el, 0.5, 4)!.y).toBeCloseTo(240)
     expect(elementState(el, 2, 4)!.y).toBeCloseTo(200)
     // Exit runs over the last second, moving the other way.
@@ -104,7 +153,13 @@ describe('elementState', () => {
   })
 
   it('interpolates keyframes from the base value', () => {
-    const el = { ...base, keyframes: [{ t: 2, x: 300, easing: 'linear' }, { t: 4, scale: 2, easing: 'linear' }] } as MotionElement
+    const el = {
+      ...base,
+      keyframes: [
+        { t: 2, x: 300, easing: 'linear' },
+        { t: 4, scale: 2, easing: 'linear' }
+      ]
+    } as MotionElement
     expect(elementState(el, 1, 5)!.x).toBeCloseTo(200)
     expect(elementState(el, 3, 5)!.x).toBeCloseTo(300)
     expect(elementState(el, 3, 5)!.scale).toBeCloseTo(1.75)
@@ -112,7 +167,16 @@ describe('elementState', () => {
   })
 
   it('reveals typewriter text progressively', () => {
-    const el = { id: 't', type: 'text', text: 'abcd', x: 0, y: 0, fontSize: 10, color: '#000', enter: { type: 'typewriter', duration: 2, easing: 'linear' } } as MotionElement
+    const el = {
+      id: 't',
+      type: 'text',
+      text: 'abcd',
+      x: 0,
+      y: 0,
+      fontSize: 10,
+      color: '#000',
+      enter: { type: 'typewriter', duration: 2, easing: 'linear' }
+    } as MotionElement
     expect(elementState(el, 1, 5)!.reveal).toBeCloseTo(0.5)
     expect(elementState(el, 1, 5)!.opacity).toBe(1)
   })

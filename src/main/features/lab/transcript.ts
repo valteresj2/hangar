@@ -75,7 +75,9 @@ export function condenseTrajectory(entries: TranscriptEntry[], limit = TRAJECTOR
     else if (e.kind === 'permission_request') lines.push(`PERMISSION ASKED: ${e.request.toolName}`)
     else if (e.kind === 'assistant' && !e.parentToolUseId) lines.push(`ASSISTANT: ${clip(e.text, 400)}`)
     else if (e.kind === 'result') {
-      lines.push(`RESULT: ${e.subtype}${e.isError ? ' (error)' : ''}, ${e.numTurns} turns, ${Math.round(e.durationMs / 1000)}s`)
+      lines.push(
+        `RESULT: ${e.subtype}${e.isError ? ' (error)' : ''}, ${e.numTurns} turns, ${Math.round(e.durationMs / 1000)}s`
+      )
     }
   }
   const final = finalAnswerOf(entries)

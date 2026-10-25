@@ -35,7 +35,9 @@ export function NewMotionForm({ sessionId, onClose, onSent }: { sessionId: strin
     setError(undefined)
     try {
       // engine:send may only resolve when the turn ends; wait briefly for early errors, then let the chat take over.
-      const sent = bridge.invoke(ENGINE.send, sessionId, buildMotionPrompt(description, audience, seconds, ratio), { output: 'motion' })
+      const sent = bridge.invoke(ENGINE.send, sessionId, buildMotionPrompt(description, audience, seconds, ratio), {
+        output: 'motion'
+      })
       sent.catch((err) => console.error('[preview] motion request failed', err))
       await Promise.race([sent, new Promise((r) => setTimeout(r, 1500))])
       onSent()
@@ -71,7 +73,12 @@ export function NewMotionForm({ sessionId, onClose, onSent }: { sessionId: strin
         </label>
         <label className={styles.formField}>
           <span>Público</span>
-          <input className="input" value={audience} placeholder="Ex.: desenvolvedores iniciantes" onChange={(e) => setAudience(e.target.value)} />
+          <input
+            className="input"
+            value={audience}
+            placeholder="Ex.: desenvolvedores iniciantes"
+            onChange={(e) => setAudience(e.target.value)}
+          />
         </label>
         <div className={styles.formRow}>
           <label className={styles.formField}>

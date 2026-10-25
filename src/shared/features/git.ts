@@ -130,6 +130,10 @@ export const FILE_READ_LIMIT = 1024 * 1024
 /** Case- and separator-insensitive path comparison (Windows-friendly). */
 export function samePath(a: string | undefined, b: string | undefined): boolean {
   if (!a || !b) return false
-  const norm = (p: string) => p.replace(/[\\/]+/g, '/').replace(/\/$/, '').toLowerCase()
+  const norm = (p: string) =>
+    p
+      .replace(/[\\/]+/g, '/')
+      .replace(/\/$/, '')
+      .toLowerCase()
   return norm(a) === norm(b)
 }

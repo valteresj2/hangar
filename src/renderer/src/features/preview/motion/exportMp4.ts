@@ -1,7 +1,14 @@
 // MP4 export: every frame is drawn with the shared runtime on an OffscreenCanvas (time = i / fps),
 // encoded as H.264 with WebCodecs and muxed by mediabunny. The muxer's positioned writes stream to the
 // main process, which writes `<file>.part` and renames it when the export completes.
-import { EncodedPacket, EncodedVideoPacketSource, Mp4OutputFormat, Output, StreamTarget, type StreamTargetChunk } from 'mediabunny'
+import {
+  EncodedPacket,
+  EncodedVideoPacketSource,
+  Mp4OutputFormat,
+  Output,
+  StreamTarget,
+  type StreamTargetChunk
+} from 'mediabunny'
 import { totalDuration, type MotionSpec } from '@shared/motion/spec'
 import { drawFrame, type MotionAssets } from '@renderer/motion/runtime'
 import { PREVIEW } from '@shared/features/preview'
@@ -32,7 +39,8 @@ function hex(n: number): string {
 
 /** Picks a supported H.264 encoder configuration, or explains why there is none. */
 export async function pickAvcConfig(width: number, height: number, fps: number): Promise<VideoEncoderConfig> {
-  if (typeof VideoEncoder === 'undefined') throw new Error('Este ambiente não tem WebCodecs (VideoEncoder); não é possível gerar MP4.')
+  if (typeof VideoEncoder === 'undefined')
+    throw new Error('Este ambiente não tem WebCodecs (VideoEncoder); não é possível gerar MP4.')
   const mbs = Math.ceil(width / 16) * Math.ceil(height / 16)
   const levels = AVC_LEVELS.filter(([, maxFrame, maxRate]) => mbs <= maxFrame && mbs * fps <= maxRate).map(([l]) => l)
   if (!levels.length) throw new Error(`Resolução ${width}×${height} @ ${fps} fps acima do que o H.264 suporta.`)
@@ -56,7 +64,9 @@ export async function pickAvcConfig(width: number, height: number, fps: number):
       }
     }
   }
-  throw new Error('O codificador H.264 (AVC) não está disponível neste computador, então não é possível gerar MP4. Nenhum arquivo foi gravado.')
+  throw new Error(
+    'O codificador H.264 (AVC) não está disponível neste computador, então não é possível gerar MP4. Nenhum arquivo foi gravado.'
+  )
 }
 
 export interface ExportOptions {

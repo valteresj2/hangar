@@ -13,7 +13,9 @@ function fence(content: string, lang = ''): string {
 }
 
 function clip(text: string): string {
-  return text.length > OUTPUT_MAX ? `${text.slice(0, OUTPUT_MAX)}\n… (${text.length - OUTPUT_MAX} caracteres omitidos)` : text
+  return text.length > OUTPUT_MAX
+    ? `${text.slice(0, OUTPUT_MAX)}\n… (${text.length - OUTPUT_MAX} caracteres omitidos)`
+    : text
 }
 
 function quote(text: string): string {

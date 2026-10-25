@@ -40,14 +40,22 @@ export function HarnessPanel({ session }: { session: Session }) {
             </div>
           )}
         </div>
-        <button className="btn" onClick={() => useUi.getState().openLab(project)} title="Comparar variantes do harness com seleção cega">
+        <button
+          className="btn"
+          onClick={() => useUi.getState().openLab(project)}
+          title="Comparar variantes do harness com seleção cega"
+        >
           Abrir Lab
         </button>
       </header>
 
       <nav className={styles.tabs}>
         {tabs.map((t) => (
-          <button key={t.id} className={`${styles.tab} ${tab === t.id ? styles.tabActive : ''}`} onClick={() => setTab(t.id)}>
+          <button
+            key={t.id}
+            className={`${styles.tab} ${tab === t.id ? styles.tabActive : ''}`}
+            onClick={() => setTab(t.id)}
+          >
             {t.label}
             {t.count !== undefined && <span className={styles.count}>{t.count}</span>}
           </button>
@@ -77,7 +85,15 @@ export function HarnessPanel({ session }: { session: Session }) {
 }
 
 /** In-memory version of the components editor: every edit calls onChange with the new tree. */
-export function HarnessTreeEditor({ tree, onChange, readOnly }: { tree: HarnessTree; onChange: (tree: HarnessTree) => void; readOnly?: boolean }) {
+export function HarnessTreeEditor({
+  tree,
+  onChange,
+  readOnly
+}: {
+  tree: HarnessTree
+  onChange: (tree: HarnessTree) => void
+  readOnly?: boolean
+}) {
   return (
     <ComponentsEditor
       tree={tree}

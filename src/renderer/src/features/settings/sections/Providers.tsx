@@ -143,7 +143,8 @@ function ProviderForm({
   const [error, setError] = useState<string>()
   const [hasSecret, setHasSecret] = useState(!!existing?.hasSecret)
   const set = (patch: Partial<ProviderInput>) => setDraft((d) => ({ ...d, ...patch }))
-  const setModel = (key: 'default' | 'opus' | 'sonnet' | 'haiku', value: string) => set({ models: { ...draft.models, [key]: value } })
+  const setModel = (key: 'default' | 'opus' | 'sonnet' | 'haiku', value: string) =>
+    set({ models: { ...draft.models, [key]: value } })
   const kind = draft.kind
   const secretLabel = SECRET_LABEL[kind]
 
@@ -153,7 +154,13 @@ function ProviderForm({
     try {
       const extraEnv = parseEnv(extra)
       if (betasOff) extraEnv[BETAS_VAR] = '1'
-      const models = { ...draft.models, extra: extraModels.split(/[\n,]/).map((m) => m.trim()).filter(Boolean) }
+      const models = {
+        ...draft.models,
+        extra: extraModels
+          .split(/[\n,]/)
+          .map((m) => m.trim())
+          .filter(Boolean)
+      }
       const saved = await settingsApi.saveProvider({ ...draft, extraEnv, models })
       if (secret.trim()) {
         try {
@@ -198,7 +205,12 @@ function ProviderForm({
         <label>Nome</label>
         <input className="input" value={draft.name} onChange={(e) => set({ name: e.target.value })} />
 
-        {(kind === 'subscription' || kind === 'gateway' || kind === 'anthropic' || kind === 'bedrock' || kind === 'vertex' || kind === 'foundry') && (
+        {(kind === 'subscription' ||
+          kind === 'gateway' ||
+          kind === 'anthropic' ||
+          kind === 'bedrock' ||
+          kind === 'vertex' ||
+          kind === 'foundry') && (
           <>
             <label>{kind === 'gateway' ? 'URL base' : 'URL base (opcional)'}</label>
             <input
@@ -236,7 +248,12 @@ function ProviderForm({
         {kind === 'foundry' && (
           <>
             <label>Recurso</label>
-            <input className="input" value={draft.project ?? ''} placeholder="my-resource" onChange={(e) => set({ project: e.target.value })} />
+            <input
+              className="input"
+              value={draft.project ?? ''}
+              placeholder="my-resource"
+              onChange={(e) => set({ project: e.target.value })}
+            />
             <label>Tipo de credencial</label>
             <div>
               <Segmented
@@ -253,17 +270,37 @@ function ProviderForm({
         {kind === 'bedrock' && (
           <>
             <label>Região AWS</label>
-            <input className="input" value={draft.region ?? ''} placeholder="us-east-1" onChange={(e) => set({ region: e.target.value })} />
+            <input
+              className="input"
+              value={draft.region ?? ''}
+              placeholder="us-east-1"
+              onChange={(e) => set({ region: e.target.value })}
+            />
             <label>Perfil AWS (opcional)</label>
-            <input className="input" value={draft.awsProfile ?? ''} placeholder="default" onChange={(e) => set({ awsProfile: e.target.value })} />
+            <input
+              className="input"
+              value={draft.awsProfile ?? ''}
+              placeholder="default"
+              onChange={(e) => set({ awsProfile: e.target.value })}
+            />
           </>
         )}
         {kind === 'vertex' && (
           <>
             <label>Projeto GCP</label>
-            <input className="input" value={draft.project ?? ''} placeholder="meu-projeto" onChange={(e) => set({ project: e.target.value })} />
+            <input
+              className="input"
+              value={draft.project ?? ''}
+              placeholder="meu-projeto"
+              onChange={(e) => set({ project: e.target.value })}
+            />
             <label>Região</label>
-            <input className="input" value={draft.region ?? ''} placeholder="global, us-east5…" onChange={(e) => set({ region: e.target.value })} />
+            <input
+              className="input"
+              value={draft.region ?? ''}
+              placeholder="global, us-east5…"
+              onChange={(e) => set({ region: e.target.value })}
+            />
           </>
         )}
 
@@ -300,22 +337,51 @@ function ProviderForm({
           Modelos
         </div>
         <div className={`${styles.formFull} ${styles.hint}`}>
-          Vazio = padrão do Claude Code. {kind === 'gateway' && 'Via LiteLLM/OpenRouter os nomes podem ser de outros fabricantes (ex.: um GPT ou Gemini configurado no proxy). '}
+          Vazio = padrão do Claude Code.{' '}
+          {kind === 'gateway' &&
+            'Via LiteLLM/OpenRouter os nomes podem ser de outros fabricantes (ex.: um GPT ou Gemini configurado no proxy). '}
           {kind === 'foundry' && 'Use os nomes dos deployments. '}
           {(kind === 'gateway' || kind === 'foundry') && (
-            <strong>Modelos que não são Claude podem não suportar bem ferramentas, thinking ou imagens no Claude Code.</strong>
+            <strong>
+              Modelos que não são Claude podem não suportar bem ferramentas, thinking ou imagens no Claude Code.
+            </strong>
           )}
         </div>
         <label>Padrão</label>
-        <input className="input" value={draft.models?.default ?? ''} placeholder="usado quando a sessão não escolhe modelo" onChange={(e) => setModel('default', e.target.value)} />
+        <input
+          className="input"
+          value={draft.models?.default ?? ''}
+          placeholder="usado quando a sessão não escolhe modelo"
+          onChange={(e) => setModel('default', e.target.value)}
+        />
         <label>opus →</label>
-        <input className="input" value={draft.models?.opus ?? ''} placeholder="ANTHROPIC_DEFAULT_OPUS_MODEL" onChange={(e) => setModel('opus', e.target.value)} />
+        <input
+          className="input"
+          value={draft.models?.opus ?? ''}
+          placeholder="ANTHROPIC_DEFAULT_OPUS_MODEL"
+          onChange={(e) => setModel('opus', e.target.value)}
+        />
         <label>sonnet →</label>
-        <input className="input" value={draft.models?.sonnet ?? ''} placeholder="ANTHROPIC_DEFAULT_SONNET_MODEL" onChange={(e) => setModel('sonnet', e.target.value)} />
+        <input
+          className="input"
+          value={draft.models?.sonnet ?? ''}
+          placeholder="ANTHROPIC_DEFAULT_SONNET_MODEL"
+          onChange={(e) => setModel('sonnet', e.target.value)}
+        />
         <label>haiku →</label>
-        <input className="input" value={draft.models?.haiku ?? ''} placeholder="ANTHROPIC_DEFAULT_HAIKU_MODEL" onChange={(e) => setModel('haiku', e.target.value)} />
+        <input
+          className="input"
+          value={draft.models?.haiku ?? ''}
+          placeholder="ANTHROPIC_DEFAULT_HAIKU_MODEL"
+          onChange={(e) => setModel('haiku', e.target.value)}
+        />
         <label style={{ alignSelf: 'start', paddingTop: 6 }}>Extras</label>
-        <textarea className="input" value={extraModels} placeholder="um modelo por linha (aparecem no seletor do chat)" onChange={(e) => setExtraModels(e.target.value)} />
+        <textarea
+          className="input"
+          value={extraModels}
+          placeholder="um modelo por linha (aparecem no seletor do chat)"
+          onChange={(e) => setExtraModels(e.target.value)}
+        />
 
         {kind === 'gateway' && (
           <>
@@ -385,7 +451,8 @@ function ProviderItem({
   }
 
   const remove = act(async () => {
-    if (window.confirm(`Excluir o perfil “${profile.name}”? A chave salva também é apagada.`)) await settingsApi.deleteProvider(profile.id)
+    if (window.confirm(`Excluir o perfil “${profile.name}”? A chave salva também é apagada.`))
+      await settingsApi.deleteProvider(profile.id)
   })
 
   return (
@@ -400,7 +467,13 @@ function ProviderItem({
         <div className={`${styles.itemSub} ${styles.path}`}>
           {builtIn
             ? `Login do Claude Code e o seu ~/.claude/settings.json, sem mudanças${userBaseUrl ? ` (inclusive ANTHROPIC_BASE_URL = ${userBaseUrl})` : ''}.`
-            : [profile.baseUrl ?? (profile.kind === 'anthropic' ? 'https://api.anthropic.com' : undefined), profile.project, profile.region, profile.awsProfile && `perfil AWS ${profile.awsProfile}`, profile.models?.default && `modelo ${profile.models.default}`]
+            : [
+                profile.baseUrl ?? (profile.kind === 'anthropic' ? 'https://api.anthropic.com' : undefined),
+                profile.project,
+                profile.region,
+                profile.awsProfile && `perfil AWS ${profile.awsProfile}`,
+                profile.models?.default && `modelo ${profile.models.default}`
+              ]
                 .filter(Boolean)
                 .join(' · ') || '—'}
         </div>
@@ -470,8 +543,9 @@ export function ProvidersSection() {
     <>
       <div className={styles.toolbar}>
         <span className="muted" style={{ flex: 1 }}>
-          Por padrão o Hangar usa o login do Claude Code (assinatura). Perfis permitem usar chave de API, gateways (LiteLLM, OpenRouter…),
-          Bedrock, Vertex ou Foundry. As chaves ficam cifradas pelo sistema e nunca voltam para a tela.
+          Por padrão o Hangar usa o login do Claude Code (assinatura). Perfis permitem usar chave de API, gateways
+          (LiteLLM, OpenRouter…), Bedrock, Vertex ou Foundry. As chaves ficam cifradas pelo sistema e nunca voltam para
+          a tela.
         </span>
         {!editing && (
           <button className="btn btn-primary" onClick={() => setPicking((v) => !v)}>
@@ -484,7 +558,8 @@ export function ProvidersSection() {
         <Card>
           <div className={styles.row}>
             <span className={styles.errorText}>
-              A criptografia do sistema (safeStorage/DPAPI) não está disponível. Você pode criar perfis, mas o Hangar não salva chaves.
+              A criptografia do sistema (safeStorage/DPAPI) não está disponível. Você pode criar perfis, mas o Hangar
+              não salva chaves.
             </span>
           </div>
         </Card>
@@ -494,7 +569,12 @@ export function ProvidersSection() {
         <Card title="Escolha um modelo de perfil">
           <div className={styles.list}>
             {TEMPLATES.map((t) => (
-              <button key={t.key} className={styles.item} style={{ textAlign: 'left', width: '100%' }} onClick={() => startTemplate(t)}>
+              <button
+                key={t.key}
+                className={styles.item}
+                style={{ textAlign: 'left', width: '100%' }}
+                onClick={() => startTemplate(t)}
+              >
                 <div className={styles.itemMain}>
                   <div className={styles.itemTitle}>{t.label}</div>
                   <div className={styles.itemSub}>{t.help}</div>

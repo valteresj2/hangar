@@ -12,7 +12,15 @@ import { diffTrees, snapshotTree } from './git'
 import { totalCost } from './phases'
 import type { RunEvidence } from './propose'
 import { makeBlindMap } from './select'
-import { allRounds, getRound, patchVariant, requireRound, updateRound, waitForRound, type LabRoundRecord } from './store'
+import {
+  allRounds,
+  getRound,
+  patchVariant,
+  requireRound,
+  updateRound,
+  waitForRound,
+  type LabRoundRecord
+} from './store'
 import { condenseTrajectory, finalAnswerOf, outcomeOf } from './transcript'
 
 export const ACTIVE = new Set(['preparing', 'running'])
@@ -27,14 +35,21 @@ export function shortTask(task: string, max = 40): string {
 }
 
 export function normalize(p: string): string {
-  return p.replace(/[\\/]+/g, '/').replace(/\/$/, '').toLowerCase()
+  return p
+    .replace(/[\\/]+/g, '/')
+    .replace(/\/$/, '')
+    .toLowerCase()
 }
 
 function labGroupId(): string {
   const groups = db('groups').list()
   const existing = groups.find((g) => g.name === LAB_GROUP_NAME)
   if (existing) return existing.id
-  const group: Group = { id: nanoid(), name: LAB_GROUP_NAME, order: groups.reduce((m, g) => Math.max(m, g.order), 0) + 1 }
+  const group: Group = {
+    id: nanoid(),
+    name: LAB_GROUP_NAME,
+    order: groups.reduce((m, g) => Math.max(m, g.order), 0) + 1
+  }
   return db('groups').put(group).id
 }
 
@@ -50,7 +65,9 @@ function withGitLock<T>(fn: () => Promise<T>): Promise<T> {
 export async function prepareVariant(roundId: string, variantId: string): Promise<string> {
   const round = requireRound(roundId)
   const v = round.variants.find((x) => x.id === variantId)!
-  const worktree = await withGitLock(() => createWorktree(round.projectCwd, `lab-${round.id}-${randomBytes(2).toString('hex')}`))
+  const worktree = await withGitLock(() =>
+    createWorktree(round.projectCwd, `lab-${round.id}-${randomBytes(2).toString('hex')}`)
+  )
   patchVariant(roundId, variantId, { worktree, worktreePath: worktree.path })
   await writeHarness(worktree.path, v.tree)
   const baseline = await snapshotTree(worktree.path)
@@ -106,9 +123,16 @@ export async function runVariant(roundId: string, variantId: string): Promise<La
       await startVariant(roundId, variantId, sessionId)
     }
   } catch (err) {
-    patchVariant(roundId, variantId, { status: 'error', error: `Preparação falhou: ${errorText(err)}`, finishedAt: Date.now() })
+    patchVariant(roundId, variantId, {
+      status: 'error',
+      error: `Preparação falhou: ${errorText(err)}`,
+      finishedAt: Date.now()
+    })
   }
-  const r = await waitForRound(roundId, (x) => terminal(x.variants.find((v) => v.id === variantId)) || !ACTIVE.has(x.status))
+  const r = await waitForRound(
+    roundId,
+    (x) => terminal(x.variants.find((v) => v.id === variantId)) || !ACTIVE.has(x.status)
+  )
   return r.variants.find((v) => v.id === variantId)!
 }
 
@@ -127,16 +151,20 @@ export async function onTurnEnded(sessionId: string): Promise<void> {
   const entries = await readTranscript(sessionId)
   const outcome = outcomeOf(entries)
   // Collected right away: the pipeline hands this run to the next stage as evidence.
-  const deliverable = await collect(hit.round, hit.variant).catch(
-    (err): LabDeliverable => ({ finalAnswer: '', diffStat: '', diffExcerpt: '', diffTruncated: false, errors: [errorText(err)] })
-  )
+  const deliverable = await collect(hit.round, hit.variant).catch((err): LabDeliverable => ({
+    finalAnswer: '',
+    diffStat: '',
+    diffExcerpt: '',
+    diffTruncated: false,
+    errors: [errorText(err)]
+  }))
   updateRound(hit.round.id, (r) => {
     r.deliverables = { ...r.deliverables, [hit.variant.id]: deliverable }
     const v = r.variants.find((x) => x.id === hit.variant.id)
     if (!v) return
     Object.assign(v, {
       status: outcome.isError ? 'error' : 'done',
-      error: outcome.isError ? outcome.errors[0] ?? 'A execução terminou com erro.' : undefined,
+      error: outcome.isError ? (outcome.errors[0] ?? 'A execução terminou com erro.') : undefined,
       costUsd: outcome.costUsd,
       durationMs: outcome.durationMs,
       finishedAt: Date.now()
@@ -151,7 +179,11 @@ export function onSessionsChanged(): void {
     if (!ACTIVE.has(round.status)) continue
     for (const v of round.variants) {
       if (v.status === 'running' && v.sessionId && !db('sessions').get(v.sessionId)) {
-        patchVariant(round.id, v.id, { status: 'error', error: 'A sessão da variante foi excluída.', finishedAt: Date.now() })
+        patchVariant(round.id, v.id, {
+          status: 'error',
+          error: 'A sessão da variante foi excluída.',
+          finishedAt: Date.now()
+        })
         void maybeFinalize(round.id)
       }
     }
@@ -181,7 +213,9 @@ export async function runEvidence(round: LabRoundRecord, v: LabVariantView, labe
   const entries = v.sessionId ? await readTranscript(v.sessionId).catch(() => []) : []
   const d = round.deliverables?.[v.id]
   const redact = (text: string) =>
-    v.worktree ? [v.worktree.path, v.worktree.path.replace(/\\/g, '/')].reduce((acc, n) => acc.split(n).join('<repo>'), text) : text
+    v.worktree
+      ? [v.worktree.path, v.worktree.path.replace(/\\/g, '/')].reduce((acc, n) => acc.split(n).join('<repo>'), text)
+      : text
   return {
     label,
     status: v.status === 'done' ? 'delivered' : `error: ${v.error ?? 'unknown'}`,
@@ -212,7 +246,9 @@ export async function finalize(roundId: string): Promise<void> {
         errors: [errorText(err)]
       }))
     }
-    const pool = round.variants.filter((v) => v.inPool !== false && v.status === 'done' && deliverables[v.id]).map((v) => v.id)
+    const pool = round.variants
+      .filter((v) => v.inPool !== false && v.status === 'done' && deliverables[v.id])
+      .map((v) => v.id)
     updateRound(roundId, (r) => {
       r.deliverables = deliverables
       if (pool.length) {
@@ -265,10 +301,12 @@ export async function stopRound(roundId: string, reason: string): Promise<void> 
     r.error = reason
     const now = Date.now()
     for (const v of r.variants) {
-      if (v.status === 'pending' || v.status === 'running') Object.assign(v, { status: 'error', error: reason, finishedAt: now })
+      if (v.status === 'pending' || v.status === 'running')
+        Object.assign(v, { status: 'error', error: reason, finishedAt: now })
     }
     for (const s of r.stages ?? []) {
-      if (s.status === 'pending' || s.status === 'running') Object.assign(s, { status: 'error', error: reason, finishedAt: now })
+      if (s.status === 'pending' || s.status === 'running')
+        Object.assign(s, { status: 'error', error: reason, finishedAt: now })
     }
   })
   controllers.get(roundId)?.abort()

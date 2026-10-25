@@ -5,9 +5,23 @@ import type { TreeDiffFile } from '@shared/features/harness'
 import { errorText, harnessApi } from './api'
 import styles from './harness.module.css'
 
-const STATUS_LABEL: Record<TreeDiffFile['status'], string> = { added: 'novo', removed: 'removido', modified: 'alterado' }
+const STATUS_LABEL: Record<TreeDiffFile['status'], string> = {
+  added: 'novo',
+  removed: 'removido',
+  modified: 'alterado'
+}
 
-export function DiffView({ from, to, fromLabel, toLabel }: { from: HarnessTree; to: HarnessTree; fromLabel: string; toLabel: string }) {
+export function DiffView({
+  from,
+  to,
+  fromLabel,
+  toLabel
+}: {
+  from: HarnessTree
+  to: HarnessTree
+  fromLabel: string
+  toLabel: string
+}) {
   const [files, setFiles] = useState<TreeDiffFile[]>()
   const [error, setError] = useState<string>()
   const [open, setOpen] = useState<Record<string, boolean>>({})
@@ -53,7 +67,10 @@ export function DiffView({ from, to, fromLabel, toLabel }: { from: HarnessTree; 
                 <div key={i}>
                   <div className={styles.hunkHead}>{h.header}</div>
                   {h.lines.map((l, j) => (
-                    <div key={j} className={`${styles.line} ${l.type === 'add' ? styles.lineAdd : l.type === 'del' ? styles.lineDel : ''}`}>
+                    <div
+                      key={j}
+                      className={`${styles.line} ${l.type === 'add' ? styles.lineAdd : l.type === 'del' ? styles.lineDel : ''}`}
+                    >
                       <span className={styles.lineNo}>{l.oldNo ?? ''}</span>
                       <span className={styles.lineNo}>{l.newNo ?? ''}</span>
                       <span className={styles.lineSign}>{l.type === 'add' ? '+' : l.type === 'del' ? '−' : ' '}</span>

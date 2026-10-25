@@ -18,23 +18,33 @@ export const harnessApi = {
   read: (dir: string) => bridge.invoke<HarnessState>(HARNESS.read, dir),
   writeFile: (dir: string, rel: string, content: string) => bridge.invoke<void>(HARNESS.writeFile, dir, rel, content),
   deleteFile: (dir: string, rel: string) => bridge.invoke<void>(HARNESS.deleteFile, dir, rel),
-  createFromTemplate: (dir: string, kind: TemplateKind, name?: string) => bridge.invoke<string[]>(HARNESS.createFromTemplate, dir, kind, name),
+  createFromTemplate: (dir: string, kind: TemplateKind, name?: string) =>
+    bridge.invoke<string[]>(HARNESS.createFromTemplate, dir, kind, name),
   snapshots: (project: string) => bridge.invoke<HarnessSnapshot[]>(HARNESS.snapshots, project),
-  snapshotCreate: (project: string, label: string, dir?: string) => bridge.invoke<HarnessSnapshot>(HARNESS.snapshotCreate, project, label, dir),
-  snapshotRestore: (project: string, id: string, dir?: string) => bridge.invoke<HarnessSnapshot>(HARNESS.snapshotRestore, project, id, dir),
+  snapshotCreate: (project: string, label: string, dir?: string) =>
+    bridge.invoke<HarnessSnapshot>(HARNESS.snapshotCreate, project, label, dir),
+  snapshotRestore: (project: string, id: string, dir?: string) =>
+    bridge.invoke<HarnessSnapshot>(HARNESS.snapshotRestore, project, id, dir),
   snapshotDelete: (project: string, id: string) => bridge.invoke<void>(HARNESS.snapshotDelete, project, id),
   diff: (from: HarnessTree, to: HarnessTree) => bridge.invoke<TreeDiffFile[]>(HARNESS.diff, from, to),
   lessons: (project: string) => bridge.invoke<Lesson[]>(HARNESS.lessons, project),
-  saveLesson: (lesson: Lesson, reflectionId?: string) => bridge.invoke<Lesson>(HARNESS.saveLesson, lesson, reflectionId),
-  updateLesson: (project: string, id: string, patch: LessonPatch) => bridge.invoke<Lesson>(HARNESS.updateLesson, project, id, patch),
+  saveLesson: (lesson: Lesson, reflectionId?: string) =>
+    bridge.invoke<Lesson>(HARNESS.saveLesson, lesson, reflectionId),
+  updateLesson: (project: string, id: string, patch: LessonPatch) =>
+    bridge.invoke<Lesson>(HARNESS.updateLesson, project, id, patch),
   deleteLesson: (project: string, id: string) => bridge.invoke<void>(HARNESS.deleteLesson, project, id),
   reflections: (project: string) => bridge.invoke<Reflection[]>(HARNESS.reflections, project),
-  reflectSession: (sessionId: string, opts?: ReflectSessionOptions) => bridge.invoke<ReflectProposal>(HARNESS.reflectSession, sessionId, opts)
+  reflectSession: (sessionId: string, opts?: ReflectSessionOptions) =>
+    bridge.invoke<ReflectProposal>(HARNESS.reflectSession, sessionId, opts)
 }
 
 export function samePath(a: string | undefined, b: string | undefined): boolean {
   if (!a || !b) return false
-  const norm = (p: string) => p.replace(/[\\/]+/g, '/').replace(/\/$/, '').toLowerCase()
+  const norm = (p: string) =>
+    p
+      .replace(/[\\/]+/g, '/')
+      .replace(/\/$/, '')
+      .toLowerCase()
   return norm(a) === norm(b)
 }
 
@@ -78,15 +88,27 @@ function useHarnessData<T>(key: string | undefined, fetcher: () => Promise<T>, m
 }
 
 export function useHarnessState(dir: string | undefined) {
-  return useHarnessData(dir, () => harnessApi.read(dir!), (c) => c.what === 'files' && samePath(c.dir, dir))
+  return useHarnessData(
+    dir,
+    () => harnessApi.read(dir!),
+    (c) => c.what === 'files' && samePath(c.dir, dir)
+  )
 }
 
 export function useSnapshots(project: string | undefined) {
-  return useHarnessData(project, () => harnessApi.snapshots(project!), (c) => c.what === 'snapshots' && samePath(c.projectCwd, project))
+  return useHarnessData(
+    project,
+    () => harnessApi.snapshots(project!),
+    (c) => c.what === 'snapshots' && samePath(c.projectCwd, project)
+  )
 }
 
 export function useLessons(project: string | undefined) {
-  return useHarnessData(project, () => harnessApi.lessons(project!), (c) => c.what === 'lessons' && samePath(c.projectCwd, project))
+  return useHarnessData(
+    project,
+    () => harnessApi.lessons(project!),
+    (c) => c.what === 'lessons' && samePath(c.projectCwd, project)
+  )
 }
 
 /** In-flight and finished session reflections, kept across tab switches (not persisted). */
@@ -116,7 +138,9 @@ export const useReflect = create<ReflectState>((set, get) => ({
       return { bySession: next }
     }),
   markSaved: (sessionId, lessonId) =>
-    set((s) => ({ bySession: { ...s.bySession, [sessionId]: { ...s.bySession[sessionId], running: false, savedLessonId: lessonId } } }))
+    set((s) => ({
+      bySession: { ...s.bySession, [sessionId]: { ...s.bySession[sessionId], running: false, savedLessonId: lessonId } }
+    }))
 }))
 
 export function shortPath(path: string): string {

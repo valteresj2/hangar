@@ -56,7 +56,9 @@ export function useChat(sessionId: string): ChatState {
     }
     const onDelta = ({ sessionId: id, kind, text }: DeltaEvent) => {
       if (id !== sessionId || !loaded) return
-      setState((s) => (kind === 'text' ? { ...s, streamText: s.streamText + text } : { ...s, streamThinking: s.streamThinking + text }))
+      setState((s) =>
+        kind === 'text' ? { ...s, streamText: s.streamText + text } : { ...s, streamThinking: s.streamThinking + text }
+      )
     }
     const onPermission = (ev: PermissionEvent) => {
       if (ev.sessionId !== sessionId) return

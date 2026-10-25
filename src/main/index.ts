@@ -3,7 +3,13 @@ import { installIpcGuard } from './core/ipcGuard'
 import { registerCoreIpc } from './core/ipc'
 import type { FeatureContext } from './core/feature'
 import { flushAll, settings } from './core/store'
-import { installWebContentsHardening, isQuitting, loadRenderer, markQuitting, rendererWebPreferences } from './core/window'
+import {
+  installWebContentsHardening,
+  isQuitting,
+  loadRenderer,
+  markQuitting,
+  rendererWebPreferences
+} from './core/window'
 import { features } from './features'
 import { providersReady } from './features/settings/providers'
 import { appIcon } from './features/settings/tray'

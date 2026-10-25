@@ -39,7 +39,8 @@ export function openInPlayer(path: string): void {
   const ui = useUi.getState()
   const wasOpen = ui.sidePanelOpen && ui.sidePanelTab === 'artifacts'
   ui.openSidePanel('artifacts')
-  const fire = () => window.dispatchEvent(new CustomEvent<OpenArtifactDetail>(OPEN_ARTIFACT_EVENT, { detail: { path } }))
+  const fire = () =>
+    window.dispatchEvent(new CustomEvent<OpenArtifactDetail>(OPEN_ARTIFACT_EVENT, { detail: { path } }))
   fire()
   // A panel that was closed mounts on the next render; repeat once so its listener gets the event.
   if (!wasOpen) setTimeout(fire, 120)
@@ -53,7 +54,15 @@ function seconds(n: number): string {
   return Number.isInteger(n) ? String(n) : n.toFixed(1).replace('.', ',')
 }
 
-export function MotionCard({ entry, busy, onAskFix }: { entry: MotionEntry; busy: boolean; onAskFix(text: string): void }) {
+export function MotionCard({
+  entry,
+  busy,
+  onAskFix
+}: {
+  entry: MotionEntry
+  busy: boolean
+  onAskFix(text: string): void
+}) {
   const invalid = entry.errors.length > 0
   const askFix = () => {
     const list = entry.errors.map((e) => `- ${e}`).join('\n')
@@ -91,7 +100,12 @@ export function MotionCard({ entry, busy, onAskFix }: { entry: MotionEntry; busy
           Abrir no player
         </button>
         {invalid && (
-          <button className="btn btn-primary" disabled={busy} title={busy ? 'Aguarde a rodada atual' : undefined} onClick={askFix}>
+          <button
+            className="btn btn-primary"
+            disabled={busy}
+            title={busy ? 'Aguarde a rodada atual' : undefined}
+            onClick={askFix}
+          >
             Pedir correção
           </button>
         )}

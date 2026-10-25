@@ -91,7 +91,11 @@ export function GatewayFixButton({ sessionId }: { sessionId: string }) {
             : fix.message}
         </div>
       )}
-      {error && <div className={styles.fixText} style={{ color: 'var(--danger)' }}>{error}</div>}
+      {error && (
+        <div className={styles.fixText} style={{ color: 'var(--danger)' }}>
+          {error}
+        </div>
+      )}
     </div>
   )
 }

@@ -22,7 +22,8 @@ export const gitApi = {
   diff: (cwd: string, req: GitDiffRequest) => bridge.invoke<GitDiffResult>(GIT.diff, cwd, req),
   stage: (cwd: string, paths?: string[]) => bridge.invoke<void>(GIT.stage, cwd, paths),
   unstage: (cwd: string, paths?: string[]) => bridge.invoke<void>(GIT.unstage, cwd, paths),
-  discard: (cwd: string, paths: string[], untracked?: boolean) => bridge.invoke<void>(GIT.discard, cwd, paths, untracked),
+  discard: (cwd: string, paths: string[], untracked?: boolean) =>
+    bridge.invoke<void>(GIT.discard, cwd, paths, untracked),
   commit: (cwd: string, message: string) => bridge.invoke<string>(GIT.commit, cwd, message),
   branches: (cwd: string) => bridge.invoke<GitBranch[]>(GIT.branches, cwd),
   checkout: (cwd: string, branch: string) => bridge.invoke<void>(GIT.checkout, cwd, branch),

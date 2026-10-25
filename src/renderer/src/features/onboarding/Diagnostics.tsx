@@ -11,8 +11,23 @@ export function Spinner() {
   return <span className={styles.spinner} aria-label="Carregando" />
 }
 
-function CheckRow({ item, onAction, busy }: { item: DiagnosticItem; onAction: (a: DiagnosticAction) => void; busy: boolean }) {
-  const tone = item.status === 'ok' ? styles.ok : item.status === 'warn' ? styles.warn : item.status === 'error' ? styles.error : ''
+function CheckRow({
+  item,
+  onAction,
+  busy
+}: {
+  item: DiagnosticItem
+  onAction: (a: DiagnosticAction) => void
+  busy: boolean
+}) {
+  const tone =
+    item.status === 'ok'
+      ? styles.ok
+      : item.status === 'warn'
+        ? styles.warn
+        : item.status === 'error'
+          ? styles.error
+          : ''
   return (
     <div className={styles.check}>
       <span className={`${styles.icon} ${tone}`}>{ICON[item.status]}</span>
@@ -119,7 +134,11 @@ export function DiagnosticsPanel({ onOpenProviders }: { onOpenProviders: () => v
           <Spinner /> Criando o perfil “Assinatura (direto)” e testando…
         </div>
       )}
-      {fix && <div className={`${styles.notice} ${fix.ok && fix.testOk !== false ? styles.noticeOk : styles.noticeError}`}>{fix.message}</div>}
+      {fix && (
+        <div className={`${styles.notice} ${fix.ok && fix.testOk !== false ? styles.noticeOk : styles.noticeError}`}>
+          {fix.message}
+        </div>
+      )}
     </>
   )
 }

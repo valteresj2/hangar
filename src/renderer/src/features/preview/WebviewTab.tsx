@@ -23,23 +23,36 @@ export function WebviewTab({ sessionId, tab, active }: { sessionId: string; tab:
     el.className = styles.webview
 
     const listeners: [string, (e: WebviewEvent) => void][] = [
-      ['dom-ready', () => {
-        readyWebviews.add(tabId)
-        update(navState(tabId))
-      }],
+      [
+        'dom-ready',
+        () => {
+          readyWebviews.add(tabId)
+          update(navState(tabId))
+        }
+      ],
       ['did-start-loading', () => update({ loading: true, error: undefined })],
       ['did-stop-loading', () => update({ loading: false, ...navState(tabId) })],
       ['did-navigate', (e) => update({ url: e.url ?? '', favicon: undefined, ...navState(tabId) })],
-      ['did-navigate-in-page', (e) => {
-        if (e.isMainFrame) update({ url: e.url ?? '', ...navState(tabId) })
-      }],
+      [
+        'did-navigate-in-page',
+        (e) => {
+          if (e.isMainFrame) update({ url: e.url ?? '', ...navState(tabId) })
+        }
+      ],
       ['page-title-updated', (e) => update({ title: e.title || el.getURL() })],
       ['page-favicon-updated', (e) => update({ favicon: e.favicons?.find((f) => /^(https:|data:)/.test(f)) })],
-      ['did-fail-load', (e) => {
-        // -3 = ERR_ABORTED (navigation replaced by another one); not a real failure.
-        if (!e.isMainFrame || e.errorCode === -3) return
-        update({ loading: false, error: `${e.errorDescription || 'Falha ao carregar'} (${e.errorCode})`, url: e.validatedURL ?? tab.url })
-      }]
+      [
+        'did-fail-load',
+        (e) => {
+          // -3 = ERR_ABORTED (navigation replaced by another one); not a real failure.
+          if (!e.isMainFrame || e.errorCode === -3) return
+          update({
+            loading: false,
+            error: `${e.errorDescription || 'Falha ao carregar'} (${e.errorCode})`,
+            url: e.validatedURL ?? tab.url
+          })
+        }
+      ]
     ]
     for (const [name, fn] of listeners) el.addEventListener(name, fn as EventListener)
 

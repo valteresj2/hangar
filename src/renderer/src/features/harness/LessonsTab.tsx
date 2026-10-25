@@ -23,7 +23,17 @@ const REFLECT_MODELS = [
 
 type Draft = Pick<Lesson, 'cue' | 'lesson' | 'evidence' | 'confidence'>
 
-function LessonForm({ initial, onSubmit, onCancel, submitLabel }: { initial: Draft; onSubmit: (d: Draft) => Promise<void>; onCancel: () => void; submitLabel: string }) {
+function LessonForm({
+  initial,
+  onSubmit,
+  onCancel,
+  submitLabel
+}: {
+  initial: Draft
+  onSubmit: (d: Draft) => Promise<void>
+  onCancel: () => void
+  submitLabel: string
+}) {
   const [d, setD] = useState(initial)
   const [busy, setBusy] = useState(false)
   const valid = d.cue.trim() && d.lesson.trim()
@@ -31,20 +41,39 @@ function LessonForm({ initial, onSubmit, onCancel, submitLabel }: { initial: Dra
     <div className={styles.form}>
       <label className={styles.field}>
         <span>Quando (a forma da situação)</span>
-        <textarea className={`input ${styles.textareaSm}`} rows={2} value={d.cue} onChange={(e) => setD({ ...d, cue: e.target.value })} />
+        <textarea
+          className={`input ${styles.textareaSm}`}
+          rows={2}
+          value={d.cue}
+          onChange={(e) => setD({ ...d, cue: e.target.value })}
+        />
       </label>
       <label className={styles.field}>
         <span>Fazer o quê (nomeando o componente)</span>
-        <textarea className={`input ${styles.textareaSm}`} rows={3} value={d.lesson} onChange={(e) => setD({ ...d, lesson: e.target.value })} />
+        <textarea
+          className={`input ${styles.textareaSm}`}
+          rows={3}
+          value={d.lesson}
+          onChange={(e) => setD({ ...d, lesson: e.target.value })}
+        />
       </label>
       <label className={styles.field}>
         <span>Evidência</span>
-        <textarea className={`input ${styles.textareaSm}`} rows={3} value={d.evidence} onChange={(e) => setD({ ...d, evidence: e.target.value })} />
+        <textarea
+          className={`input ${styles.textareaSm}`}
+          rows={3}
+          value={d.evidence}
+          onChange={(e) => setD({ ...d, evidence: e.target.value })}
+        />
       </label>
       <div className={styles.formRow}>
         <label className={styles.fieldInline}>
           Confiança
-          <select className={`input ${styles.selectInline}`} value={d.confidence} onChange={(e) => setD({ ...d, confidence: e.target.value as LessonConfidence })}>
+          <select
+            className={`input ${styles.selectInline}`}
+            value={d.confidence}
+            onChange={(e) => setD({ ...d, confidence: e.target.value as LessonConfidence })}
+          >
             {(['high', 'medium', 'low'] as const).map((c) => (
               <option key={c} value={c}>
                 {CONFIDENCE_LABEL[c]}
@@ -98,7 +127,11 @@ function ReflectBox({ session, project }: { session: Session; project: string })
         <button
           className="btn btn-primary"
           disabled={entry?.running || working}
-          title={working ? 'Espere a sessão terminar a rodada atual' : 'Lê a trajetória desta sessão e propõe no máximo uma lição'}
+          title={
+            working
+              ? 'Espere a sessão terminar a rodada atual'
+              : 'Lê a trajetória desta sessão e propõe no máximo uma lição'
+          }
           onClick={() => {
             setStarted(Date.now())
             void start(session.id, model ? { model } : undefined)
@@ -106,7 +139,12 @@ function ReflectBox({ session, project }: { session: Session; project: string })
         >
           {entry?.running ? 'Refletindo…' : 'Refletir sobre esta sessão'}
         </button>
-        <select className={`input ${styles.selectInline}`} value={model} onChange={(e) => setModel(e.target.value)} title="Modelo do refletor">
+        <select
+          className={`input ${styles.selectInline}`}
+          value={model}
+          onChange={(e) => setModel(e.target.value)}
+          title="Modelo do refletor"
+        >
           {REFLECT_MODELS.map((m) => (
             <option key={m.value} value={m.value}>
               {m.label}
@@ -115,7 +153,10 @@ function ReflectBox({ session, project }: { session: Session; project: string })
         </select>
         {entry?.running && started && <span className="muted">{Math.round((now - started) / 1000)} s</span>}
       </div>
-      <ErrorLine text={entry?.error ?? error} onClose={() => (entry?.error ? discard(session.id) : setError(undefined))} />
+      <ErrorLine
+        text={entry?.error ?? error}
+        onClose={() => (entry?.error ? discard(session.id) : setError(undefined))}
+      />
 
       {proposal && (
         <div className={styles.proposal}>
@@ -148,7 +189,9 @@ function ReflectBox({ session, project }: { session: Session; project: string })
                       <td>{r.change}</td>
                       <td>{r.observed}</td>
                       <td>
-                        <span className={`${styles.badge} ${styles[`v_${r.verdict.replace(/ /g, '_')}`] ?? ''}`}>{VERDICT_LABEL[r.verdict]}</span>
+                        <span className={`${styles.badge} ${styles[`v_${r.verdict.replace(/ /g, '_')}`] ?? ''}`}>
+                          {VERDICT_LABEL[r.verdict]}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -159,7 +202,9 @@ function ReflectBox({ session, project }: { session: Session; project: string })
 
           <div className={styles.sectionLabel}>Lição proposta</div>
           {entry?.savedLessonId ? (
-            <div className={styles.notice}>Lição salva e ativa: ela entra no prompt das próximas sessões deste projeto.</div>
+            <div className={styles.notice}>
+              Lição salva e ativa: ela entra no prompt das próximas sessões deste projeto.
+            </div>
           ) : proposal.lesson ? (
             <LessonForm
               initial={proposal.lesson}
@@ -167,7 +212,10 @@ function ReflectBox({ session, project }: { session: Session; project: string })
               onCancel={() => discard(session.id)}
               onSubmit={async (d) => {
                 try {
-                  const saved = await harnessApi.saveLesson({ ...proposal.lesson!, ...d, projectCwd: project }, proposal.reflection.id)
+                  const saved = await harnessApi.saveLesson(
+                    { ...proposal.lesson!, ...d, projectCwd: project },
+                    proposal.reflection.id
+                  )
                   markSaved(session.id, saved.id)
                 } catch (err) {
                   setError(errorText(err))
@@ -176,7 +224,8 @@ function ReflectBox({ session, project }: { session: Session; project: string })
             />
           ) : (
             <div className={styles.emptySm}>
-              NO_ENTRY — o refletor não encontrou um contraste concreto e reutilizável nesta sessão. A tabela de edições foi registrada.
+              NO_ENTRY — o refletor não encontrou um contraste concreto e reutilizável nesta sessão. A tabela de edições
+              foi registrada.
             </div>
           )}
           <details className={styles.raw}>
@@ -209,7 +258,8 @@ export function LessonsTab({ session, project }: { session: Session; project: st
   const [confirmDelete, setConfirmDelete] = useState<Lesson>()
   const [error, setError] = useState<string>()
 
-  const update = (id: string, patch: Partial<Lesson>) => harnessApi.updateLesson(project, id, patch).catch((err) => setError(errorText(err)))
+  const update = (id: string, patch: Partial<Lesson>) =>
+    harnessApi.updateLesson(project, id, patch).catch((err) => setError(errorText(err)))
   const active = lessons?.filter((l) => l.enabled).length ?? 0
 
   return (
@@ -228,7 +278,10 @@ export function LessonsTab({ session, project }: { session: Session; project: st
           </button>
         )}
       </div>
-      <div className={styles.hint}>As lições ativas (até 8) entram no prompt de sistema de toda sessão nova deste projeto, como hipóteses a verificar.</div>
+      <div className={styles.hint}>
+        As lições ativas (até 8) entram no prompt de sistema de toda sessão nova deste projeto, como hipóteses a
+        verificar.
+      </div>
 
       <div className={styles.stack}>
         {adding && (
@@ -239,7 +292,14 @@ export function LessonsTab({ session, project }: { session: Session; project: st
               onCancel={() => setAdding(false)}
               onSubmit={async (d) => {
                 try {
-                  await harnessApi.saveLesson({ ...d, id: '', projectCwd: project, createdAt: 0, enabled: true, source: { kind: 'manual' } })
+                  await harnessApi.saveLesson({
+                    ...d,
+                    id: '',
+                    projectCwd: project,
+                    createdAt: 0,
+                    enabled: true,
+                    source: { kind: 'manual' }
+                  })
                   setAdding(false)
                 } catch (err) {
                   setError(errorText(err))
@@ -265,7 +325,11 @@ export function LessonsTab({ session, project }: { session: Session; project: st
               <>
                 <div className={styles.cardHead}>
                   <label className={styles.toggle} title={l.enabled ? 'Ativa: entra no prompt' : 'Desativada'}>
-                    <input type="checkbox" checked={l.enabled} onChange={(e) => void update(l.id, { enabled: e.target.checked })} />
+                    <input
+                      type="checkbox"
+                      checked={l.enabled}
+                      onChange={(e) => void update(l.id, { enabled: e.target.checked })}
+                    />
                   </label>
                   <div className={styles.cardMain}>
                     <div className={styles.lessonText}>
@@ -274,7 +338,9 @@ export function LessonsTab({ session, project }: { session: Session; project: st
                       {l.lesson}
                     </div>
                     <div className={styles.meta}>
-                      <span className={`${styles.badge} ${styles[`c_${l.confidence}`]}`}>confiança {CONFIDENCE_LABEL[l.confidence]}</span>
+                      <span className={`${styles.badge} ${styles[`c_${l.confidence}`]}`}>
+                        confiança {CONFIDENCE_LABEL[l.confidence]}
+                      </span>
                       <span>{sourceText(l, titles)}</span>
                       <span>{formatDate(l.createdAt)}</span>
                     </div>

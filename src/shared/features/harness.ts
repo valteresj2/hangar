@@ -91,7 +91,8 @@ export interface TreeDiffFile {
 
 // ---- Templates (shared so the in-memory editor and the main process create the same files) ----
 
-export type TemplateKind = 'instructions' | 'local-instructions' | 'skill' | 'subagent' | 'command' | 'settings' | 'script'
+export type TemplateKind =
+  'instructions' | 'local-instructions' | 'skill' | 'subagent' | 'command' | 'settings' | 'script'
 
 export const TEMPLATE_LABELS: Record<TemplateKind, string> = {
   instructions: 'CLAUDE.md (instruções)',
@@ -117,7 +118,8 @@ export const COMPONENT_LABELS: Record<HarnessComponentKind, string> = {
 
 /** Component names: letters, digits, dot, dash, underscore (commands and scripts may use sub-folders). */
 export function validTemplateName(kind: TemplateKind, name: string): boolean {
-  if (kind === 'command' || kind === 'script') return /^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/.test(name) && !name.split('/').includes('..')
+  if (kind === 'command' || kind === 'script')
+    return /^[A-Za-z0-9_.-]+(\/[A-Za-z0-9_.-]+)*$/.test(name) && !name.split('/').includes('..')
   return /^[A-Za-z0-9_.-]+$/.test(name) && name !== '.' && name !== '..'
 }
 

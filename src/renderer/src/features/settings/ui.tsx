@@ -28,7 +28,15 @@ export function Row({ label, hint, children }: { label: ReactNode; hint?: ReactN
   )
 }
 
-export function Switch({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+export function Switch({
+  checked,
+  onChange,
+  label
+}: {
+  checked: boolean
+  onChange: (v: boolean) => void
+  label: string
+}) {
   return (
     <button
       role="switch"
@@ -89,5 +97,11 @@ export function Kbd({ keys }: { keys: string }) {
 
 export function formatDateTime(ts: number | undefined): string {
   if (!ts) return '—'
-  return new Date(ts).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  return new Date(ts).toLocaleString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit'
+  })
 }

@@ -1,6 +1,14 @@
 // Main-side API of the harness feature, used by the lab feature. Owned by the harness agent.
 import { nanoid } from 'nanoid'
-import type { HarnessSnapshot, HarnessTree, Lesson, ReflectInput, ReflectResult, Reflection, SnapshotSource } from '../../../shared/harness'
+import type {
+  HarnessSnapshot,
+  HarnessTree,
+  Lesson,
+  ReflectInput,
+  ReflectResult,
+  Reflection,
+  SnapshotSource
+} from '../../../shared/harness'
 import { HARNESS, type HarnessChange } from '../../../shared/features/harness'
 import { broadcast } from '../../core/broadcast'
 import { getLessons, getSnapshots, normalizeProject, putLesson, putReflection, putSnapshot } from './data'
@@ -50,12 +58,19 @@ export async function listLessons(projectCwd: string): Promise<Lesson[]> {
 }
 
 /** Runs the reflector without storing anything; used by both reflect() and the session proposal flow. */
-export async function runReflection(input: ReflectInput, model?: string): Promise<{ parsed: ParsedReflection; raw: string }> {
+export async function runReflection(
+  input: ReflectInput,
+  model?: string
+): Promise<{ parsed: ParsedReflection; raw: string }> {
   const raw = await runReflector(buildPrompt(input), model)
   return { parsed: parseReflection(raw), raw }
 }
 
-export function toLesson(projectCwd: string, exp: NonNullable<ParsedReflection['experience']>, source: Lesson['source']): Lesson {
+export function toLesson(
+  projectCwd: string,
+  exp: NonNullable<ParsedReflection['experience']>,
+  source: Lesson['source']
+): Lesson {
   return {
     id: nanoid(10),
     projectCwd: normalizeProject(projectCwd),

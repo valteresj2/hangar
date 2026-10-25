@@ -54,7 +54,10 @@ function Progress({ round, onOpenSession }: { round: LabRoundView; onOpenSession
         const st = variantStatus(v, session)
         const elapsed = v.durationMs ?? (v.startedAt ? (v.finishedAt ?? now) - v.startedAt : undefined)
         return (
-          <div key={v.id} className={`${styles.progressRow} ${st.cls === styles.stWaiting ? styles.progressWaiting : ''}`}>
+          <div
+            key={v.id}
+            className={`${styles.progressRow} ${st.cls === styles.stWaiting ? styles.progressWaiting : ''}`}
+          >
             <span className={styles.progressLabel}>{nameOf(v)}</span>
             <span className={`${styles.badge} ${st.cls ?? ''}`}>{st.text}</span>
             <span className={styles.metric}>{formatDuration(elapsed)}</span>
@@ -179,7 +182,9 @@ function Reveal({ round }: { round: LabRoundView }) {
         </div>
         {round.selection?.why && <div className={styles.why}>{round.selection.why}</div>}
         {baseWon && <div>A base venceu: o harness atual continua e nada muda no projeto.</div>}
-        {round.selectionCostUsd !== undefined && <div className="muted">Custo da seleção: {formatCost(round.selectionCostUsd)}</div>}
+        {round.selectionCostUsd !== undefined && (
+          <div className="muted">Custo da seleção: {formatCost(round.selectionCostUsd)}</div>
+        )}
       </div>
 
       <table className={styles.table}>
@@ -225,8 +230,8 @@ function Reveal({ round }: { round: LabRoundView }) {
         ) : askApply ? (
           <div className={styles.callout}>
             <p>
-              Criar um snapshot com o harness de <strong>{winner && nameOf(winner)}</strong> e aplicá-lo agora no projeto? Os arquivos
-              de harness do projeto (CLAUDE.md, .claude/…) passam a ser os da variante vencedora.
+              Criar um snapshot com o harness de <strong>{winner && nameOf(winner)}</strong> e aplicá-lo agora no
+              projeto? Os arquivos de harness do projeto (CLAUDE.md, .claude/…) passam a ser os da variante vencedora.
             </p>
             <div className={styles.actions}>
               <button className="btn btn-primary" disabled={!!busy} onClick={() => void adopt(true)}>
@@ -247,7 +252,11 @@ function Reveal({ round }: { round: LabRoundView }) {
             title={baseWon ? 'A base venceu: nada a adotar' : round.adoptedSnapshotId ? 'Já adotado' : undefined}
             onClick={() => setAskApply(true)}
           >
-            {round.adoptedSnapshotId ? (round.applied ? 'Adotado e aplicado' : 'Snapshot criado') : 'Adotar harness vencedor'}
+            {round.adoptedSnapshotId
+              ? round.applied
+                ? 'Adotado e aplicado'
+                : 'Snapshot criado'
+              : 'Adotar harness vencedor'}
           </button>
         )}
         <button
@@ -270,7 +279,9 @@ function Reveal({ round }: { round: LabRoundView }) {
       <h3 className={styles.h3}>Entregáveis revelados</h3>
       <div
         className={styles.candidates}
-        style={{ gridTemplateColumns: `repeat(${round.variants.filter((v) => v.deliverable).length || 1}, minmax(320px, 1fr))` }}
+        style={{
+          gridTemplateColumns: `repeat(${round.variants.filter((v) => v.deliverable).length || 1}, minmax(320px, 1fr))`
+        }}
       >
         {round.variants
           .filter((v) => v.deliverable)
@@ -318,9 +329,11 @@ export function RoundDetail({ round, onOpenSession }: { round: LabRoundView; onO
         <span className={`${styles.badge} ${styles[`round_${round.status}`] ?? ''}`}>{ROUND_STATUS[round.status]}</span>
         <span className="muted">
           {formatDate(round.createdAt)} · {ROUND_MODE_LABEL[round.mode ?? 'manual']}
-          {round.depth ? ` (${round.mode === 'parallel' ? 'k' : 'K'}=${round.depth})` : ''} · execuções: {round.model ?? 'modelo padrão'}
-          {round.mode && round.mode !== 'manual' ? ` · proponentes: ${round.proposerModel ?? 'modelo padrão'}` : ''} ·{' '}
-          {MODE_LABEL[round.permissionMode] ?? round.permissionMode}
+          {round.depth ? ` (${round.mode === 'parallel' ? 'k' : 'K'}=${round.depth})` : ''} · execuções:{' '}
+          {round.model ?? 'modelo padrão'}
+          {round.mode && round.mode !== 'manual'
+            ? ` · proponentes: ${round.proposerModel ?? 'modelo padrão'}`
+            : ''} · {MODE_LABEL[round.permissionMode] ?? round.permissionMode}
         </span>
         <span className={styles.spacer} />
         <span className={`${styles.metric} ${overCap ? styles.warnText : ''}`}>
@@ -362,7 +375,9 @@ export function RoundDetail({ round, onOpenSession }: { round: LabRoundView; onO
                   )
               )}
             <div className={styles.spacer} />
-            {round.cleanupErrors && <span className={styles.warnText}>Falhas na limpeza: {round.cleanupErrors.join('; ')}</span>}
+            {round.cleanupErrors && (
+              <span className={styles.warnText}>Falhas na limpeza: {round.cleanupErrors.join('; ')}</span>
+            )}
             {hasWorktrees && !round.cleanedUp ? (
               <button className="btn" disabled={!!busy} onClick={cleanup}>
                 {busy === 'cleanup' ? 'Limpando…' : 'Limpar worktrees e sessões'}
@@ -372,7 +387,8 @@ export function RoundDetail({ round, onOpenSession }: { round: LabRoundView; onO
                 className="btn"
                 disabled={!!busy}
                 onClick={() => {
-                  if (window.confirm('Excluir esta rodada do histórico do Lab?')) void run('remove', () => labApi.remove(round.id))
+                  if (window.confirm('Excluir esta rodada do histórico do Lab?'))
+                    void run('remove', () => labApi.remove(round.id))
                 }}
               >
                 Excluir rodada

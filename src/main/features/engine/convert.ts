@@ -53,7 +53,12 @@ export function toolResultsFromUserContent(content: unknown): EntryDraft[] {
   const out: EntryDraft[] = []
   for (const b of blocks(content)) {
     if (b.type === 'tool_result' && typeof b.tool_use_id === 'string') {
-      out.push({ kind: 'tool_result', toolUseId: b.tool_use_id, content: toolResultText(b.content), isError: b.is_error === true })
+      out.push({
+        kind: 'tool_result',
+        toolUseId: b.tool_use_id,
+        content: toolResultText(b.content),
+        isError: b.is_error === true
+      })
     }
   }
   return out
@@ -64,7 +69,9 @@ export function promptTextFromUserContent(content: unknown): string | undefined 
   const text = blocks(content)
     .filter((b) => b.type === 'text' && typeof b.text === 'string')
     .map((b) => String(b.text))
-    .filter((t) => !/^\s*<(local-command|command-|system-reminder|hangar-output-mode)/.test(t) && !t.startsWith('Caveat:'))
+    .filter(
+      (t) => !/^\s*<(local-command|command-|system-reminder|hangar-output-mode)/.test(t) && !t.startsWith('Caveat:')
+    )
     .join('\n')
     .trim()
   return text || undefined
@@ -82,14 +89,18 @@ export function parseQuestions(input: Record<string, unknown>): Question[] | und
       options: Array.isArray(q.options)
         ? q.options
             .filter((o): o is Record<string, unknown> => !!o && typeof o === 'object')
-            .map((o) => ({ label: String(o.label ?? ''), description: typeof o.description === 'string' ? o.description : undefined }))
+            .map((o) => ({
+              label: String(o.label ?? ''),
+              description: typeof o.description === 'string' ? o.description : undefined
+            }))
         : []
     }))
 }
 
 /** File path written by a successful file tool call, if any. */
 export function writtenPath(name: string, input: Record<string, unknown>): string | undefined {
-  if (name === 'Write' || name === 'Edit' || name === 'MultiEdit') return typeof input.file_path === 'string' ? input.file_path : undefined
+  if (name === 'Write' || name === 'Edit' || name === 'MultiEdit')
+    return typeof input.file_path === 'string' ? input.file_path : undefined
   if (name === 'NotebookEdit') return typeof input.notebook_path === 'string' ? input.notebook_path : undefined
   return undefined
 }

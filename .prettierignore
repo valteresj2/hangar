@@ -1,0 +1,13 @@
+# Build output and dependencies
+out
+release
+dist
+node_modules
+package-lock.json
+
+# Test artifacts
+test-results
+playwright-report
+
+# Agent briefs and reports: hand-written Markdown with wide tables
+docs/agents/**

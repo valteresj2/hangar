@@ -50,7 +50,11 @@ export function showNotification(ctx: FeatureContext, title: string, body: strin
   return true
 }
 
-function notifySession(ctx: FeatureContext, sessionId: string, kind: 'ended' | 'error' | 'permission' | 'question'): void {
+function notifySession(
+  ctx: FeatureContext,
+  sessionId: string,
+  kind: 'ended' | 'error' | 'permission' | 'question'
+): void {
   if (!settings().get().notifications || windowFocused(ctx)) return
   const title = db('sessions').get(sessionId)?.title ?? 'Sessão'
   const text = {
@@ -67,7 +71,9 @@ function drawIcon(size: number): Buffer {
   const buf = Buffer.alloc(size * size * 4)
   const radius = size * 0.22
   const inH = (u: number, v: number) =>
-    v >= 0.24 && v <= 0.76 && ((u >= 0.27 && u <= 0.41) || (u >= 0.59 && u <= 0.73) || (v >= 0.44 && v <= 0.56 && u >= 0.27 && u <= 0.73))
+    v >= 0.24 &&
+    v <= 0.76 &&
+    ((u >= 0.27 && u <= 0.41) || (u >= 0.59 && u <= 0.73) || (v >= 0.44 && v <= 0.56 && u >= 0.27 && u <= 0.73))
   for (let y = 0; y < size; y++) {
     for (let x = 0; x < size; x++) {
       const cx = x + 0.5
@@ -130,7 +136,11 @@ function onMainWindowHidden(ctx: FeatureContext): void {
   const state = readState()
   if (state.trayNoticeShown) return
   writeFileSync(stateFile(), JSON.stringify({ ...state, trayNoticeShown: true }, null, 2), 'utf8')
-  showNotification(ctx, 'O Hangar continua rodando', 'Ele fica na bandeja do sistema. Use "Sair" no menu do ícone para encerrar.')
+  showNotification(
+    ctx,
+    'O Hangar continua rodando',
+    'Ele fica na bandeja do sistema. Use "Sair" no menu do ícone para encerrar.'
+  )
 }
 
 /** Hooks the main window (created later by the core, and possibly recreated) for the tray notice and cleanup. */

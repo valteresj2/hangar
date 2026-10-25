@@ -60,7 +60,12 @@ export function setupBrowser(): void {
     })
     const id = randomUUID()
     const emit = (state: DownloadEvent['state']) =>
-      broadcast(PREVIEW.downloadEvent, { id, filename: item.getFilename(), state, savePath: item.getSavePath() || undefined } satisfies DownloadEvent)
+      broadcast(PREVIEW.downloadEvent, {
+        id,
+        filename: item.getFilename(),
+        state,
+        savePath: item.getSavePath() || undefined
+      } satisfies DownloadEvent)
     emit('started')
     item.once('done', (_e, state) => emit(state))
   })

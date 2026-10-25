@@ -1,7 +1,11 @@
 // Small fuzzy matcher for the command palette: substring hits rank first, then in-order
 // subsequences, with bonuses for consecutive characters and word starts. Accent-insensitive.
 
-const normalize = (s: string) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+const normalize = (s: string) =>
+  s
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
 
 /** Higher is better; undefined means no match. */
 export function fuzzyScore(query: string, text: string): number | undefined {

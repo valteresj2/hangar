@@ -39,7 +39,15 @@ import {
   stopQuickEntry,
   suspendQuickEntryShortcut
 } from './quickEntry'
-import { deleteSchedule, listSchedules, runTask, saveSchedule, startSchedules, stopSchedules, validateCron } from './schedules'
+import {
+  deleteSchedule,
+  listSchedules,
+  runTask,
+  saveSchedule,
+  startSchedules,
+  stopSchedules,
+  validateCron
+} from './schedules'
 import { showMainAndSend, showNotification, startTrayAndNotifications, stopTrayAndNotifications } from './tray'
 
 function applyTheme(): void {
@@ -74,16 +82,13 @@ export const settingsFeature: Feature = {
     ipcMain.handle(SETTINGS.testNotification, () =>
       showNotification(ctx, 'Hangar', 'As notificações estão funcionando.')
     )
-    ipcMain.handle(
-      SETTINGS.appInfo,
-      (): AppInfo => ({
-        version: app.getVersion(),
-        electron: process.versions.electron,
-        node: process.versions.node,
-        chrome: process.versions.chrome,
-        dataDir: join(app.getPath('userData'), 'hangar-data')
-      })
-    )
+    ipcMain.handle(SETTINGS.appInfo, (): AppInfo => ({
+      version: app.getVersion(),
+      electron: process.versions.electron,
+      node: process.versions.node,
+      chrome: process.versions.chrome,
+      dataDir: join(app.getPath('userData'), 'hangar-data')
+    }))
 
     ipcMain.handle(SETTINGS.mcpList, (_e, cwd?: string) => mcpList(cwd))
     ipcMain.handle(SETTINGS.mcpGet, (_e, name: string, cwd?: string) => mcpGet(name, cwd))
@@ -113,11 +118,26 @@ export const settingsFeature: Feature = {
         }
       }
     ipcMain.handle(SETTINGS.providersList, () => providersState())
-    ipcMain.handle(SETTINGS.providerSave, guarded((input: ProviderInput) => saveProvider(input)))
-    ipcMain.handle(SETTINGS.providerDelete, guarded((id: string) => deleteProvider(id)))
-    ipcMain.handle(SETTINGS.providerSetSecret, guarded((id: string, secret: string) => setProviderSecret(id, secret)))
-    ipcMain.handle(SETTINGS.providerClearSecret, guarded((id: string) => clearProviderSecret(id)))
-    ipcMain.handle(SETTINGS.providerSetDefault, guarded((id: string) => setDefaultProvider(id)))
+    ipcMain.handle(
+      SETTINGS.providerSave,
+      guarded((input: ProviderInput) => saveProvider(input))
+    )
+    ipcMain.handle(
+      SETTINGS.providerDelete,
+      guarded((id: string) => deleteProvider(id))
+    )
+    ipcMain.handle(
+      SETTINGS.providerSetSecret,
+      guarded((id: string, secret: string) => setProviderSecret(id, secret))
+    )
+    ipcMain.handle(
+      SETTINGS.providerClearSecret,
+      guarded((id: string) => clearProviderSecret(id))
+    )
+    ipcMain.handle(
+      SETTINGS.providerSetDefault,
+      guarded((id: string) => setDefaultProvider(id))
+    )
     ipcMain.handle(SETTINGS.providerTest, (_e, id: string) => testProvider(id))
 
     ipcMain.handle(SETTINGS.quickEntryStatus, () => quickEntryStatus())

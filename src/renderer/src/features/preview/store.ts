@@ -38,11 +38,21 @@ export const useBrowser = create<BrowserState>((set) => ({
   bySession: {},
   openTab: (sessionId, url = '', activate = true) => {
     const id = newTabId()
-    const tab: BrowserTab = { id, url, title: url ? url : 'Nova aba', loading: !!url, canGoBack: false, canGoForward: false }
+    const tab: BrowserTab = {
+      id,
+      url,
+      title: url ? url : 'Nova aba',
+      loading: !!url,
+      canGoBack: false,
+      canGoForward: false
+    }
     set((s) => {
       const cur = s.bySession[sessionId] ?? { tabs: [] }
       return {
-        bySession: { ...s.bySession, [sessionId]: { tabs: [...cur.tabs, tab], activeId: activate || !cur.activeId ? id : cur.activeId } }
+        bySession: {
+          ...s.bySession,
+          [sessionId]: { tabs: [...cur.tabs, tab], activeId: activate || !cur.activeId ? id : cur.activeId }
+        }
       }
     })
     return id

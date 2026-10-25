@@ -31,7 +31,9 @@ const samePath = (a: string, b: string) => a.replace(/\\/g, '/').toLowerCase() =
 function formatAccelerator(acc: string): string {
   return acc
     .split('+')
-    .map((p) => (p === 'CommandOrControl' || p === 'CmdOrCtrl' ? 'Ctrl' : p === 'Super' ? 'Win' : p === 'Space' ? 'Espaço' : p))
+    .map((p) =>
+      p === 'CommandOrControl' || p === 'CmdOrCtrl' ? 'Ctrl' : p === 'Super' ? 'Win' : p === 'Space' ? 'Espaço' : p
+    )
     .join('+')
 }
 
@@ -54,8 +56,8 @@ function Welcome() {
     <>
       <h1>Bem-vindo ao Hangar</h1>
       <p className={styles.lead}>
-        Um app desktop para rodar e acompanhar sessões do Claude Code: chat com ferramentas, terminal, alterações do git, navegador e
-        artifacts lado a lado. Em poucos passos vamos conferir se está tudo pronto.
+        Um app desktop para rodar e acompanhar sessões do Claude Code: chat com ferramentas, terminal, alterações do
+        git, navegador e artifacts lado a lado. Em poucos passos vamos conferir se está tudo pronto.
       </p>
       <div className={styles.features}>
         <div className={styles.feature}>
@@ -68,7 +70,10 @@ function Welcome() {
         </div>
         <div className={styles.feature}>
           <strong>Diagnóstico</strong>
-          <span>Detectamos problemas comuns, como um gateway no settings.json que quebra o login, e corrigimos com um clique.</span>
+          <span>
+            Detectamos problemas comuns, como um gateway no settings.json que quebra o login, e corrigimos com um
+            clique.
+          </span>
         </div>
       </div>
     </>
@@ -138,7 +143,10 @@ function FolderStep() {
   return (
     <>
       <h2>Pasta inicial</h2>
-      <p className={styles.lead}>Escolha a pasta de um projeto para começar. Ela fica fixada no seletor de pastas de novas sessões e no Quick Entry.</p>
+      <p className={styles.lead}>
+        Escolha a pasta de um projeto para começar. Ela fica fixada no seletor de pastas de novas sessões e no Quick
+        Entry.
+      </p>
       {pinned.map((f) => (
         <div key={f} className={styles.summary}>
           <span>📌</span>
@@ -187,11 +195,16 @@ function DoneStep() {
       <div className={styles.features}>
         <div className={styles.feature}>
           <strong>Hangar Motion</strong>
-          <span>Peça ao Claude uma animação ou vídeo curto: ele aparece em Artifacts, com player, editor e exportação para MP4.</span>
+          <span>
+            Peça ao Claude uma animação ou vídeo curto: ele aparece em Artifacts, com player, editor e exportação para
+            MP4.
+          </span>
         </div>
         <div className={styles.feature}>
           <strong>Harness Lab</strong>
-          <span>Na aba Harness do painel lateral, “Comparar variantes” testa versões do harness do projeto com seleção cega.</span>
+          <span>
+            Na aba Harness do painel lateral, “Comparar variantes” testa versões do harness do projeto com seleção cega.
+          </span>
         </div>
         <div className={styles.feature}>
           <strong>Diagnóstico de novo</strong>
@@ -254,7 +267,9 @@ export function OnboardingView() {
           {step === 'diagnose' && (
             <>
               <h2>Diagnóstico</h2>
-              <p className={styles.lead}>Conferimos o Claude Code, o login, gateways configurados, o provedor padrão e o git.</p>
+              <p className={styles.lead}>
+                Conferimos o Claude Code, o login, gateways configurados, o provedor padrão e o git.
+              </p>
               <DiagnosticsPanel onOpenProviders={openProviders} />
             </>
           )}

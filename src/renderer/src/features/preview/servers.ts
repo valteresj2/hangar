@@ -33,9 +33,9 @@ export function useServers(sessionId: string): ServerInfo[] {
 export function useLaunchConfigs(sessionId: string): { data?: LaunchConfigsResult; reload(): void } {
   const [data, setData] = useState<LaunchConfigsResult>()
   const reload = useCallback(() => {
-    previewApi.launchConfigs(sessionId).then(setData, (err: Error) =>
-      setData({ path: '', exists: false, configurations: [], error: err.message })
-    )
+    previewApi
+      .launchConfigs(sessionId)
+      .then(setData, (err: Error) => setData({ path: '', exists: false, configurations: [], error: err.message }))
   }, [sessionId])
   useEffect(reload, [reload])
   return { data, reload }

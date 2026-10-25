@@ -48,7 +48,8 @@ export function isTrustedSender(event: AnyEvent): boolean {
   const frame = event.senderFrame
   if (!frame || frame.parent) return false
   const contents = event.sender
-  if (contents.isDestroyed() || contents.getType() !== 'window' || !BrowserWindow.fromWebContents(contents)) return false
+  if (contents.isDestroyed() || contents.getType() !== 'window' || !BrowserWindow.fromWebContents(contents))
+    return false
   return isRendererUrl(frame.url)
 }
 
@@ -61,7 +62,9 @@ function refuse(channel: string, event: AnyEvent): void {
   if (logged.has(key)) return
   if (logged.size > 500) logged.clear()
   logged.add(key)
-  console.warn(`[hangar] IPC recusado: "${channel}" de ${type}${event.senderFrame?.parent ? ' (subframe)' : ''} em ${url}`)
+  console.warn(
+    `[hangar] IPC recusado: "${channel}" de ${type}${event.senderFrame?.parent ? ' (subframe)' : ''} em ${url}`
+  )
 }
 
 /** Wraps ipcMain so every handler checks its sender. Call before anything registers IPC. */
@@ -80,13 +83,15 @@ export function installIpcGuard(): void {
   type Invoke = (event: IpcMainInvokeEvent, ...args: any[]) => unknown
   type Listener = (event: IpcMainEvent, ...args: any[]) => void
 
-  const guardInvoke = (channel: string, listener: Invoke): Invoke => (event, ...args) => {
-    if (!isTrustedSender(event)) {
-      refuse(channel, event)
-      throw new Error(`IPC recusado: "${channel}" só atende a janela do Hangar.`)
+  const guardInvoke =
+    (channel: string, listener: Invoke): Invoke =>
+    (event, ...args) => {
+      if (!isTrustedSender(event)) {
+        refuse(channel, event)
+        throw new Error(`IPC recusado: "${channel}" só atende a janela do Hangar.`)
+      }
+      return listener(event, ...args)
     }
-    return listener(event, ...args)
-  }
   const guardListener = (channel: string, listener: Listener): Listener => {
     const wrapped: Listener = (event, ...args) => {
       if (!isTrustedSender(event)) return refuse(channel, event)
@@ -96,13 +101,19 @@ export function installIpcGuard(): void {
     return wrapped
   }
 
-  ipcMain.handle = ((channel: string, listener: Invoke) => handle(channel, guardInvoke(channel, listener))) as typeof ipcMain.handle
+  ipcMain.handle = ((channel: string, listener: Invoke) =>
+    handle(channel, guardInvoke(channel, listener))) as typeof ipcMain.handle
   ipcMain.handleOnce = ((channel: string, listener: Invoke) =>
     handleOnce(channel, guardInvoke(channel, listener))) as typeof ipcMain.handleOnce
-  ipcMain.on = ((channel: string, listener: Listener) => on(channel, guardListener(channel, listener))) as typeof ipcMain.on
-  ipcMain.once = ((channel: string, listener: Listener) => once(channel, guardListener(channel, listener))) as typeof ipcMain.once
+  ipcMain.on = ((channel: string, listener: Listener) =>
+    on(channel, guardListener(channel, listener))) as typeof ipcMain.on
+  ipcMain.once = ((channel: string, listener: Listener) =>
+    once(channel, guardListener(channel, listener))) as typeof ipcMain.once
   const remove = ((channel: string, listener: Listener) =>
-    removeListener(channel, (wrappers.get(listener) as Listener | undefined) ?? listener)) as typeof ipcMain.removeListener
+    removeListener(
+      channel,
+      (wrappers.get(listener) as Listener | undefined) ?? listener
+    )) as typeof ipcMain.removeListener
   ipcMain.removeListener = remove
   ipcMain.off = remove
 }

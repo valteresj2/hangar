@@ -173,7 +173,10 @@ export function ComponentsEditor(props: ComponentsEditorProps) {
             onChange={(e) => {
               const kind = e.target.value as TemplateKind | 'path'
               if (!kind) return
-              if (kind !== 'path' && !NAMED_TEMPLATES.includes(kind)) void Promise.resolve(props.onCreate(kind, '')).then((c) => c[0] && setSelected(c[0])).catch((err) => setError(errorText(err)))
+              if (kind !== 'path' && !NAMED_TEMPLATES.includes(kind))
+                void Promise.resolve(props.onCreate(kind, ''))
+                  .then((c) => c[0] && setSelected(c[0]))
+                  .catch((err) => setError(errorText(err)))
               else setCreating({ kind, name: '' })
             }}
           >
@@ -202,7 +205,9 @@ export function ComponentsEditor(props: ComponentsEditorProps) {
           <input
             className="input"
             autoFocus
-            placeholder={creating.kind === 'path' ? '.claude/skills/minha-skill/referencia.md' : NAME_HINTS[creating.kind]}
+            placeholder={
+              creating.kind === 'path' ? '.claude/skills/minha-skill/referencia.md' : NAME_HINTS[creating.kind]
+            }
             value={creating.name}
             onChange={(e) => setCreating({ ...creating, name: e.target.value })}
             onKeyDown={(e) => {
@@ -247,8 +252,14 @@ export function ComponentsEditor(props: ComponentsEditorProps) {
             </div>
           ))}
           {props.skipped && props.skipped.length > 0 && (
-            <div className={styles.skipped} title={props.skipped.map((s) => `${s.path} (${s.reason === 'large' ? '> 256 KB' : 'binário'})`).join('\n')}>
-              {props.skipped.length} arquivo{props.skipped.length > 1 ? 's' : ''} não exibido{props.skipped.length > 1 ? 's' : ''} (binário ou &gt; 256 KB)
+            <div
+              className={styles.skipped}
+              title={props.skipped
+                .map((s) => `${s.path} (${s.reason === 'large' ? '> 256 KB' : 'binário'})`)
+                .join('\n')}
+            >
+              {props.skipped.length} arquivo{props.skipped.length > 1 ? 's' : ''} não exibido
+              {props.skipped.length > 1 ? 's' : ''} (binário ou &gt; 256 KB)
             </div>
           )}
         </nav>
@@ -263,7 +274,12 @@ export function ComponentsEditor(props: ComponentsEditorProps) {
                 {dirty && <span className={styles.unsaved}>não salvo</span>}
                 <div className={styles.spacer} />
                 {!readOnly && mode === 'save' && (
-                  <button className="btn btn-primary" disabled={!dirty || saving} onClick={() => void save()} title="Salvar (Ctrl+S)">
+                  <button
+                    className="btn btn-primary"
+                    disabled={!dirty || saving}
+                    onClick={() => void save()}
+                    title="Salvar (Ctrl+S)"
+                  >
                     {saving ? 'Salvando…' : 'Salvar'}
                   </button>
                 )}

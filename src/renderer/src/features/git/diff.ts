@@ -44,7 +44,8 @@ export function parseUnifiedDiff(text: string): { rows: DiffRow[]; truncated: bo
     if (sign === '+') rows.push({ kind: 'add', text: line.slice(1), newNo: newNo++ })
     else if (sign === '-') rows.push({ kind: 'del', text: line.slice(1), oldNo: oldNo++ })
     else if (sign === '\\') rows.push({ kind: 'note', text: line })
-    else if (inHunk && (sign === ' ' || line === '')) rows.push({ kind: 'ctx', text: line.slice(1), oldNo: oldNo++, newNo: newNo++ })
+    else if (inHunk && (sign === ' ' || line === ''))
+      rows.push({ kind: 'ctx', text: line.slice(1), oldNo: oldNo++, newNo: newNo++ })
     else {
       // Outside a hunk: file headers of the (next) file.
       inHunk = false
@@ -60,7 +61,8 @@ export function toSplitRows(rows: DiffRow[]): SplitRow[] {
   let dels: DiffRow[] = []
   let adds: DiffRow[] = []
   const flush = () => {
-    for (let i = 0; i < Math.max(dels.length, adds.length); i++) out.push({ kind: 'pair', left: dels[i], right: adds[i] })
+    for (let i = 0; i < Math.max(dels.length, adds.length); i++)
+      out.push({ kind: 'pair', left: dels[i], right: adds[i] })
     dels = []
     adds = []
   }

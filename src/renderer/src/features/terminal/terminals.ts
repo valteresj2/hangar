@@ -207,7 +207,10 @@ function adopt(info: TerminalInfo, buffer = '', seq = 0, activate = true): void 
   useTerminals.setState((s) => {
     const ids = s.order[info.sessionId] ?? []
     return {
-      tabs: { ...s.tabs, [info.id]: { id: info.id, sessionId: info.sessionId, title: info.title, shellId: info.shellId } },
+      tabs: {
+        ...s.tabs,
+        [info.id]: { id: info.id, sessionId: info.sessionId, title: info.title, shellId: info.shellId }
+      },
       order: { ...s.order, [info.sessionId]: [...ids, info.id] },
       active: activate || !s.active[info.sessionId] ? { ...s.active, [info.sessionId]: info.id } : s.active
     }
@@ -278,7 +281,8 @@ export async function openTerminal(session: Session, shell?: string): Promise<vo
     adopt(info) // no-op when the `created` event already did it
     useTerminals.setState({ error: undefined })
   } catch (err) {
-    const message = err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err)
+    const message =
+      err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err)
     useTerminals.setState({ error: `Não foi possível abrir o terminal: ${message}` })
   }
 }
@@ -307,7 +311,9 @@ export function startTerminals(): void {
     // Killed by us (tab closed / session removed) or a clean `exit`: close the tab.
     if (ev.killed || ev.code === 0) return dropTab(ev.id)
     entry.term.write(`\r\n\x1b[90m[Processo encerrado com código ${ev.code}]\x1b[0m\r\n`)
-    useTerminals.setState((s) => (s.tabs[ev.id] ? { tabs: { ...s.tabs, [ev.id]: { ...s.tabs[ev.id], exitCode: ev.code } } } : s))
+    useTerminals.setState((s) =>
+      s.tabs[ev.id] ? { tabs: { ...s.tabs, [ev.id]: { ...s.tabs[ev.id], exitCode: ev.code } } } : s
+    )
   })
 
   void Promise.all([

@@ -50,9 +50,15 @@ function OptionsBar({
 
   const apply = (patch: EngineOptions) => void bridge.invoke(ENGINE.setOptions, session.id, patch)
   const switchProvider = (id: string) =>
-    bridge.invoke(ENGINE.setProvider, session.id, id).catch((err: unknown) =>
-      onError(err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err))
-    )
+    bridge
+      .invoke(ENGINE.setProvider, session.id, id)
+      .catch((err: unknown) =>
+        onError(
+          err instanceof Error
+            ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '')
+            : String(err)
+        )
+      )
 
   return (
     <div className={styles.optionsBar}>
@@ -67,7 +73,9 @@ function OptionsBar({
         value={providerId}
         onChange={(e) => void switchProvider(e.target.value)}
       >
-        {!profile && <option value={providerId}>{providers.length ? `${providerId} (não encontrado)` : 'Provedor…'}</option>}
+        {!profile && (
+          <option value={providerId}>{providers.length ? `${providerId} (não encontrado)` : 'Provedor…'}</option>
+        )}
         {providers.map((p) => (
           <option key={p.id} value={p.id}>
             ⛁ {p.name}
@@ -110,7 +118,12 @@ function OptionsBar({
           <option value={CUSTOM}>Outro…</option>
         </select>
       )}
-      <select className={styles.select} title="Esforço" value={effort} onChange={(e) => apply({ effort: e.target.value as Effort })}>
+      <select
+        className={styles.select}
+        title="Esforço"
+        value={effort}
+        onChange={(e) => apply({ effort: e.target.value as Effort })}
+      >
         {EFFORTS.map((o) => (
           <option key={o.value} value={o.value}>
             Esforço: {o.label}
@@ -161,9 +174,7 @@ interface Props {
   onError(message: string): void
 }
 
-type Menu =
-  | { kind: 'slash'; items: SlashCommandInfo[] }
-  | { kind: 'file'; items: string[]; start: number }
+type Menu = { kind: 'slash'; items: SlashCommandInfo[] } | { kind: 'file'; items: string[]; start: number }
 
 /** `@token` right before the caret, if any. */
 function mentionAt(text: string, caret: number): { query: string; start: number } | undefined {
@@ -176,7 +187,21 @@ function mentionFor(path: string): string {
 }
 
 export function Composer(props: Props) {
-  const { session, busy, attachments, setAttachments, images, setImages, draft, providers, output, setOutput, onSend, onStop, onError } = props
+  const {
+    session,
+    busy,
+    attachments,
+    setAttachments,
+    images,
+    setImages,
+    draft,
+    providers,
+    output,
+    setOutput,
+    onSend,
+    onStop,
+    onError
+  } = props
   const [text, setText] = useState('')
   const [caret, setCaret] = useState(0)
   const [commands, setCommands] = useState<SlashCommandInfo[]>([])
@@ -211,7 +236,9 @@ export function Composer(props: Props) {
   useEffect(() => {
     if (slashQuery === undefined || loadedCommands.current) return
     loadedCommands.current = true
-    void bridge.invoke<SlashCommandInfo[]>(ENGINE.slashCommands, session.id).then(setCommands, () => (loadedCommands.current = false))
+    void bridge
+      .invoke<SlashCommandInfo[]>(ENGINE.slashCommands, session.id)
+      .then(setCommands, () => (loadedCommands.current = false))
   }, [slashQuery, session.id])
 
   const mentionQuery = mention?.query
@@ -393,7 +420,11 @@ export function Composer(props: Props) {
             {images.map((img) => (
               <span key={img.id} className={styles.thumbWrap}>
                 <img className={styles.thumb} src={img.url} alt="Imagem colada" />
-                <button className={styles.thumbX} title="Remover" onClick={() => setImages((all) => all.filter((x) => x.id !== img.id))}>
+                <button
+                  className={styles.thumbX}
+                  title="Remover"
+                  onClick={() => setImages((all) => all.filter((x) => x.id !== img.id))}
+                >
                   ×
                 </button>
               </span>
@@ -401,7 +432,11 @@ export function Composer(props: Props) {
             {attachments.map((a) => (
               <span key={a} className={styles.chip} title={a}>
                 📎 {basename(a)}
-                <button className={styles.chipX} title="Remover" onClick={() => setAttachments((all) => all.filter((x) => x !== a))}>
+                <button
+                  className={styles.chipX}
+                  title="Remover"
+                  onClick={() => setAttachments((all) => all.filter((x) => x !== a))}
+                >
                   ×
                 </button>
               </span>

@@ -26,7 +26,17 @@ export function anchorBelow(el: HTMLElement): MenuAnchor {
   return { x: r.left, y: r.bottom + 4 }
 }
 
-function MenuList({ items, onClose, at, nested }: { items: MenuItem[]; onClose: () => void; at: MenuAnchor; nested?: boolean }) {
+function MenuList({
+  items,
+  onClose,
+  at,
+  nested
+}: {
+  items: MenuItem[]
+  onClose: () => void
+  at: MenuAnchor
+  nested?: boolean
+}) {
   const ref = useRef<HTMLDivElement>(null)
   const [pos, setPos] = useState(at)
   const [openSub, setOpenSub] = useState<{ index: number; at: MenuAnchor }>()
@@ -36,13 +46,22 @@ function MenuList({ items, onClose, at, nested }: { items: MenuItem[]; onClose: 
     const el = ref.current
     if (!el) return
     const r = el.getBoundingClientRect()
-    const x = at.x + r.width > window.innerWidth - 4 ? Math.max(4, (nested ? at.x - r.width * 2 : window.innerWidth - r.width - 4)) : at.x
+    const x =
+      at.x + r.width > window.innerWidth - 4
+        ? Math.max(4, nested ? at.x - r.width * 2 : window.innerWidth - r.width - 4)
+        : at.x
     const y = at.y + r.height > window.innerHeight - 4 ? Math.max(4, window.innerHeight - r.height - 4) : at.y
     setPos({ x, y })
   }, [at.x, at.y, nested])
 
   return (
-    <div ref={ref} className={styles.menu} style={{ left: pos.x, top: pos.y }} role="menu" onContextMenu={(e) => e.preventDefault()}>
+    <div
+      ref={ref}
+      className={styles.menu}
+      style={{ left: pos.x, top: pos.y }}
+      role="menu"
+      onContextMenu={(e) => e.preventDefault()}
+    >
       {items.map((item, i) =>
         item.separator ? (
           <div key={i} className={styles.menuSep} />
@@ -73,10 +92,13 @@ function MenuList({ items, onClose, at, nested }: { items: MenuItem[]; onClose: 
           </button>
         )
       )}
-      {openSub && (() => {
-        const item = items[openSub.index]
-        return item && !item.separator && item.submenu ? <MenuList items={item.submenu} onClose={onClose} at={openSub.at} nested /> : null
-      })()}
+      {openSub &&
+        (() => {
+          const item = items[openSub.index]
+          return item && !item.separator && item.submenu ? (
+            <MenuList items={item.submenu} onClose={onClose} at={openSub.at} nested />
+          ) : null
+        })()}
     </div>
   )
 }

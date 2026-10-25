@@ -62,13 +62,21 @@ test('rodada manual do Lab com K=1: variantes, seleção cega e limpeza', async 
   await page.getByText('Escolher A').click()
   await page.getByPlaceholder(/Por quê\?/).fill('Escolha do teste E2E.')
   await page.getByRole('button', { name: 'Confirmar A' }).click()
-  await expect.poll(async () => (await invoke<RoundView[]>('lab:list', repo)).find((r) => r.id === created.id)?.status, { timeout: 30_000 }).toBe('decided')
+  await expect
+    .poll(async () => (await invoke<RoundView[]>('lab:list', repo)).find((r) => r.id === created.id)?.status, {
+      timeout: 30_000
+    })
+    .toBe('decided')
   const decided = (await invoke<RoundView[]>('lab:list', repo)).find((r) => r.id === created.id)!
   expect(Object.keys(decided.blindMap ?? {}).sort()).toEqual(['A', 'B'])
 
   // Cleanup removes the round's worktrees (the fixture accepts any confirmation dialog).
   await page.getByRole('button', { name: 'Limpar worktrees e sessões' }).click()
-  await expect.poll(async () => (await invoke<RoundView[]>('lab:list', repo)).find((r) => r.id === created.id)?.cleanedUp, { timeout: 60_000 }).toBe(true)
+  await expect
+    .poll(async () => (await invoke<RoundView[]>('lab:list', repo)).find((r) => r.id === created.id)?.cleanedUp, {
+      timeout: 60_000
+    })
+    .toBe(true)
   for (const wt of worktrees) expect(existsSync(wt)).toBe(false)
   const listed = git(repo, 'worktree', 'list', '--porcelain')
     .split('\n')

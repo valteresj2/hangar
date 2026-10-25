@@ -30,7 +30,11 @@ function safeName(title: string): string {
 }
 
 /** Save dialog for the .mp4; defaults to the session folder and a name derived from the title. */
-export async function exportDialog(win: BrowserWindow | undefined, sessionId: string, title: string): Promise<string | undefined> {
+export async function exportDialog(
+  win: BrowserWindow | undefined,
+  sessionId: string,
+  title: string
+): Promise<string | undefined> {
   let dir: string
   try {
     dir = sessionDir(sessionId)

@@ -48,7 +48,15 @@ function load(): void {
 
 function save(): void {
   const tmp = `${file()}.tmp`
-  writeFileSync(tmp, JSON.stringify(tasks.map(({ nextRunAt: _, ...t }) => t), null, 2), 'utf8')
+  writeFileSync(
+    tmp,
+    JSON.stringify(
+      tasks.map(({ nextRunAt: _, ...t }) => t),
+      null,
+      2
+    ),
+    'utf8'
+  )
   renameSync(tmp, file())
   broadcast(SETTINGS.schedulesChanged)
 }
@@ -57,7 +65,10 @@ function schedule(task: ScheduledTask): void {
   jobs.get(task.id)?.destroy()
   jobs.delete(task.id)
   if (!task.enabled || !cron.validate(task.cron)) return
-  const job = cron.schedule(task.cron, () => void runTask(task.id, false), { name: `hangar-${task.id}`, noOverlap: true })
+  const job = cron.schedule(task.cron, () => void runTask(task.id, false), {
+    name: `hangar-${task.id}`,
+    noOverlap: true
+  })
   jobs.set(task.id, job)
 }
 
@@ -164,7 +175,10 @@ export function validateCron(expr: string): CronCheck {
   if (!trimmed) return { valid: false, error: 'Informe uma expressão cron.' }
   const detail = cron.validateDetailed(trimmed)
   if (!detail.valid) {
-    return { valid: false, error: detail.errors.map((e) => `${e.field}: ${e.message}`).join('; ') || 'Expressão inválida.' }
+    return {
+      valid: false,
+      error: detail.errors.map((e) => `${e.field}: ${e.message}`).join('; ') || 'Expressão inválida.'
+    }
   }
   const probe = cron.createTask(trimmed, () => undefined)
   try {
