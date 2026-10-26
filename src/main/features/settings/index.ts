@@ -2,6 +2,7 @@
 // CLI info/login, MCP servers, skills/plugins, scheduled tasks, theme, notifications, tray, Quick Entry and
 // provider profiles.
 
+import { BRAND } from '../../../shared/brand'
 import { app, dialog, nativeTheme } from 'electron'
 import { join } from 'node:path'
 import type { StoreChange } from '../../../shared/contracts'
@@ -16,6 +17,7 @@ import {
 import { bus } from '../../core/bus'
 import type { Feature } from '../../core/feature'
 import { settings } from '../../core/store'
+import { sdkVersions, thirdPartyNotices } from './about'
 import { authStatus, cliInfo } from './cli'
 import { claudeDir, listPlugins, listSkills } from './extensions'
 import { mcpAdd, mcpGet, mcpList, mcpLog, mcpRemove, mcpSetEnabled } from './mcp'
@@ -80,14 +82,19 @@ export const settingsFeature: Feature = {
       const res = win ? await dialog.showOpenDialog(win, opts) : await dialog.showOpenDialog(opts)
       return res.canceled ? undefined : res.filePaths[0]
     })
-    handle(SETTINGS.testNotification, () => showNotification(ctx, 'Hangar', 'As notificações estão funcionando.'))
+    handle(SETTINGS.testNotification, () =>
+      showNotification(ctx, BRAND.productName, 'As notificações estão funcionando.')
+    )
     handle(SETTINGS.appInfo, (): AppInfo => ({
       version: app.getVersion(),
       electron: process.versions.electron,
       node: process.versions.node,
       chrome: process.versions.chrome,
-      dataDir: join(app.getPath('userData'), 'hangar-data')
+      dataDir: join(app.getPath('userData'), 'hangar-data'),
+      platform: `${process.platform} ${process.arch}`,
+      ...sdkVersions()
     }))
+    handle(SETTINGS.thirdPartyNotices, () => thirdPartyNotices())
 
     handle(SETTINGS.mcpList, (_e, cwd?: string) => mcpList(cwd))
     handle(SETTINGS.mcpGet, (_e, name: string, cwd?: string) => mcpGet(name, cwd))

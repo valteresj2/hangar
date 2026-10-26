@@ -7,7 +7,7 @@
 // The default provider is a gateway profile pointing at the mock with a fake token, so no test can reach the
 // real Anthropic API or use the user's subscription.
 import { _electron as electron, test as base, expect, type ElectronApplication, type Page } from '@playwright/test'
-import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
@@ -63,9 +63,17 @@ export interface Hangar {
 interface Fixtures {
   mock: MockAnthropic
   hangar: Hangar
+  /**
+   * A real Hangar userData folder whose provider profiles the test app starts with (opt-in specs that reach real
+   * models, e.g. bench-real.spec.ts). Only the profile list, its encrypted secrets and the OS-encrypted key that
+   * protects them (Local State) are copied; the app decrypts them itself, and the test never reads a secret.
+   */
+  seedProvidersFrom: string | undefined
 }
 
 export const test = base.extend<Fixtures>({
+  seedProvidersFrom: [undefined, { option: true }],
+
   // eslint-disable-next-line no-empty-pattern
   mock: async ({}, use) => {
     const mock = await startMockAnthropic({ log: process.env.MOCK_LOG ? (l) => console.log(`[mock] ${l}`) : undefined })
@@ -75,7 +83,7 @@ export const test = base.extend<Fixtures>({
     await mock.close()
   },
 
-  hangar: async ({ mock }, use, testInfo) => {
+  hangar: async ({ mock, seedProvidersFrom }, use, testInfo) => {
     const root = mkdtempSync(join(tmpdir(), 'hangar-e2e-'))
     const userData = join(root, 'userData')
     const claudeConfig = join(root, 'claude')
@@ -98,6 +106,14 @@ export const test = base.extend<Fixtures>({
       )
     )
 
+    if (seedProvidersFrom) {
+      const settingsDir = join(userData, 'hangar-data', 'settings')
+      mkdirSync(settingsDir, { recursive: true })
+      copyFileSync(join(seedProvidersFrom, 'Local State'), join(userData, 'Local State'))
+      for (const f of ['providers.json', 'providers.secrets.json'])
+        copyFileSync(join(seedProvidersFrom, 'hangar-data', 'settings', f), join(settingsDir, f))
+    }
+
     const app = await electron.launch({
       args: [REPO_ROOT, `--user-data-dir=${userData}`],
       cwd: REPO_ROOT,
@@ -107,7 +123,8 @@ export const test = base.extend<Fixtures>({
     await app.context().tracing.start({ screenshots: true, snapshots: true })
     const page = await app.firstWindow()
     page.on('dialog', (d) => void d.accept())
-    await page.waitForSelector('#root > *')
+    // The splash (index.html) is in #root until React's first render replaces it.
+    await page.waitForSelector('#root > :not(.splash)')
 
     const invoke = <T>(channel: string, ...args: unknown[]) =>
       page.evaluate(([c, a]) => window.hangar.invoke<T>(c, ...a), [channel, args] as const)

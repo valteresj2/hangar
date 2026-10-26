@@ -37,7 +37,7 @@ const fail = (msg) => problems.push(msg)
 function resourcesDir() {
   if (os !== 'mac') return join(dir, 'resources')
   const app = existsSync(dir) ? readdirSync(dir).find((f) => f.endsWith('.app')) : undefined
-  return app ? join(dir, app, 'Contents', 'Resources') : join(dir, 'Hangar.app', 'Contents', 'Resources')
+  return app ? join(dir, app, 'Contents', 'Resources') : join(dir, 'Agent Hangar Desktop.app', 'Contents', 'Resources')
 }
 
 /** CPU architecture from a PE / ELF / Mach-O header ('x64' | 'arm64' | 'x64+arm64' | undefined). */

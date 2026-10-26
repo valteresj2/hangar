@@ -15,6 +15,7 @@ export const settingsApi = {
   pickFile: (defaultPath?: string) => bridge.invoke(SETTINGS.pickFile, defaultPath),
   testNotification: () => bridge.invoke(SETTINGS.testNotification),
   appInfo: () => bridge.invoke(SETTINGS.appInfo),
+  thirdPartyNotices: () => bridge.invoke(SETTINGS.thirdPartyNotices),
   mcpList: (cwd?: string) => bridge.invoke(SETTINGS.mcpList, cwd),
   mcpGet: (name: string, cwd?: string) => bridge.invoke(SETTINGS.mcpGet, name, cwd),
   mcpAdd: (input: McpAddInput) => bridge.invoke(SETTINGS.mcpAdd, input),

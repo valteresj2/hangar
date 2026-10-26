@@ -1,4 +1,5 @@
 // Connection indicator for the sidebar footer: avatar (or initial), company and state. Opens Settings → Plataforma.
+import { BrandMark } from '../../shell/Brand'
 import { useUi } from '../../core/ui'
 import { statusLabel, usePlatform } from './api'
 import { Avatar, StatusDot } from './parts'
@@ -20,7 +21,13 @@ export function PlatformIndicator() {
             : 'Plataforma Agent Hangar: ver a conexão'
         }
       >
-        {connected ? <Avatar user={state.user} size={22} /> : <span className={styles.indicatorIcon}>⌂</span>}
+        {connected ? (
+          <Avatar user={state.user} size={22} />
+        ) : (
+          <span className={styles.indicatorIcon}>
+            <BrandMark size={14} color="currentColor" />
+          </span>
+        )}
         <span className={styles.indicatorText}>
           <span className={styles.indicatorTitle}>
             {connected ? (state.org?.name ?? state.user?.name) : blocking ? 'Conectar à plataforma' : 'Plataforma'}

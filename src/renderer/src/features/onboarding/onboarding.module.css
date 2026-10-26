@@ -31,18 +31,6 @@
   letter-spacing: normal;
 }
 
-.logo {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: var(--radius-sm);
-  background: var(--accent);
-  color: var(--accent-text);
-  font-weight: 700;
-}
-
 .spacer {
   flex: 1;
 }

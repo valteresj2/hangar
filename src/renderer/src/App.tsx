@@ -9,6 +9,7 @@ import { useRow, useSettings } from './core/data'
 import { useUi } from './core/ui'
 import { SidePanel } from './shell/SidePanel'
 import { TopBar } from './shell/TopBar'
+import { TitleBar } from './shell/Brand'
 import styles from './shell/shell.module.css'
 
 function useThemeAttribute(): void {
@@ -27,6 +28,17 @@ function useThemeAttribute(): void {
 }
 
 export function App() {
+  return (
+    <div className={styles.window}>
+      <TitleBar />
+      <div className={styles.windowBody}>
+        <AppBody />
+      </div>
+    </div>
+  )
+}
+
+function AppBody() {
   useThemeAttribute()
   const { activeSessionId, sidebarOpen, sidePanelOpen, settingsOpen, setSettingsOpen, labCwd, closeLab } = useUi()
   const workspaceView = useUi((s) => s.workspaceView)

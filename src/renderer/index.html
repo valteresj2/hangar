@@ -7,10 +7,110 @@
       http-equiv="Content-Security-Policy"
       content="default-src 'self'; script-src 'self' 'wasm-unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws: http://localhost:* https:; frame-src 'self' blob: data: https: http://localhost:*"
     />
-    <title>Hangar</title>
+    <title>Agent Hangar Desktop</title>
+    <!--
+      Splash: plain HTML/CSS inside #root, so it is the window's first paint (the window shows on ready-to-show) and
+      React replaces it on its first render. It fades in after a short delay, so a fast start (or the Quick Entry
+      window, which shares this page) never flashes it.
+    -->
+    <style>
+      html,
+      body,
+      #root {
+        height: 100%;
+        margin: 0;
+      }
+      .splash {
+        height: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 18px;
+        background: radial-gradient(circle at 50% 38%, #26313e 0%, #1c2530 55%, #151c25 100%);
+        color: #f3f5f7;
+        font-family:
+          'Segoe UI',
+          system-ui,
+          -apple-system,
+          sans-serif;
+        opacity: 0;
+        animation: splash-in 0.35s ease-out 0.15s forwards;
+        -webkit-app-region: drag;
+        user-select: none;
+      }
+      .splash-name {
+        font-size: 24px;
+        font-weight: 700;
+        letter-spacing: 0.01em;
+      }
+      .splash-tag {
+        margin-top: 4px;
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.22em;
+        text-transform: uppercase;
+        color: #f4b400;
+        text-align: center;
+      }
+      .splash-bar {
+        width: 140px;
+        height: 3px;
+        border-radius: 2px;
+        background: #26313e;
+        overflow: hidden;
+      }
+      .splash-bar::after {
+        content: '';
+        display: block;
+        width: 40%;
+        height: 100%;
+        border-radius: 2px;
+        background: #f4b400;
+        animation: splash-run 1.1s ease-in-out infinite;
+      }
+      @keyframes splash-in {
+        to {
+          opacity: 1;
+        }
+      }
+      @keyframes splash-run {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(250%);
+        }
+      }
+      @media (prefers-reduced-motion: reduce) {
+        .splash,
+        .splash-bar::after {
+          animation: none;
+          opacity: 1;
+        }
+      }
+    </style>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root">
+      <div class="splash" role="status" aria-label="Carregando o Agent Hangar Desktop">
+        <svg width="88" height="88" viewBox="0 0 1024 1024" aria-hidden="true">
+          <path
+            d="M232 742 V444 L512 282 L792 444 V742 H694 V512 H330 V742 Z"
+            fill="none"
+            stroke="#f4b400"
+            stroke-width="46"
+            stroke-linejoin="round"
+            stroke-linecap="round"
+          />
+        </svg>
+        <div>
+          <div class="splash-name">Agent Hangar</div>
+          <div class="splash-tag">Desktop</div>
+        </div>
+        <div class="splash-bar"></div>
+      </div>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

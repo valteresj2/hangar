@@ -1,6 +1,7 @@
 // Connection to the Agent Hangar platform: effective config (Windows policy over the app's own choice), login,
 // device registration, heartbeat, synced token models (./models.ts) and logout. Every change is broadcast as
 // PlatformState.
+import { BRAND } from '../../../shared/brand'
 import { app, net, Notification, powerMonitor } from 'electron'
 import { randomUUID } from 'node:crypto'
 import { hostname, release } from 'node:os'
@@ -223,7 +224,8 @@ export function currentLogin(): { url: string; userId: string; name: string } | 
 
 function notify(tone: PlatformNotice['tone'], message: string, desktop = false): void {
   notice = { tone, message, at: Date.now() }
-  if (desktop && Notification.isSupported()) new Notification({ title: 'Hangar · Plataforma', body: message }).show()
+  if (desktop && Notification.isSupported())
+    new Notification({ title: `${BRAND.wordmark} · Plataforma`, body: message }).show()
 }
 
 // ---------------------------------------------------------------- platform calls

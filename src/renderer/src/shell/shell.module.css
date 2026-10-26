@@ -45,15 +45,6 @@
   max-width: 40%;
 }
 
-.brand {
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-}
-.brand > svg {
-  color: var(--accent-ink);
-}
-
 .spacer {
   flex: 1;
 }
@@ -129,4 +120,70 @@
 }
 .resizer:hover {
   background: color-mix(in srgb, var(--accent) 45%, transparent);
+}
+
+/* ---- Window frame: our own title bar above every view (main window only) ---- */
+
+.window {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.windowBody {
+  flex: 1;
+  min-height: 0;
+}
+
+.titleBar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 12px;
+  /* Room for the native minimize/maximize/close buttons drawn over the right end (Windows, Linux). */
+  padding-right: calc(100% - env(titlebar-area-x, 0px) - env(titlebar-area-width, 100%) + 12px);
+  background: var(--tarmac);
+  border-bottom: 1px solid var(--tarmac-2);
+  color: #f3f5f7;
+  --wordmark-tag: var(--mark);
+  -webkit-app-region: drag;
+  user-select: none;
+}
+
+/* macOS: the traffic lights sit at the left. */
+.titleBarMac {
+  padding-left: 78px;
+}
+
+.wordmark {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 6px;
+  font-family: var(--font-sign);
+  line-height: 1;
+}
+
+.wordmarkName {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  color: inherit;
+}
+
+.wordmarkTag {
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  /* Mark yellow on the tarmac surfaces (they set --wordmark-tag); readable amber elsewhere. */
+  color: var(--wordmark-tag, var(--accent-ink));
+}
+
+.wordmarkLarge .wordmarkName {
+  font-size: 26px;
+}
+
+.wordmarkLarge .wordmarkTag {
+  font-size: 13px;
 }

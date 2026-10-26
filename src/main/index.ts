@@ -1,4 +1,6 @@
 import { app, BrowserWindow, nativeTheme } from 'electron'
+import { join } from 'node:path'
+import { BRAND } from '../shared/brand'
 import { installIpcGuard } from './core/ipcGuard'
 import { registerCoreIpc } from './core/ipc'
 import type { FeatureContext } from './core/feature'
@@ -14,6 +16,13 @@ import { features } from './features'
 import { providersReady } from './features/settings/providers'
 import { appIcon } from './features/settings/tray'
 import { deepLinkFromArgv, handleDeepLink, registerProtocol } from './features/workspace/api'
+
+// The installed app was called "Hangar" before it became "Agent Hangar Desktop": keep its data folder (sessions,
+// settings, encrypted keys) instead of following the new product name. Before anything reads userData (the
+// single-instance lock included). Tests and dev runs pass --user-data-dir or use the package name and are left alone.
+if (app.isPackaged && !app.commandLine.hasSwitch('user-data-dir')) {
+  app.setPath('userData', join(app.getPath('appData'), 'Hangar'))
+}
 
 // Before anything registers a handler: IPC only answers the Hangar renderer (see core/ipcGuard.ts).
 installIpcGuard()
@@ -37,11 +46,19 @@ function createWindow(): BrowserWindow {
     height: 900,
     minWidth: 900,
     minHeight: 600,
-    title: 'Hangar',
+    title: BRAND.productName,
     show: false,
-    backgroundColor: nativeTheme.shouldUseDarkColors ? '#1a1a19' : '#faf9f5',
+    // The splash (src/renderer/index.html) and the title bar are tarmac in both themes.
+    backgroundColor: '#1c2530',
     autoHideMenuBar: true,
     icon: appIcon(),
+    // Our own title bar (src/renderer/src/shell/TitleBar.tsx): the native controls stay, drawn over it.
+    ...(process.platform === 'darwin'
+      ? { titleBarStyle: 'hiddenInset' as const, trafficLightPosition: { x: 14, y: 11 } }
+      : {
+          titleBarStyle: 'hidden' as const,
+          titleBarOverlay: { color: '#1c2530', symbolColor: '#c9d1db', height: BRAND.titleBarHeight }
+        }),
     webPreferences: rendererWebPreferences({ webviewTag: true })
   })
   mainWindow = win

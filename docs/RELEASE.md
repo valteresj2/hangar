@@ -8,17 +8,17 @@ possível e é ligado só quando os segredos existem (veja [Assinatura de códig
 
 `<v>` é a versão do `package.json` (ex.: `0.2.0`).
 
-| Sistema             | Arquivo                             | O que é                                           | Atualiza sozinho?                  |
-| ------------------- | ----------------------------------- | ------------------------------------------------- | ---------------------------------- |
-| Windows x64         | `Hangar-Setup-<v>.exe`              | instalador NSIS (por usuário ou para todos)       | **sim** (`latest.yml`)             |
-| Windows x64         | `Hangar-<v>-portable-x64.exe`       | executável portátil, roda sem instalar            | não (baixar a versão nova)         |
-| Windows arm64       | `Hangar-<v>-portable-arm64.exe`     | executável portátil nativo para ARM               | não                                |
-| Linux x64           | `Hangar-<v>-linux-x86_64.AppImage`  | AppImage (um arquivo, qualquer distribuição)      | **sim** (`latest-linux.yml`)       |
-| Linux x64           | `hangar_<v>_amd64.deb`              | pacote Debian/Ubuntu                              | não (instalar o `.deb` novo)       |
-| Linux arm64         | `Hangar-<v>-linux-arm64.AppImage`   | AppImage para ARM                                 | **sim** (`latest-linux-arm64.yml`) |
-| Linux arm64         | `hangar_<v>_arm64.deb`              | pacote Debian/Ubuntu para ARM                     | não                                |
-| macOS Apple Silicon | `Hangar-<v>-mac-arm64.dmg` / `.zip` | imagem de disco (arrastar para Aplicativos) / zip | não — avisa e abre o download      |
-| macOS Intel         | `Hangar-<v>-mac-x64.dmg` / `.zip`   | idem, para Macs Intel                             | não — avisa e abre o download      |
+| Sistema             | Arquivo                                           | O que é                                           | Atualiza sozinho?                  |
+| ------------------- | ------------------------------------------------- | ------------------------------------------------- | ---------------------------------- |
+| Windows x64         | `Agent-Hangar-Desktop-Setup-<v>.exe`              | instalador NSIS (por usuário ou para todos)       | **sim** (`latest.yml`)             |
+| Windows x64         | `Agent-Hangar-Desktop-<v>-portable-x64.exe`       | executável portátil, roda sem instalar            | não (baixar a versão nova)         |
+| Windows arm64       | `Agent-Hangar-Desktop-<v>-portable-arm64.exe`     | executável portátil nativo para ARM               | não                                |
+| Linux x64           | `Agent-Hangar-Desktop-<v>-linux-x86_64.AppImage`  | AppImage (um arquivo, qualquer distribuição)      | **sim** (`latest-linux.yml`)       |
+| Linux x64           | `hangar_<v>_amd64.deb`                            | pacote Debian/Ubuntu                              | não (instalar o `.deb` novo)       |
+| Linux arm64         | `Agent-Hangar-Desktop-<v>-linux-arm64.AppImage`   | AppImage para ARM                                 | **sim** (`latest-linux-arm64.yml`) |
+| Linux arm64         | `hangar_<v>_arm64.deb`                            | pacote Debian/Ubuntu para ARM                     | não                                |
+| macOS Apple Silicon | `Agent-Hangar-Desktop-<v>-mac-arm64.dmg` / `.zip` | imagem de disco (arrastar para Aplicativos) / zip | não — avisa e abre o download      |
+| macOS Intel         | `Agent-Hangar-Desktop-<v>-mac-x64.dmg` / `.zip`   | idem, para Macs Intel                             | não — avisa e abre o download      |
 
 Junto vão os arquivos de atualização: `latest.yml` (+ `.blockmap` do instalador), `latest-linux.yml`,
 `latest-linux-arm64.yml` e `latest-mac.yml` (o macOS lê esse arquivo só para saber que há versão nova).
@@ -38,7 +38,7 @@ portátil arm64 ou o instalador x64 (roda emulado).
 - **SmartScreen** (“O Windows protegeu o computador”): clique em **Mais informações → Executar assim mesmo**. Aparece
   no instalador e no portátil, porque o arquivo não tem assinatura nem reputação de downloads.
 - **Arquivo bloqueado por ter vindo da internet**: botão direito no `.exe` → **Propriedades** → marque
-  **Desbloquear** → OK (ou, no PowerShell, `Unblock-File .\Hangar-Setup-<v>.exe`).
+  **Desbloquear** → OK (ou, no PowerShell, `Unblock-File .\Agent-Hangar-Desktop-Setup-<v>.exe`).
 - **Controle Inteligente de Aplicativos** (Smart App Control, Windows 11): quando está **ativado** (modo de
   imposição), ele **bloqueia** executáveis sem assinatura confiável e **não tem botão de liberar**. Opções:
   1. Usar outra máquina/usuário onde ele esteja em _Avaliação_ ou _Desativado_.
@@ -63,7 +63,7 @@ o Gatekeeper avisa na primeira abertura (“não é possível verificar o desenv
 4. Alternativa pelo Terminal (remove a marca de “baixado da internet”):
 
    ```sh
-   xattr -dr com.apple.quarantine /Applications/Hangar.app
+   xattr -dr com.apple.quarantine "/Applications/Agent Hangar Desktop.app"
    ```
 
 Se aparecer “o Hangar está danificado e não pode ser aberto”, é a quarentena num app sem notarização: use o comando
@@ -74,8 +74,8 @@ do passo 4. Baixe a versão certa: **arm64** para Apple Silicon (M1/M2/M3/M4…)
 - **AppImage**: dê permissão de execução e rode:
 
   ```sh
-  chmod +x Hangar-<v>-linux-x86_64.AppImage
-  ./Hangar-<v>-linux-x86_64.AppImage
+  chmod +x Agent-Hangar-Desktop-<v>-linux-x86_64.AppImage
+  ./Agent-Hangar-Desktop-<v>-linux-x86_64.AppImage
   ```
 
   Precisa de FUSE 2 (`sudo apt install libfuse2` no Ubuntu 22.04; `libfuse2t64` no 24.04). No Ubuntu 24.04+ o
@@ -113,7 +113,7 @@ do `npm ci` da máquina que compila.
 ```powershell
 npm run pack           # pasta desempacotada do SO atual (Windows: release/win-unpacked)
 npm run check:package  # confere os binários nativos da pasta acima (SO/arquitetura atuais)
-npm run dist           # Windows: release/Hangar-Setup-<v>.exe + .blockmap + latest.yml + Hangar-<v>-portable-x64.exe
+npm run dist           # Windows: release/Agent-Hangar-Desktop-Setup-<v>.exe + .blockmap + latest.yml + Agent-Hangar-Desktop-<v>-portable-x64.exe
 npm run dist:linux     # Linux: AppImage + .deb da arquitetura atual
 npm run dist:mac       # macOS: .dmg + .zip da arquitetura atual, assinatura ad hoc
 ```
@@ -362,7 +362,7 @@ Conferir no Windows: `node node_modules/@electron/fuses/dist/bin.js read --app r
 | Linux sem AppImage/`.deb` | desativado | pasta desempacotada: o painel explica que não se atualiza pelo app |
 
 O modo é decidido ao abrir (`src/main/features/updater/install-mode.ts`): macOS roda
-`codesign -dv --verbose=2 <Hangar.app>` (`Signature=adhoc`, `TeamIdentifier=not set`, sem assinatura ou qualquer coisa
+`codesign -dv --verbose=2 "<Agent Hangar Desktop.app>"` (`Signature=adhoc`, `TeamIdentifier=not set`, sem assinatura ou qualquer coisa
 que não seja _Developer ID Application_ ⇒ manual); Windows portátil é reconhecido por `PORTABLE_EXECUTABLE_FILE`
 (variável que o portátil do electron-builder define); o `.deb` pelo arquivo `resources/package-type` (`deb`). No modo
 manual o app só **verifica** o feed (`latest-mac.yml`, `latest.yml`, `latest-linux.yml`), nunca baixa nem instala; o
@@ -385,7 +385,7 @@ Comportamento geral (modo automático):
 
 ### Testar o fluxo sem publicar nada
 
-1. Gere um feed falso numa pasta: um arquivo qualquer como `Hangar-Setup-9.9.9.exe` e um `latest.yml` com
+1. Gere um feed falso numa pasta: um arquivo qualquer como `Agent-Hangar-Desktop-Setup-9.9.9.exe` e um `latest.yml` com
    `version: 9.9.9`, `path`, `sha512` (base64 do SHA-512 do arquivo) e `size`.
 2. Sirva a pasta por HTTP (ex.: `npx http-server <pasta> -p 18765`, ou qualquer servidor estático).
 3. Rode o app em dev apontando para ele: `$env:HANGAR_UPDATE_URL='http://127.0.0.1:18765/'; npm run dev`
@@ -397,13 +397,37 @@ Comportamento geral (modo automático):
    mostra o motivo e o botão _Nova versão disponível — baixar_; com o feed local o link é o próprio
    `http://127.0.0.1:…` (em dev o loopback é aceito; no app instalado, só https).
 
+## Identidade visual e avisos de terceiros
+
+O app se chama **Agent Hangar Desktop** (`productName`), da empresa **Agent Hangar** (copyright e mantenedor do
+`.deb`). Algumas coisas continuam com o nome antigo para não quebrar instalações existentes:
+
+- o executável continua `Hangar.exe` (`executableName`);
+- o `appId` continua `dev.hangar.app`;
+- o protocolo continua `hangar://`;
+- a pasta de dados continua `…/Hangar`, fixada em `src/main/index.ts`.
+
+Quem atualiza a partir das versões "Hangar" mantém sessões, configurações e chaves.
+
+- **Ícones e imagens do instalador**: `npm run icons` (Electron, `build/make-icons.cjs`) gera a partir do logo
+  (hangar em contorno com telhado de duas águas) os arquivos abaixo. Abaixo de 32 px o desenho usa um traço mais
+  grosso.
+  - `build/icon.{png,ico,icns}`;
+  - `build/installerHeader.bmp` e `build/installerSidebar.bmp` (NSIS);
+  - `resources/icon.png` (janela e notificações);
+  - `resources/tray*.png` (bandeja) e `resources/trayTemplate*.png` (barra de menus do macOS).
+- **Avisos de terceiros**: `npm run notices` (`build/third-party.cjs`) lista em `resources/third-party-notices.json`
+  todos os pacotes distribuídos com o app, com versão, licença e texto da licença. O app mostra essa lista em
+  Configurações → Sobre. Rode o comando após mudar dependências; `npm run check:notices` diz se o arquivo está em dia.
+- `resources/**` vai no pacote fora do asar (`asarUnpack`), porque o `nativeImage` lê os ícones do disco.
+
 ## Checklist de release
 
 - [ ] `version` atualizada e tag `v<versão>` igual.
 - [ ] Repositório público (feed nas próprias Releases) ou, para outro feed, `RELEASES_TOKEN` válido / feed genérico
       configurado.
 - [ ] Todos os jobs `build` verdes (o passo _Native modules in the package_ confere node-pty e `claude` por SO/CPU).
-- [ ] Release publicada no feed com: `Hangar-Setup-<v>.exe` + `.blockmap` + `latest.yml`, portáteis x64/arm64,
+- [ ] Release publicada no feed com: `Agent-Hangar-Desktop-Setup-<v>.exe` + `.blockmap` + `latest.yml`, portáteis x64/arm64,
       AppImages + `latest-linux.yml`/`latest-linux-arm64.yml`, `.deb`, `.dmg`/`.zip` arm64 e x64 + `latest-mac.yml`
       com os dois zips.
 - [ ] Instalar numa máquina limpa de cada SO, abrir pelo caminho “sem assinatura” acima e conferir _Configurações →

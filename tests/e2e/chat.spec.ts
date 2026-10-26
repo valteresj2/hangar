@@ -5,7 +5,9 @@ import { expect, test } from './fixtures'
 
 test('tela inicial', async ({ hangar }) => {
   const { page } = hangar
-  await expect(page).toHaveTitle('Hangar')
+  await expect(page).toHaveTitle('Agent Hangar Desktop')
+  // Our own title bar with the brand (the window is frameless).
+  await expect(page.getByRole('banner', { name: 'Agent Hangar Desktop' })).toContainText('Agent Hangar')
   // Onboarding already done: straight to the main screen (sidebar + new session view).
   await expect(page.getByRole('button', { name: /Nova sessão/ }).first()).toBeVisible()
   await expect(page.getByText('Escolher pasta').first()).toBeVisible()

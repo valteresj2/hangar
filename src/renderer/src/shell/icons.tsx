@@ -34,10 +34,3 @@ export const GearIcon = () => (
 )
 
 // The console's brand mark: a hangar outline.
-export const HangarLogo = ({ size = 20 }: { size?: number }) => (
-  <Svg size={size}>
-    <path d="M2.5 20.5V11L12 3.5 21.5 11v9.5" />
-    <path d="M6.5 20.5v-6h11v6" />
-    <path d="M9.5 14.5v6M14.5 14.5v6" />
-  </Svg>
-)

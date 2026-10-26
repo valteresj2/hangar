@@ -1,5 +1,7 @@
 // First-run assistant: Boas-vindas → Plataforma (when not off) → Diagnóstico → Provedor → Pasta inicial → Pronto.
 // Shown full screen by App while settings.onboardingDone is false; "Pular" ends it from any step.
+import { BRAND } from '@shared/brand'
+import { BrandMark, Wordmark } from '../../shell/Brand'
 import { useEffect, useState } from 'react'
 import type { ProviderSummary } from '@shared/features/onboarding'
 import { api } from '../../core/api'
@@ -56,7 +58,7 @@ const finish = () => api.patchSettings({ onboardingDone: true })
 function Welcome() {
   return (
     <>
-      <h1>Bem-vindo ao Hangar</h1>
+      <h1>Bem-vindo ao {BRAND.productName}</h1>
       <p className={styles.lead}>
         Um app desktop para rodar e acompanhar sessões do Claude Code: chat com ferramentas, terminal, alterações do
         git, navegador e artifacts lado a lado. Em poucos passos vamos conferir se está tudo pronto.
@@ -257,8 +259,8 @@ export function OnboardingView() {
     <div className={styles.root}>
       <div className={styles.panel}>
         <div className={styles.brand}>
-          <span className={styles.logo}>H</span>
-          Hangar
+          <BrandMark size={28} />
+          <Wordmark />
           <span className={styles.spacer} />
           {!blocking && (
             <button className="btn" onClick={() => void finish()} title="Fecha o assistente (Esc)">
