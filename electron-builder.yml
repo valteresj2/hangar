@@ -10,10 +10,10 @@ copyright: Copyright © 2026 Valter Eduardo
 
 # Written into the packaged package.json. desktopName is the Linux .desktop file name: Electron uses it as the window
 # app_id and as the handler name in setAsDefaultProtocolClient('hangar'), so it must match the file the .deb installs
-# (linux.syncDesktopName). homepage is required by the .deb metadata (the source repo is private).
+# (linux.syncDesktopName). homepage is required by the .deb metadata.
 extraMetadata:
   desktopName: hangar.desktop
-  homepage: https://github.com/valteresj2/hangar-releases
+  homepage: https://github.com/valteresj2/hangar
 
 directories:
   output: release
@@ -67,12 +67,12 @@ electronFuses:
   grantFileProtocolExtraPrivileges: true
 
 # Auto-update feed, embedded in the app as resources/app-update.yml. It must be PUBLIC: the app cannot carry a token.
-# The source repo (valteresj2/hangar) is private, so releases go to a separate public repo. CI can override the target
+# The source repo (valteresj2/hangar) is public, so its own GitHub Releases are the feed. CI can override the target
 # (see .github/workflows/release.yml and docs/RELEASE.md).
 publish:
   provider: github
   owner: valteresj2
-  repo: hangar-releases
+  repo: hangar
   releaseType: release
 
 # ---------------------------------------------------------------------------------------------------------- Windows

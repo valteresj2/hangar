@@ -203,14 +203,16 @@ jobs:
     needs: [prepare, build]
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    permissions:
+      contents: write # the release is created in this repository with GITHUB_TOKEN
     env:
       VERSION: ${{ needs.prepare.outputs.version }}
       UPDATE_PROVIDER: ${{ vars.UPDATE_PROVIDER }}
       UPDATE_GITHUB_OWNER: ${{ vars.UPDATE_GITHUB_OWNER }}
       UPDATE_GITHUB_REPO: ${{ vars.UPDATE_GITHUB_REPO }}
-      # Token that can create releases in the PUBLIC releases repo (fine-grained PAT, Contents: read & write).
-      # The default GITHUB_TOKEN cannot write to another repository.
-      GH_TOKEN: ${{ secrets.RELEASES_TOKEN }}
+      # The feed is this repository's own Releases, so GITHUB_TOKEN is enough. RELEASES_TOKEN (fine-grained PAT,
+      # Contents: read & write) is only needed when UPDATE_GITHUB_REPO points at another repository.
+      GH_TOKEN: ${{ secrets.RELEASES_TOKEN || github.token }}
       PUBLISH: ${{ github.event_name == 'push' || inputs.publish }}
     steps:
       - uses: actions/checkout@v4
@@ -250,10 +252,10 @@ jobs:
             exit 0
           fi
           if [ -z "$GH_TOKEN" ]; then
-            echo "::error::RELEASES_TOKEN secret is missing: cannot publish to the releases repo."
+            echo "::error::No token to publish the release (GITHUB_TOKEN or RELEASES_TOKEN)."
             exit 1
           fi
-          repo="${UPDATE_GITHUB_OWNER:-valteresj2}/${UPDATE_GITHUB_REPO:-hangar-releases}"
+          repo="${UPDATE_GITHUB_OWNER:-valteresj2}/${UPDATE_GITHUB_REPO:-hangar}"
           tag="v$VERSION"
           if state=$(gh release view "$tag" --repo "$repo" --json isDraft --jq .isDraft 2>/dev/null); then
             if [ "$state" != "true" ]; then
@@ -263,7 +265,7 @@ jobs:
           else
             pre=""; [[ "$VERSION" == *-* ]] && pre="--prerelease"
             gh release create "$tag" --repo "$repo" --draft $pre --title "Hangar $VERSION" \
-              --notes "Hangar $VERSION. Como instalar e abrir um app sem assinatura: veja o README deste repositório."
+              --notes "Hangar $VERSION. Como instalar e abrir um app sem assinatura: veja docs/RELEASE.md deste repositório."
           fi
           gh release upload "$tag" dist/* --repo "$repo" --clobber
           gh release edit "$tag" --repo "$repo" --draft=false

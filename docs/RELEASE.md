@@ -177,20 +177,26 @@ minuto de macOS custa bem mais que o de Linux/Windows (veja a tabela de preços 
 ## Feed de atualização (onde as versões são publicadas)
 
 O app lê o feed de `resources/app-update.yml`, gerado a partir de `publish`. **O app não pode levar token**, então o
-feed precisa ser público. O repositório do código (`valteresj2/hangar`) é privado e **não serve** como feed
-(o `build/ci-config.cjs` recusa essa combinação).
+feed precisa ser público.
 
-### Opção recomendada: repositório público só de releases
+### Padrão: as Releases do próprio repositório
 
-1. Crie no GitHub um repositório **público**, ex.: `valteresj2/hangar-releases`, com pelo menos um commit (um README;
-   a tag da release é criada sobre ele). O código continua privado. Esse é o padrão do `electron-builder.yml`.
-   Vale pôr no README desse repositório a seção [Como abrir um app sem assinatura](#como-abrir-um-app-sem-assinatura-para-os-usuários)
-   — o texto da release aponta para lá.
+O repositório do código (`valteresj2/hangar`) é público, e as Releases dele são o feed (padrão do
+`electron-builder.yml` e do `build/ci-config.cjs`). O job `release` publica com o `GITHUB_TOKEN` do workflow
+(`contents: write`): não há token para criar nem segredo para guardar.
+
+### Outro repositório de releases
+
+Para publicar em outro repositório **público** (ex.: se o código voltar a ser privado):
+
+1. Crie o repositório com pelo menos um commit (um README; a tag da release é criada sobre ele).
 2. Crie um _fine-grained personal access token_ com acesso **apenas** a esse repositório e permissão
    **Contents: Read and write**.
-3. No repositório privado `valteresj2/hangar` → _Settings → Secrets and variables → Actions_:
+3. Em `valteresj2/hangar` → _Settings → Secrets and variables → Actions_:
    - secret `RELEASES_TOKEN` = o token acima;
-   - (opcional) variables `UPDATE_GITHUB_OWNER` / `UPDATE_GITHUB_REPO` se usar outro nome.
+   - variables `UPDATE_GITHUB_OWNER` / `UPDATE_GITHUB_REPO` com o nome dele.
+
+Trocar o feed só vale para os apps instalados a partir daí: os anteriores continuam lendo o feed antigo.
 
 ### Alternativa: servidor genérico (HTTPS estático, S3, Azure Blob, R2…)
 
@@ -375,7 +381,7 @@ Comportamento geral (modo automático):
 - Log: `logs/updater.log` na pasta de dados (Windows: `%APPDATA%\Hangar\logs\updater.log`; rotaciona em 1 MB).
 - Download diferencial: usa o `.blockmap` da versão instalada quando existir no feed; senão baixa o pacote inteiro.
 - Sem assinatura, o electron-updater não confere quem publicou a atualização (só o SHA-512 do `latest*.yml`): a
-  segurança do update depende de o feed (o repositório público de releases e o `RELEASES_TOKEN`) não ser adulterado.
+  segurança do update depende de o feed (as Releases do repositório e quem pode publicá-las) não ser adulterado.
 
 ### Testar o fluxo sem publicar nada
 
@@ -394,8 +400,8 @@ Comportamento geral (modo automático):
 ## Checklist de release
 
 - [ ] `version` atualizada e tag `v<versão>` igual.
-- [ ] `RELEASES_TOKEN` válido (ou feed genérico configurado) e o repositório público de releases com o README
-      “como abrir um app sem assinatura”.
+- [ ] Repositório público (feed nas próprias Releases) ou, para outro feed, `RELEASES_TOKEN` válido / feed genérico
+      configurado.
 - [ ] Todos os jobs `build` verdes (o passo _Native modules in the package_ confere node-pty e `claude` por SO/CPU).
 - [ ] Release publicada no feed com: `Hangar-Setup-<v>.exe` + `.blockmap` + `latest.yml`, portáteis x64/arm64,
       AppImages + `latest-linux.yml`/`latest-linux-arm64.yml`, `.deb`, `.dmg`/`.zip` arm64 e x64 + `latest-mac.yml`

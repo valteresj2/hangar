@@ -6,7 +6,7 @@
 // Publish target (embedded in the app as app-update.yml — must be reachable WITHOUT a token):
 //   UPDATE_PROVIDER      github (default) | generic
 //   UPDATE_GITHUB_OWNER  default valteresj2          (provider github)
-//   UPDATE_GITHUB_REPO   default hangar-releases     (provider github; must be a PUBLIC repo)
+//   UPDATE_GITHUB_REPO   default hangar              (provider github; must be a PUBLIC repo)
 //   UPDATE_GENERIC_URL   https://… base URL holding latest.yml + installer (provider generic)
 //   UPDATE_CHANNEL       optional channel name (latest by default)
 // Azure Trusted Signing (all four required to enable it; credentials come from AZURE_TENANT_ID,
@@ -36,13 +36,7 @@ if (provider === 'generic') {
   config.publish = { provider: 'generic', url: env.UPDATE_GENERIC_URL.trim() }
 } else if (provider === 'github') {
   const owner = (env.UPDATE_GITHUB_OWNER || 'valteresj2').trim()
-  const repo = (env.UPDATE_GITHUB_REPO || 'hangar-releases').trim()
-  if (owner === 'valteresj2' && repo === 'hangar') {
-    console.error(
-      'valteresj2/hangar is private: installed apps could not download updates. Use a public releases repo.'
-    )
-    process.exit(1)
-  }
+  const repo = (env.UPDATE_GITHUB_REPO || 'hangar').trim()
   config.publish = { provider: 'github', owner, repo, releaseType: 'release' }
 } else {
   console.error(`Unknown UPDATE_PROVIDER "${provider}" (use github or generic).`)
