@@ -128,6 +128,11 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # node-pty's macOS prebuild ships spawn-helper without the execute bit; without it the terminal cannot start.
+      - name: node-pty spawn-helper executable (macOS)
+        if: matrix.os == 'mac'
+        run: chmod +x node_modules/node-pty/prebuilds/darwin-*/spawn-helper
+
       - name: Build (electron-vite)
         run: npx electron-vite build
 
