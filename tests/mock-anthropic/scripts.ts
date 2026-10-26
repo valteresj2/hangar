@@ -30,10 +30,13 @@ export type ScriptResult = ScriptReply | ScriptError
 /** The subset of a Messages API request the scripts look at. */
 export interface MessagesRequest {
   model?: string
+  thinking?: unknown
+  output_config?: unknown
+  context_management?: unknown
   system?: string | { type: string; text?: string }[]
   /** Claude Code also sends mid-conversation `system` messages (environment, reminders). */
   messages?: { role: 'user' | 'assistant' | 'system'; content: string | Record<string, unknown>[] }[]
-  tools?: { name?: string }[]
+  tools?: { name?: string; defer_loading?: boolean }[]
   stream?: boolean
   max_tokens?: number
 }
@@ -162,7 +165,54 @@ function selectorReply(ctx: ScriptContext): ScriptReply | undefined {
   return text(`<why>\nMock: escolheu o primeiro candidato (${ids[0]}).\n</why>\n\n\`\`\`choice\n${ids[0]}\n\`\`\``)
 }
 
+/**
+ * A strict non-Claude model behind a gateway (model ids starting with "mock-gpt"): rejects the fields only the
+ * Anthropic API accepts, like an OpenAI-backed LiteLLM route, and calls tools the way other harnesses name them
+ * (write_file with path/text). Solves the bench task "write-exact" so the whole compat path can be checked offline.
+ */
+function foreignModel(ctx: ScriptContext): ScriptResult {
+  const req = ctx.req
+  const reject = (message: string): ScriptError => ({
+    kind: 'error',
+    status: 400,
+    errorType: 'invalid_request_error',
+    message
+  })
+  for (const field of ['output_config', 'context_management', 'thinking'] as const)
+    if (req[field] !== undefined) return reject(`${field}: Extra inputs are not permitted`)
+  if ((req.messages ?? []).some((m) => m.role === 'system'))
+    return reject("messages: Input should be 'user' or 'assistant'")
+  if ((req.max_tokens ?? 0) > 16_384)
+    return reject(`max_tokens is too large: ${req.max_tokens}. This model supports at most 16384 completion tokens`)
+  if ((req.tools ?? []).some((t) => t.defer_loading !== undefined))
+    return reject('tools.defer_loading: Extra inputs are not permitted')
+
+  const human = (req.messages ?? [])
+    .filter((m) => m.role === 'user')
+    .map((m) => contentText(m.content))
+    .join('\n')
+  const expected = /nada além dela\):\n(.+)/.exec(human)?.[1]
+  const results = lastToolResults(req)
+  if (!expected || !req.tools?.length) return text('ok')
+  if (results.length)
+    return text(results[0].is_error ? `Falhou: ${results[0].text.slice(0, 200)}` : 'Pronto, arquivo criado.')
+  const cwd = workingDirectory(req)
+  return {
+    kind: 'message',
+    blocks: [
+      {
+        type: 'tool_use',
+        id: toolId(),
+        name: 'write_file',
+        input: { path: cwd ? joinPath(cwd, 'greeting.txt') : 'greeting.txt', text: expected }
+      }
+    ],
+    stopReason: 'tool_use'
+  }
+}
+
 export function runScript(ctx: ScriptContext): ScriptResult {
+  if (ctx.req.model?.startsWith('mock-gpt')) return foreignModel(ctx)
   if (ctx.token === 'mock-token-401')
     return { kind: 'error', status: 401, errorType: 'authentication_error', message: 'invalid x-api-key' }
   if (ctx.token === 'mock-token-500')

@@ -8,3 +8,4 @@ release/
 test-results/
 playwright-report/
 graphify-out/
+bench-results/

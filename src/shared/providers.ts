@@ -25,6 +25,31 @@ export interface ProviderModels {
   extra?: string[]
 }
 
+/**
+ * How Hangar adapts Claude Code to models that are not Claude (src/shared/compat.ts, engine/compat/).
+ * Claude Code treats any custom base URL as the Anthropic API, so non-Claude models behind a gateway get Anthropic
+ * fields they reject (effort, context management, adaptive thinking, 32k max_tokens) and a toolset tuned for Claude.
+ */
+export type CompatMode =
+  /** Adapt requests for models whose id is not a Claude model (default). */
+  | 'auto'
+  /** Adapt every model of this profile (gateways that rename Claude-looking ids). */
+  | 'on'
+  /** Send Claude Code's requests unchanged. */
+  | 'off'
+
+export interface ProviderCompat {
+  mode?: CompatMode
+  /** The model's real context window, when the built-in table does not know it. */
+  contextWindow?: number
+  /** The model's output token limit, when the built-in table does not know it. */
+  maxOutputTokens?: number
+  /** Tools for adapted models: `core` (default) keeps the file, shell and search tools; `full` keeps Claude Code's set. */
+  toolset?: 'core' | 'full'
+  /** Whether the model reasons (thinking is passed to the gateway as a token budget). Default: from the table. */
+  reasoning?: boolean
+}
+
 export interface ProviderProfile {
   id: string
   name: string
@@ -40,6 +65,8 @@ export interface ProviderProfile {
   /** bedrock: named AWS profile instead of a key. */
   awsProfile?: string
   models?: ProviderModels
+  /** gateway: adaptation for non-Claude models (default: auto). */
+  compat?: ProviderCompat
   /** Additional non-secret environment variables (validated names only). */
   extraEnv?: Record<string, string>
   /** Set on profiles the app maintains itself (read-only in Settings → Provedores). */
@@ -65,4 +92,9 @@ export interface ProviderLaunch {
   settingsEnv: Record<string, string>
   /** Default model for sessions without an explicit one. */
   defaultModel?: string
+  /** The profile's kind and model mapping, for the engine's compatibility layer. */
+  kind?: ProviderKind
+  models?: ProviderModels
+  /** gateway profiles: how non-Claude models are adapted. */
+  compat?: ProviderCompat
 }

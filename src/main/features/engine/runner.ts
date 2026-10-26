@@ -38,7 +38,8 @@ import {
   writtenPath,
   type EntryDraft
 } from './convert'
-import { claudeLaunch, loadSdk, MessageQueue, toCommandInfo } from './sdk'
+import { claudeLaunch, loadSdk, MessageQueue, toCommandInfo, withEnv, type ClaudeLaunch } from './sdk'
+import { compatChanges, compatSession } from './compat'
 import { isValidImage, saveImage } from './images'
 import { isMotionPath, motionCard, motionInstructions } from './motion'
 import { rewindPoint, setRewindPoint } from './points'
@@ -86,6 +87,8 @@ export class Runner {
   private provider: ProviderInfo | undefined
   private secrets: string[] = []
   private model: string | undefined
+  /** The running query's profile, to tell whether a model change needs a restart (compat layer). */
+  private launchProfile: ClaudeLaunch['profile'] | undefined
   /** A provider failure card was already shown this turn. */
   private providerErrorShown = false
   /** The turn was stopped because the provider rejected the credentials. */
@@ -206,15 +209,22 @@ export class Runner {
     const projectInstructions = session.projectId
       ? db('projects').get(session.projectId)?.instructions?.trim()
       : undefined
-    const instructions = [projectInstructions, ...collectSystemAppend(session)].filter(Boolean).join('\n\n')
     // The session's provider profile decides executable, environment and the flag settings that carry its variables.
     const providerId = effectiveProviderId(session)
     const launch = claudeLaunch(providerId)
     this.provider = providerInfo(providerId)
     this.secrets = launch.secrets
     this.model = undefined
+    this.launchProfile = launch.profile
+    const model = session.model ?? launch.defaultModel ?? defaults.defaultModel
+    // Non-Claude models behind a gateway: Claude Code's options adapted to them (engine/compat/).
+    const compat = compatSession(launch.profile, model)
+    const instructions = [projectInstructions, ...collectSystemAppend(session), compat.append]
+      .filter(Boolean)
+      .join('\n\n')
+    const launchOptions = withEnv(launch.options, compat.env)
     const flagSettings: SdkSettings = {
-      ...(launch.options.settings ?? {}),
+      ...(launchOptions.settings ?? {}),
       ...(session.fastMode ? { fastMode: true } : {})
     }
     const permissionMode = session.permissionMode ?? defaults.defaultPermissionMode
@@ -226,8 +236,9 @@ export class Runner {
 
     const options: Options = {
       cwd: session.worktree?.path ?? session.cwd,
-      model: session.model ?? launch.defaultModel ?? defaults.defaultModel,
-      effort: session.effort ?? defaults.defaultEffort,
+      model,
+      ...(compat.dropEffort ? {} : { effort: session.effort ?? defaults.defaultEffort }),
+      ...(compat.tools ? { tools: compat.tools } : {}),
       permissionMode,
       // Only a session started in "Ignorar permissões" may skip them; switching into or out of that mode
       // restarts the query (setOptions) so the capability never outlives the choice.
@@ -238,9 +249,9 @@ export class Runner {
       enableFileCheckpointing: true,
       extraArgs: { 'replay-user-messages': null },
       includePartialMessages: true,
-      thinking: { type: 'adaptive', display: 'summarized' },
-      pathToClaudeCodeExecutable: launch.options.pathToClaudeCodeExecutable,
-      env: launch.options.env,
+      thinking: compat.thinking ?? { type: 'adaptive', display: 'summarized' },
+      pathToClaudeCodeExecutable: launchOptions.pathToClaudeCodeExecutable,
+      env: launchOptions.env,
       systemPrompt: { type: 'preset', preset: 'claude_code', ...(instructions ? { append: instructions } : {}) },
       ...(Object.keys(flagSettings).length ? { settings: flagSettings } : {}),
       canUseTool: this.canUseTool,
@@ -600,6 +611,7 @@ export class Runner {
   }
 
   async setOptions(patch: EngineOptions): Promise<void> {
+    const previousModel = this.model ?? this.session().model
     db('sessions').patch(this.sessionId, patch)
     const q = this.q
     if (!q) return
@@ -608,7 +620,16 @@ export class Runner {
     const bypassChange =
       patch.permissionMode !== undefined && (patch.permissionMode === 'bypassPermissions') !== this.bypassAllowed
     try {
-      if (patch.model !== undefined) await q.setModel(patch.model || undefined)
+      if (
+        patch.model !== undefined &&
+        this.launchProfile &&
+        compatChanges(this.launchProfile, previousModel, patch.model || undefined)
+      ) {
+        // Claude ↔ non-Claude: tools, thinking and instructions are launch options, so the query restarts.
+        if (this.inflight > 0) this.restartAfterTurn = true
+        else this.close()
+        if (this.q !== q) return
+      } else if (patch.model !== undefined) await q.setModel(patch.model || undefined)
       if (bypassChange) {
         // Leaving bypass takes effect right away; the restart then drops the capability.
         if (patch.permissionMode !== 'bypassPermissions') await q.setPermissionMode(patch.permissionMode!)

@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import { SETTINGS, type ProviderInput, type ProvidersState, type ProviderTestResult } from '@shared/features/settings'
-import { SUBSCRIPTION_PROFILE_ID, type ProviderKind, type ProviderProfile } from '@shared/providers'
+import {
+  SUBSCRIPTION_PROFILE_ID,
+  type ProviderCompat,
+  type ProviderKind,
+  type ProviderProfile
+} from '@shared/providers'
 import { api, bridge } from '../../../core/api'
 import { errorText, settingsApi } from '../api'
 import { Card, Segmented, Spinner } from '../ui'
@@ -113,6 +118,11 @@ function parseEnv(text: string): Record<string, string> {
   return out
 }
 
+const numberOrUndefined = (text: string) => {
+  const n = Number(text.replace(/[^\d]/g, ''))
+  return text.trim() && Number.isFinite(n) && n > 0 ? n : undefined
+}
+
 const formatEnv = (env: Record<string, string> | undefined) =>
   Object.entries(env ?? {})
     .filter(([k]) => k !== BETAS_VAR)
@@ -145,6 +155,7 @@ function ProviderForm({
   const set = (patch: Partial<ProviderInput>) => setDraft((d) => ({ ...d, ...patch }))
   const setModel = (key: 'default' | 'opus' | 'sonnet' | 'haiku', value: string) =>
     set({ models: { ...draft.models, [key]: value } })
+  const setCompat = (patch: Partial<ProviderCompat>) => set({ compat: { ...draft.compat, ...patch } })
   const kind = draft.kind
   const secretLabel = SECRET_LABEL[kind]
 
@@ -341,7 +352,7 @@ function ProviderForm({
           {kind === 'gateway' &&
             'Via LiteLLM/OpenRouter os nomes podem ser de outros fabricantes (ex.: um GPT ou Gemini configurado no proxy). '}
           {kind === 'foundry' && 'Use os nomes dos deployments. '}
-          {(kind === 'gateway' || kind === 'foundry') && (
+          {kind === 'foundry' && (
             <strong>
               Modelos que não são Claude podem não suportar bem ferramentas, thinking ou imagens no Claude Code.
             </strong>
@@ -385,10 +396,74 @@ function ProviderForm({
 
         {kind === 'gateway' && (
           <>
-            <label>Compatibilidade</label>
+            <div className={`${styles.formFull} ${styles.cardTitle}`} style={{ padding: '6px 0 0' }}>
+              Modelos que não são Claude
+            </div>
+            <div className={`${styles.formFull} ${styles.hint}`}>
+              O Hangar adapta as requisições do Claude Code a cada modelo (sem campos exclusivos da Anthropic, limite de
+              saída e janela do modelo, ferramentas essenciais, chamadas de ferramenta corrigidas). Os limites vêm de
+              uma tabela de modelos conhecidos; preencha só se o seu modelo não estiver nela.
+            </div>
+            <label>Adaptação</label>
+            <div>
+              <Segmented
+                value={draft.compat?.mode ?? 'auto'}
+                onChange={(mode) => setCompat({ mode: mode === 'auto' ? undefined : mode })}
+                options={[
+                  { value: 'auto', label: 'Automática (não-Claude)' },
+                  { value: 'on', label: 'Todos os modelos' },
+                  { value: 'off', label: 'Desligada' }
+                ]}
+              />
+            </div>
+            {draft.compat?.mode !== 'off' && (
+              <>
+                <label>Ferramentas</label>
+                <div>
+                  <Segmented
+                    value={draft.compat?.toolset ?? 'core'}
+                    onChange={(toolset) => setCompat({ toolset: toolset === 'core' ? undefined : toolset })}
+                    options={[
+                      { value: 'core', label: 'Essenciais' },
+                      { value: 'full', label: 'Todas do Claude Code' }
+                    ]}
+                  />
+                </div>
+                <label>Raciocínio</label>
+                <div>
+                  <Segmented
+                    value={draft.compat?.reasoning === undefined ? 'auto' : draft.compat.reasoning ? 'yes' : 'no'}
+                    onChange={(v) => setCompat({ reasoning: v === 'auto' ? undefined : v === 'yes' })}
+                    options={[
+                      { value: 'auto', label: 'Pela tabela' },
+                      { value: 'yes', label: 'Sim' },
+                      { value: 'no', label: 'Não' }
+                    ]}
+                  />
+                </div>
+                <label>Janela de contexto</label>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={draft.compat?.contextWindow ?? ''}
+                  placeholder="tokens (ex.: 128000)"
+                  onChange={(e) => setCompat({ contextWindow: numberOrUndefined(e.target.value) })}
+                />
+                <label>Limite de saída</label>
+                <input
+                  className="input"
+                  inputMode="numeric"
+                  value={draft.compat?.maxOutputTokens ?? ''}
+                  placeholder="tokens (ex.: 16384)"
+                  onChange={(e) => setCompat({ maxOutputTokens: numberOrUndefined(e.target.value) })}
+                />
+              </>
+            )}
+            <label>Betas</label>
             <label className={styles.inline} style={{ color: 'var(--text)' }}>
               <input type="checkbox" checked={betasOff} onChange={(e) => setBetasOff(e.target.checked)} />
-              Desligar betas experimentais ({BETAS_VAR}=1) — use se o gateway responder “Extra inputs are not permitted”
+              Desligar betas experimentais também para modelos Claude ({BETAS_VAR}=1) — use se o gateway responder
+              “Extra inputs are not permitted”
             </label>
           </>
         )}

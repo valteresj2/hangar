@@ -12,7 +12,10 @@ import { delimiter, join, sep } from 'node:path'
 import type { SDKUserMessage, Settings as SdkSettings } from '@anthropic-ai/claude-agent-sdk'
 import { settings } from '../../core/store'
 import { resolveProviderLaunch } from '../settings/providers-api'
+import { compatApplies } from '../../../shared/compat'
 import type { SlashCommandInfo } from '../../../shared/features/engine'
+import type { ProviderLaunch } from '../../../shared/providers'
+import { compatProxyRunning, registerRoute } from './compat'
 
 type SdkModule = typeof import('@anthropic-ai/claude-agent-sdk')
 
@@ -65,6 +68,10 @@ export interface ClaudeLaunch {
   defaultModel?: string
   /** Secret values of this launch, to mask in anything shown to the user. */
   secrets: string[]
+  /** The resolved profile (kind, model mapping, compat settings, its own variables) for compatSession(). */
+  profile: Pick<ProviderLaunch, 'kind' | 'compat' | 'models' | 'env'>
+  /** The compat proxy route this launch goes through (gateway profiles with compat on). */
+  compatRoute?: string
 }
 
 const SECRET_NAME = /KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL/i
@@ -74,19 +81,43 @@ const SECRET_NAME = /KEY|TOKEN|SECRET|PASSWORD|CREDENTIAL/i
  * env = process.env − launch.unset + launch.env (+ our client id), settings.env = launch.settingsEnv when not empty.
  * Throws when the profile cannot be resolved (the caller reports it).
  */
-export function claudeLaunch(providerId?: string): ClaudeLaunch {
+export function claudeLaunch(
+  providerId?: string,
+  opts: { ownCompatRoute?: boolean; noCompat?: boolean } = {}
+): ClaudeLaunch {
   const launch = resolveProviderLaunch(providerId)
   const env: Record<string, string | undefined> = { ...process.env }
   for (const name of launch.unset) delete env[name]
   Object.assign(env, launch.env, { CLAUDE_AGENT_SDK_CLIENT_APP: 'hangar/0.1.0' })
+  const settingsEnv = { ...launch.settingsEnv }
+  // Gateways go through the local compat proxy, which adapts requests for non-Claude models (engine/compat/).
+  let compatRoute: string | undefined
+  const upstream = launch.env.ANTHROPIC_BASE_URL
+  if (upstream && !opts.noCompat && compatApplies(launch.kind, launch.compat) && compatProxyRunning()) {
+    const route = registerRoute(upstream, launch.compat, !opts.ownCompatRoute)
+    compatRoute = route.id
+    env.ANTHROPIC_BASE_URL = route.url
+    settingsEnv.ANTHROPIC_BASE_URL = route.url
+  }
   const options: ClaudeLaunchOptions = { pathToClaudeCodeExecutable: resolveClaudeExecutable(), env }
-  if (Object.keys(launch.settingsEnv).length) options.settings = { env: { ...launch.settingsEnv } }
+  if (Object.keys(settingsEnv).length) options.settings = { env: settingsEnv }
   const secrets = [launch.env, launch.settingsEnv].flatMap((vars) =>
     Object.entries(vars)
       .filter(([name, value]) => SECRET_NAME.test(name) && value.length >= 6)
       .map(([, value]) => value)
   )
-  return { options, defaultModel: launch.defaultModel, secrets }
+  const profile = { kind: launch.kind, compat: launch.compat, models: launch.models, env: launch.env }
+  return { options, defaultModel: launch.defaultModel, secrets, profile, compatRoute }
+}
+
+/** Adds compat variables to launch options (process env and the flag settings that outrank settings.json). */
+export function withEnv(options: ClaudeLaunchOptions, vars: Record<string, string>): ClaudeLaunchOptions {
+  if (!Object.keys(vars).length) return options
+  return {
+    ...options,
+    env: { ...options.env, ...vars },
+    settings: { ...(options.settings ?? {}), env: { ...(options.settings?.env ?? {}), ...vars } }
+  }
 }
 
 /** Executable, environment and flag settings for a Claude Code launch under a provider profile. */

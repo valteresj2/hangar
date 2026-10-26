@@ -28,10 +28,14 @@ import {
   switchProvider
 } from './registry'
 import { handle } from '../../core/handle'
+import { startCompatProxy, stopCompatProxy } from './compat'
 
 export const engineFeature: Feature = {
   name: 'engine',
-  register() {
+  async register() {
+    // Gateway launches go through the local compat proxy (engine/compat/); without it they go direct.
+    await startCompatProxy().catch((err) => console.error('[hangar] compat proxy could not start', err))
+
     // Nothing survives a restart: sessions left mid-turn are idle now.
     for (const s of db('sessions').list()) {
       if (s.status === 'working' || s.status === 'waiting') db('sessions').patch(s.id, { status: 'idle' })
@@ -72,7 +76,8 @@ export const engineFeature: Feature = {
       setRewindPoint(change.id, undefined)
     })
   },
-  dispose() {
+  async dispose() {
     closeAll()
+    await stopCompatProxy()
   }
 }

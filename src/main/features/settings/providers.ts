@@ -17,6 +17,7 @@ import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   SUBSCRIPTION_PROFILE_ID,
+  type ProviderCompat,
   type ProviderKind,
   type ProviderLaunch,
   type ProviderModels,
@@ -30,7 +31,8 @@ import {
 } from '../../../shared/features/settings'
 import { broadcast } from '../../core/broadcast'
 import { settings } from '../../core/store'
-import { loadSdk, resolveClaudeExecutable } from '../engine/sdk'
+import { claudeLaunch, loadSdk, withEnv } from '../engine/sdk'
+import { compatSession } from '../engine/compat'
 
 type StoredProfile = Omit<ProviderProfile, 'hasSecret'>
 
@@ -270,6 +272,25 @@ function normalizeExtraEnv(env: Record<string, string> | undefined): Record<stri
   return Object.keys(out).length ? out : undefined
 }
 
+function normalizeCompat(compat: ProviderCompat | undefined): ProviderCompat | undefined {
+  if (!compat) return undefined
+  const count = (v: unknown, label: string, min: number, max: number) => {
+    if (v === undefined || v === null || v === '') return undefined
+    const n = Math.round(Number(v))
+    if (!Number.isFinite(n) || n < min || n > max) throw new Error(`${label}: use um número entre ${min} e ${max}.`)
+    return n
+  }
+  const out: ProviderCompat = {
+    mode: compat.mode === 'on' || compat.mode === 'off' ? compat.mode : undefined,
+    contextWindow: count(compat.contextWindow, 'Janela de contexto', 8_000, 10_000_000),
+    maxOutputTokens: count(compat.maxOutputTokens, 'Limite de saída', 1_024, 128_000),
+    toolset: compat.toolset === 'full' ? 'full' : undefined,
+    reasoning: typeof compat.reasoning === 'boolean' ? compat.reasoning : undefined
+  }
+  for (const [k, v] of Object.entries(out)) if (v === undefined) delete out[k as keyof ProviderCompat]
+  return Object.keys(out).length ? out : undefined
+}
+
 function validate(input: ProviderInput, existing?: StoredProfile): StoredProfile {
   if (!EDITABLE_KINDS.includes(input.kind)) throw new Error('Tipo de provedor inválido.')
   const name = trimmed(input.name)
@@ -297,6 +318,7 @@ function validate(input: ProviderInput, existing?: StoredProfile): StoredProfile
     project: input.kind === 'vertex' || input.kind === 'foundry' ? project : undefined,
     awsProfile: input.kind === 'bedrock' ? awsProfile : undefined,
     models: normalizeModels(input.models),
+    compat: input.kind === 'gateway' ? normalizeCompat(input.compat) : undefined,
     extraEnv: normalizeExtraEnv(input.extraEnv),
     createdAt: existing?.createdAt ?? Date.now(),
     updatedAt: Date.now()
@@ -594,7 +616,7 @@ export function resolveLaunch(profileId?: string): ProviderLaunch {
   const settingsEnv: Record<string, string> = { ...env }
   const fromUserSettings = userSettingsEnv()
   for (const name of unset) if (name in fromUserSettings) settingsEnv[name] = ''
-  return { env, unset, settingsEnv, defaultModel: p.models?.default }
+  return { env, unset, settingsEnv, defaultModel: p.models?.default, kind: p.kind, models: p.models, compat: p.compat }
 }
 
 // ---- Connection test ----
@@ -625,10 +647,10 @@ export async function testProvider(id: string): Promise<ProviderTestResult> {
     return { ok: false, latencyMs: 0, error: maskSecrets(err instanceof Error ? err.message : String(err)) }
   }
   const model = launch.defaultModel ?? 'haiku'
-
-  const env: Record<string, string | undefined> = { ...process.env }
-  for (const name of launch.unset) delete env[name]
-  Object.assign(env, launch.env, { CLAUDE_AGENT_SDK_CLIENT_APP: 'hangar/0.1.0' })
+  // Same path as a session: through the compat proxy, with the options a non-Claude model gets.
+  const engine = claudeLaunch(id)
+  const compat = compatSession(engine.profile, model)
+  const { env, settings: flagSettings } = withEnv(engine.options, compat.env)
 
   const abort = new AbortController()
   let failure: string | undefined
@@ -645,10 +667,11 @@ export async function testProvider(id: string): Promise<ProviderTestResult> {
       prompt: 'Responda apenas: ok',
       options: {
         cwd: tmpdir(),
-        pathToClaudeCodeExecutable: resolveClaudeExecutable(),
+        pathToClaudeCodeExecutable: engine.options.pathToClaudeCodeExecutable,
         env,
-        settings: Object.keys(launch.settingsEnv).length ? { env: launch.settingsEnv } : undefined,
+        settings: flagSettings,
         model,
+        ...(compat.thinking ? { thinking: compat.thinking } : {}),
         maxTurns: 1,
         tools: [],
         mcpServers: {},
