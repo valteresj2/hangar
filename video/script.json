@@ -1,0 +1,63 @@
+{
+  "title": "Agent Hangar Desktop — vídeo do produto",
+  "voice": "Orus",
+  "model": "google/gemini-3.8-flash-lite-tts",
+  "instructions": "Narrador de lançamento de produto de tecnologia, em português do Brasil: voz confiante, calorosa e clara, ritmo animado mas sem pressa, pausas curtas entre as frases.",
+  "scenes": [
+    {
+      "id": "scatter",
+      "minDuration": 4.5,
+      "narration": "Seus agentes de IA estão espalhados: um em cada chat, em cada ferramenta, em cada terminal."
+    },
+    {
+      "id": "home",
+      "minDuration": 3.5,
+      "narration": "Agora, eles têm uma casa."
+    },
+    {
+      "id": "logo",
+      "minDuration": 4,
+      "narration": "Este é o Agent Hangar Desktop."
+    },
+    {
+      "id": "install",
+      "minDuration": 6,
+      "narration": "Instale em segundos, no Windows, no macOS ou no Linux, e entre com a conta da sua empresa."
+    },
+    {
+      "id": "ask",
+      "minDuration": 6.5,
+      "narration": "Peça o que precisa. O agente planeja, usa ferramentas, edita arquivos e pede sua permissão antes de agir."
+    },
+    {
+      "id": "panels",
+      "minDuration": 5.5,
+      "narration": "Terminal, alterações, arquivos e navegador ficam lado a lado, e você acompanha cada passo."
+    },
+    {
+      "id": "models",
+      "minDuration": 8,
+      "narration": "Use o Claude ou qualquer outro modelo. Com a camada de compatibilidade do Hangar, modelos de terceiros foram de zero a quase noventa e nove por cento das tarefas entregues."
+    },
+    {
+      "id": "create",
+      "minDuration": 8,
+      "narration": "Quando uma tarefa vira rotina, transforme a conversa num agente. Descreva a missão, e o Agent Hangar planeja, monta e agenda o agente para você."
+    },
+    {
+      "id": "agents",
+      "minDuration": 5.5,
+      "narration": "Seus agentes aparecem aqui, com status, custos e decisões esperando por você, ao vivo."
+    },
+    {
+      "id": "anywhere",
+      "minDuration": 7,
+      "narration": "Use-os de qualquer lugar: MCP, API, Slack ou VS Code. Com login único, controle de custos e trilha de auditoria."
+    },
+    {
+      "id": "close",
+      "minDuration": 5,
+      "narration": "Agent Hangar Desktop. Uma casa para cada agente de IA."
+    }
+  ]
+}

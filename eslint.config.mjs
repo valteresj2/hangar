@@ -133,7 +133,7 @@ export default tseslint.config(
 
   // Main process, preload, shared code, tests and configs run on Node.
   {
-    files: ['src/main/**', 'src/preload/**', 'src/shared/**', 'tests/**', '*.config.*', 'build/**'],
+    files: ['src/main/**', 'src/preload/**', 'src/shared/**', 'tests/**', '*.config.*', 'build/**', 'video/**'],
     languageOptions: { globals: { ...globals.node } }
   },
 
