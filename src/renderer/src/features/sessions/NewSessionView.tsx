@@ -135,18 +135,21 @@ export function NewSessionView() {
   const submit = async () => {
     const text = prompt.trim()
     if (busy || !canCreate) return
-    if (!cwd) {
+    // No folder yet (first use, nothing pinned or recent): ask for one now instead of a disabled button.
+    const folder = cwd ?? (await api.pickFolder())
+    if (!folder) {
       setError('Escolha uma pasta para a sessão.')
       return
     }
+    setCwd(folder)
     setBusy(true)
     setError(undefined)
     try {
       let worktree: Worktree | undefined
-      if (useWorktree && isRepo) worktree = await bridge.invoke(GIT.worktreeCreate, cwd)
+      if (useWorktree && isRepo) worktree = await bridge.invoke(GIT.worktreeCreate, folder)
       const input: CreateSessionInput = {
         id: nanoid(),
-        cwd,
+        cwd: folder,
         title: title.trim() || undefined,
         projectId,
         model: choice?.model,
@@ -255,7 +258,7 @@ export function NewSessionView() {
             placeholder={
               project
                 ? `Descreva a tarefa para ${project.name}…`
-                : 'Descreva a tarefa… (Enter envia, Shift+Enter quebra linha).'
+                : 'Descreva a tarefa… (Enter envia, Shift+Enter quebra linha)'
             }
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -289,7 +292,7 @@ export function NewSessionView() {
             <div className={styles.spacer} />
             <button
               className="btn btn-primary"
-              disabled={!cwd || busy || !canCreate}
+              disabled={busy || !canCreate}
               title={prompt.trim() ? 'Cria a sessão e envia a mensagem' : 'Cria a sessão sem enviar mensagem'}
               onClick={() => void submit()}
             >
