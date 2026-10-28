@@ -34,7 +34,11 @@ export function parseMode(raw: string | undefined): PlatformMode | undefined {
   return v === 'off' || v === 'optional' || v === 'required' ? v : undefined
 }
 
-/** Normalizes a platform URL: http(s) only, no query/fragment/credentials, no trailing slash. undefined if invalid. */
+/**
+ * Normalizes a platform URL: http(s) only, no query/fragment/credentials, no trailing slash, and no trailing `/mcp`
+ * (the platform's MCP endpoint, which people paste from the portal; the app talks to the platform root). undefined
+ * if invalid.
+ */
 export function normalizeUrl(raw: string | undefined): string | undefined {
   const text = raw?.trim()
   if (!text) return undefined
@@ -45,7 +49,7 @@ export function normalizeUrl(raw: string | undefined): string | undefined {
     return undefined
   }
   if ((u.protocol !== 'http:' && u.protocol !== 'https:') || u.username || u.password) return undefined
-  return `${u.origin}${u.pathname.replace(/\/+$/, '')}`
+  return `${u.origin}${u.pathname.replace(/\/+$/, '').replace(/\/mcp$/i, '')}`
 }
 
 /**

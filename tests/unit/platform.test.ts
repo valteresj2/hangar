@@ -107,6 +107,9 @@ describe('Windows policy', () => {
   it('normalizes URLs', () => {
     expect(normalizeUrl(' https://a.example/x/ ')).toBe('https://a.example/x')
     expect(normalizeUrl('https://a.example')).toBe('https://a.example')
+    // The MCP endpoint pasted from the portal points at the same platform.
+    expect(normalizeUrl('https://a.example/mcp')).toBe('https://a.example')
+    expect(normalizeUrl('https://a.example/base/MCP/')).toBe('https://a.example/base')
     expect(normalizeUrl('https://user:pw@a.example')).toBeUndefined()
     expect(normalizeUrl('javascript:alert(1)')).toBeUndefined()
     expect(normalizeUrl('not a url')).toBeUndefined()
