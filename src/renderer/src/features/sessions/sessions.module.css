@@ -697,6 +697,19 @@
   border-color: var(--focus-ring);
   box-shadow: 0 0 0 3px var(--focus-halo);
 }
+.composerTitle {
+  margin: 0 14px;
+  padding: 10px 0 8px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  outline: none;
+  background: transparent;
+  font-size: 14px;
+  font-weight: 600;
+}
+.composerTitle::placeholder {
+  font-weight: 400;
+}
 .composerText {
   resize: none;
   min-height: 96px;

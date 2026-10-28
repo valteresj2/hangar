@@ -1,5 +1,6 @@
-// Landing view: choose a folder (and optionally a project / isolated worktree), model and permission mode,
-// then type the first prompt. Submitting creates the session, selects it and hands the prompt to the engine.
+// Landing view: choose a folder (and optionally a project / isolated worktree), model and permission mode, an
+// optional name, then type the first prompt. Submitting creates the session, selects it and hands the prompt to the
+// engine; with no prompt it only creates the session (named or "Nova sessão"), to be started later.
 import { useEffect, useRef, useState } from 'react'
 import { nanoid } from 'nanoid'
 import type { PermissionMode, Worktree } from '@shared/contracts'
@@ -45,6 +46,7 @@ export function NewSessionView() {
   /** Profile + model chosen here; undefined follows the defaults (Configurações → Geral). */
   const [choice, setChoice] = useState<ModelChoice>()
   const [permissionMode, setPermissionMode] = useState<PermissionMode>()
+  const [title, setTitle] = useState('')
   const [prompt, setPrompt] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string>()
@@ -132,7 +134,7 @@ export function NewSessionView() {
 
   const submit = async () => {
     const text = prompt.trim()
-    if (!text || busy || !canCreate) return
+    if (busy || !canCreate) return
     if (!cwd) {
       setError('Escolha uma pasta para a sessão.')
       return
@@ -142,12 +144,22 @@ export function NewSessionView() {
     try {
       let worktree: Worktree | undefined
       if (useWorktree && isRepo) worktree = await bridge.invoke(GIT.worktreeCreate, cwd)
-      const input: CreateSessionInput = { id: nanoid(), cwd, projectId, model: choice?.model, permissionMode, worktree }
+      const input: CreateSessionInput = {
+        id: nanoid(),
+        cwd,
+        title: title.trim() || undefined,
+        projectId,
+        model: choice?.model,
+        permissionMode,
+        worktree
+      }
       const session = await bridge.invoke(SESSIONS.create, input)
       // Another profile than the default (e.g. a synced token model): the session runs on it from the first turn.
       if (choice && choice.providerId !== settings?.defaultProviderId) await platformApi.chooseModel(session.id, choice)
       setPrompt('')
+      setTitle('')
       useUi.getState().selectSession(session.id)
+      if (!text) return
       bridge.invoke(ENGINE.send, session.id, text).catch((err) => {
         console.error('[sessions] engine:send failed', err)
         useSessionsUi.getState().showToast(`Não foi possível enviar o prompt: ${errorText(err)}`, 'error')
@@ -220,6 +232,21 @@ export function NewSessionView() {
 
         <PlatformRequiredNotice />
         <div className={styles.composer}>
+          <input
+            className={styles.composerTitle}
+            placeholder="Nome da sessão (opcional)"
+            aria-label="Nome da sessão"
+            maxLength={120}
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.nativeEvent.isComposing) {
+                e.preventDefault()
+                if (prompt.trim()) void submit()
+                else textRef.current?.focus()
+              }
+            }}
+          />
           <textarea
             ref={textRef}
             className={styles.composerText}
@@ -228,7 +255,7 @@ export function NewSessionView() {
             placeholder={
               project
                 ? `Descreva a tarefa para ${project.name}…`
-                : 'Descreva a tarefa… (Enter envia, Shift+Enter quebra linha)'
+                : 'Descreva a tarefa… (Enter envia, Shift+Enter quebra linha).'
             }
             value={prompt}
             onChange={(e) => setPrompt(e.target.value)}
@@ -262,10 +289,11 @@ export function NewSessionView() {
             <div className={styles.spacer} />
             <button
               className="btn btn-primary"
-              disabled={!prompt.trim() || !cwd || busy || !canCreate}
+              disabled={!cwd || busy || !canCreate}
+              title={prompt.trim() ? 'Cria a sessão e envia a mensagem' : 'Cria a sessão sem enviar mensagem'}
               onClick={() => void submit()}
             >
-              {busy ? (useWorktree ? 'Criando worktree…' : 'Iniciando…') : 'Iniciar'}
+              {busy ? (useWorktree ? 'Criando worktree…' : 'Iniciando…') : prompt.trim() ? 'Iniciar' : 'Criar sessão'}
             </button>
           </div>
         </div>

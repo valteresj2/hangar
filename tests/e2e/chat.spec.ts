@@ -14,6 +14,22 @@ test('tela inicial', async ({ hangar }) => {
   await expect(page.getByPlaceholder(/Buscar sessões/)).toBeVisible()
 })
 
+test('cria várias sessões com nome, sem primeira mensagem', async ({ hangar }) => {
+  const { page, invoke, work } = hangar
+  await invoke('settings:patch', { pinnedFolders: [work] })
+  const nav = page.getByRole('button', { name: /Nova sessão/ }).first()
+  for (const name of ['Rascunho A', 'Rascunho B']) {
+    await nav.click()
+    await page.getByLabel('Nome da sessão').fill(name)
+    await page.getByRole('button', { name: 'Criar sessão', exact: true }).click()
+    // The session opens with its name and an empty conversation, ready for a first message later.
+    await expect(page.getByPlaceholder(/Responder ao Claude/)).toBeVisible()
+    await expect(page.getByText(name, { exact: true }).first()).toBeVisible()
+  }
+  const sessions = await invoke<{ title: string }[]>('store:list', 'sessions')
+  expect(sessions.map((s) => s.title)).toEqual(expect.arrayContaining(['Rascunho A', 'Rascunho B']))
+})
+
 test('sessão numa pasta temporária recebe texto em streaming do mock', async ({ hangar, mock }) => {
   await hangar.useMockProvider()
   await hangar.openNewSession({ title: 'E2E Streaming' })
