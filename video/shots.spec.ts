@@ -52,7 +52,18 @@ test('product video screens', async ({ hangar }) => {
   await tidy()
   await shot('03-session-panel')
   await page.getByRole('button', { name: 'Terminal', exact: true }).click()
-  await page.waitForTimeout(1500)
+  await page.waitForTimeout(2500)
+  // The machine's own shell start-up output (profile messages, user paths) is not the product: a neutral prompt, a
+  // cleared screen and a command that shows the file the agent wrote.
+  await page.locator('.xterm-helper-textarea').first().focus()
+  const shell =
+    process.platform === 'win32'
+      ? "function prompt { 'PS ~/projetos/site> ' }; cls; Get-ChildItem -Name; Get-Content landing.html"
+      : "PS1='~/projetos/site $ '; clear; ls; cat landing.html"
+  await page.keyboard.type(shell)
+  await page.keyboard.press('Enter')
+  await page.waitForTimeout(2000)
+  await tidy()
   await shot('04-session-terminal')
   await page.getByRole('button', { name: 'Terminal', exact: true }).click()
 

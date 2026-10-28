@@ -12,7 +12,8 @@ identidade Agent Hangar (azul-marinho e amarelo `#F4B400`).
 | `script.json`              | Cenas, na ordem, com a narração de cada uma (voz, modelo e instruções de locução no topo)  |
 | `index.html` + `scenes.js` | As cenas como página. `renderAt(t)` desenha qualquer instante sempre igual                 |
 | `shots.spec.ts`            | Captura as telas reais do app contra os servidores falsos dos testes (nada real é chamado) |
-| `tts.mjs`                  | Gera a narração pelo OpenRouter (`google/gemini-3.8-flash-lite-tts`, voz Orus)             |
+| `tts.py` / `tts.mjs`       | Geram a narração pelo OpenRouter (`google/gemini-3.8-flash-lite-tts`, voz Orus)            |
+| `narration/`               | As falas geradas, uma por cena (`<cena>.wav`)                                              |
 | `render.cjs`               | Grava os quadros pelo Electron, codifica com ffmpeg e mistura narração e trilha            |
 | `assets/`                  | Artes da marca usadas em algumas cenas                                                     |
 | `shots/`                   | Telas do app, geradas por `shots.spec.ts`                                                  |
@@ -34,12 +35,15 @@ nunca é cortada, e para mudar o texto basta editar `script.json` e gerar de nov
    npx playwright test -c video
    ```
 
-2. Narração, com a sua chave do OpenRouter no ambiente. A chave fica só nessa variável de ambiente e vai apenas para
-   o openrouter.ai; o script não a grava em lugar nenhum. No PowerShell:
+2. Narração, só quando o texto do `script.json` mudar. O script pede a chave do OpenRouter com entrada oculta (ou a
+   lê de `OPENROUTER_API_KEY`); ela vai apenas para o openrouter.ai e não é gravada em lugar nenhum:
 
-   ```powershell
-   $env:OPENROUTER_API_KEY = '<sua chave>'; node video/tts.mjs
+   ```bash
+   python video/tts.py
    ```
+
+   Para refazer só algumas falas: `python video/tts.py --only logo,close`. A versão em Node (`node video/tts.mjs`) faz
+   o mesmo, mas lê a chave só do ambiente.
 
 3. Vídeo. O resultado sai em `video/out/agent-hangar-desktop.mp4`:
 

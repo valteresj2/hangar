@@ -171,10 +171,10 @@ async function main() {
     `[${hitIdx}:a]aformat=channel_layouts=stereo,adelay=${Math.round(starts.logo * 1000)}:all=1,volume=0.8[hit]`,
     // Two copies of the voice: one drives the ducking of the pad, the other is heard.
     clips.length
-      ? `${voices}amix=inputs=${clips.length}:normalize=0,volume=1.6,asplit=2[voice][voice2]`
+      ? `${voices}amix=inputs=${clips.length}:normalize=0,asplit=2[voice][voice2]`
       : `anullsrc=r=48000:cl=stereo:d=${total.toFixed(2)},asplit=2[voice][voice2]`,
     `[pad][voice]sidechaincompress=threshold=0.03:ratio=6:attack=20:release=400[duck]`,
-    `[duck][voice2][hit]amix=inputs=3:normalize=0,alimiter=limit=0.95[a]`
+    `[duck][voice2][hit]amix=inputs=3:normalize=0,loudnorm=I=-16:TP=-1.5:LRA=11,aresample=48000[a]`
   )
   const graph = filters.join(';')
   const mux = ffmpeg([
