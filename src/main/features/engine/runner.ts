@@ -18,6 +18,7 @@ import { broadcast } from '../../core/broadcast'
 import { bus } from '../../core/bus'
 import { collectSystemAppend } from '../../core/prompts'
 import { db, settings } from '../../core/store'
+import { PLATFORM_MCP_NAME, platformMcpServer } from '../platform/api'
 import type { PermissionMode, Session, SessionStatus } from '../../../shared/contracts'
 import {
   DEFAULT_SESSION_TITLES,
@@ -228,6 +229,8 @@ export class Runner {
       ...(session.fastMode ? { fastMode: true } : {})
     }
     const permissionMode = session.permissionMode ?? defaults.defaultPermissionMode
+    // Connected to Agent Hangar: its tools (create agents, multi-agents, digital employees, talk to them) in the session.
+    const platformMcp = platformMcpServer()
     this.bypassAllowed = permissionMode === 'bypassPermissions'
     this.restartAfterTurn = false
 
@@ -254,6 +257,7 @@ export class Runner {
       env: launchOptions.env,
       systemPrompt: { type: 'preset', preset: 'claude_code', ...(instructions ? { append: instructions } : {}) },
       ...(Object.keys(flagSettings).length ? { settings: flagSettings } : {}),
+      ...(platformMcp ? { mcpServers: { [PLATFORM_MCP_NAME]: platformMcp } } : {}),
       canUseTool: this.canUseTool,
       stderr: (data) => {
         this.stderrTail.push(data)

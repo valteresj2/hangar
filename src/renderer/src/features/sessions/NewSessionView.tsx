@@ -59,6 +59,8 @@ export function NewSessionView() {
     appliedDraft = draft.nonce
     if (draft.cwd) setCwd(draft.cwd)
     setProjectId(draft.projectId)
+    if (draft.title !== undefined) setTitle(draft.title)
+    if (draft.prompt !== undefined) setPrompt(draft.prompt)
     textRef.current?.focus()
   }, [draft])
 

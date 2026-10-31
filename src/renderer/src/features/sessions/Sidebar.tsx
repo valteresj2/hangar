@@ -2,6 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import type { Group, Project, Session } from '@shared/contracts'
 import { ENGINE, type SearchHit } from '@shared/features/engine'
+import { NEW_SESSION_PRESET_EVENT, type NewSessionPreset } from '@shared/features/sessions'
 import { bridge } from '../../core/api'
 import { useCollection } from '../../core/data'
 import { useUi } from '../../core/ui'
@@ -316,6 +317,16 @@ function ProjectsFooter({ projects, sessions }: { projects: Project[]; sessions:
 
 export function Sidebar() {
   useSessionShortcuts()
+  // Other features (e.g. "Conversar" in Meus agentes) open the new-session view filled in.
+  useEffect(() => {
+    const onPreset = (e: Event) => {
+      const p = (e as CustomEvent<NewSessionPreset>).detail ?? {}
+      useSessionsUi.getState().setDraft({ title: p.title, prompt: p.prompt })
+      useUi.getState().selectSession(undefined)
+    }
+    window.addEventListener(NEW_SESSION_PRESET_EVENT, onPreset)
+    return () => window.removeEventListener(NEW_SESSION_PRESET_EVENT, onPreset)
+  }, [])
   const sessions = useCollection('sessions')
   const groups = useCollection('groups')
   const projects = useCollection('projects')

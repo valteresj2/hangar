@@ -140,6 +140,13 @@ test('workspace: Início with live badges, deep link to Meus agentes, portal lin
   await expect(built).toContainText('Em produção')
   await expect(built).toContainText('você criou')
 
+  // "Conversar": a new session filled in to talk to the agent (name and first message, both editable).
+  await built.getByRole('button', { name: 'Conversar' }).click()
+  await expect(page.getByLabel('Nome da sessão')).toHaveValue(/^Conversa · /)
+  await expect(page.getByPlaceholder(/Descreva a tarefa/)).toHaveValue(/\(resumo-diario\) do Agent Hangar/)
+  await nav.getByRole('button', { name: /^Meus agentes/ }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Meus agentes' })).toBeVisible()
+
   // An agent's status changes on the platform: the list follows.
   platform.emitEvent('agent.status', { slug: 'suporte-n1', status: 'paused' })
   await expect(page.locator('[data-agent="suporte-n1"]')).toContainText('Pausado')

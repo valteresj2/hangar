@@ -18,6 +18,17 @@ export const DEFAULT_SESSION_TITLE = 'Nova sessão'
  */
 export const OPEN_IMPORT_EVENT = 'hangar:sessions:open-import'
 
+/**
+ * Renderer-side DOM event (CustomEvent with a NewSessionPreset) that opens the new-session view filled in, e.g.
+ * "Conversar" on an agent in Meus agentes. The person still sees the folder, can edit both fields and starts it.
+ */
+export const NEW_SESSION_PRESET_EVENT = 'hangar:sessions:new-preset'
+
+export interface NewSessionPreset {
+  title?: string
+  prompt?: string
+}
+
 /** `sessions:create` (input) → Session. Missing options fall back to settings() defaults. */
 export interface CreateSessionInput {
   cwd: string

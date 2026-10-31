@@ -481,3 +481,8 @@
   color: var(--text);
   font-size: 13px;
 }
+.agentActions {
+  display: flex;
+  flex-shrink: 0;
+  gap: 6px;
+}

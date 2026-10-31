@@ -1,6 +1,6 @@
 {
   "name": "hangar",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Agent Hangar Desktop — desktop app for running and steering Claude Code sessions",
   "main": "./out/main/index.js",
   "author": "Agent Hangar",

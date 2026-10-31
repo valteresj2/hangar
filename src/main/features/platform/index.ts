@@ -16,6 +16,7 @@ import {
   stop,
   syncModelsNow
 } from './controller'
+import { startMcpBridge, stopMcpBridge } from './mcpBridge'
 import { chooseModel, setDefaultModel } from './models'
 
 export const platformFeature: Feature = {
@@ -32,8 +33,10 @@ export const platformFeature: Feature = {
     handle(PLATFORM.setDefaultModel, (_e, choice: ModelChoice) => setDefaultModel(choice))
     // Policy and tokens are read before any window opens, so `required` is enforced from the first frame.
     await start(ctx)
+    await startMcpBridge()
   },
   dispose() {
     stop()
+    void stopMcpBridge()
   }
 }

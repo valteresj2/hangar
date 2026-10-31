@@ -21,6 +21,9 @@ export interface Toast {
 export interface NewSessionDraft {
   cwd?: string
   projectId?: string
+  /** Name and first message to fill in (NEW_SESSION_PRESET_EVENT). */
+  title?: string
+  prompt?: string
   /** Bumped on every request so the view re-applies the preset even when values repeat. */
   nonce: number
 }

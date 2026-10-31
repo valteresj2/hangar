@@ -244,6 +244,23 @@ describe('login and rotating refresh against the fake platform', () => {
     expect(mock.grants.at(-1)?.revoked).toBe(false)
   })
 
+  it('forward (the MCP bridge) passes the response through and refreshes once on 401', async () => {
+    const manager = new TokenManager(fetchFn, { save: async () => {} })
+    manager.set(await doLogin())
+    const api = new ApiClient(fetchFn, manager)
+    mock.expireAccessTokens()
+    const before = mock.count('/oauth/token', 'refresh_token')
+    const res = await api.forward('/api/app/me', {
+      method: 'GET',
+      // A caller's own credentials never reach the platform: the login's token replaces them.
+      headers: { accept: 'application/json', authorization: 'Bearer de-outro' },
+      signal: AbortSignal.timeout(10_000)
+    })
+    expect(res.status).toBe(200)
+    expect(((await res.json()) as { user: { email: string } }).user.email).toBe(MOCK_USER.email)
+    expect(mock.count('/oauth/token', 'refresh_token') - before).toBe(1)
+  })
+
   it('refreshes ahead of expiry', async () => {
     let now = Date.now()
     const manager = new TokenManager(fetchFn, { save: async () => {} }, () => now)

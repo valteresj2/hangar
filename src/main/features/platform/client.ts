@@ -140,6 +140,37 @@ export class ApiClient {
     return res
   }
 
+  /**
+   * Raw request on the platform with the login's token, the response as it came (the MCP bridge pipes it, streams
+   * included). Like request(), a 401 triggers one refresh and one retry; only the caller's signal ends it.
+   */
+  async forward(
+    path: string,
+    init: { method: string; headers: Record<string, string>; body?: Uint8Array; signal: AbortSignal }
+  ): Promise<Response> {
+    const send = async (token: string) => {
+      const url = `${this.base()}${path}`
+      try {
+        return await this.fetchFn(url, {
+          method: init.method,
+          headers: { ...init.headers, authorization: `Bearer ${token}` },
+          body: init.body,
+          signal: init.signal
+        })
+      } catch (err) {
+        throw networkError(url, err)
+      }
+    }
+    let token = await this.tokens.accessToken()
+    let res = await send(token)
+    if (res.status === 401) {
+      await res.body?.cancel().catch(() => undefined)
+      token = (await this.tokens.refresh(token)).accessToken
+      res = await send(token)
+    }
+    return res
+  }
+
   /** JSON request to the app API; a 401 triggers one refresh and one retry. */
   async request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
     let token = await this.tokens.accessToken()

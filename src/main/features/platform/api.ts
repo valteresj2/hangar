@@ -4,6 +4,8 @@ import { PLATFORM_REQUIRED_MESSAGE, type PlatformState } from '../../../shared/f
 import { apiClient, currentLogin, effectiveConfig, getState, onStateChange, refresh, syncModelsNow } from './controller'
 import { PlatformError } from './errors'
 
+export { PLATFORM_MCP_NAME, platformMcpServer } from './mcpBridge'
+
 /** False when the platform is required (mode `required`) and the app is not connected. */
 export function canCreateSessions(): boolean {
   return getState().canCreateSessions

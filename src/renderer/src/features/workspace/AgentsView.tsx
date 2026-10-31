@@ -1,7 +1,9 @@
 // Meus agentes: the person's Digital employees (personal ones and the team's they manage, with model, harness and
 // level from the org chart) and the plain agents they own, maintain or created — status, kind and last use. The
-// detail opens the portal until it moves to the app (M3).
+// detail opens the portal until it moves to the app (M3); "Conversar" opens a session that talks to the agent
+// through the Agent Hangar tools every session gets while the app is connected.
 import type { ReactNode } from 'react'
+import { NEW_SESSION_PRESET_EVENT, type NewSessionPreset } from '@shared/features/sessions'
 import type {
   WorkspaceBuiltAgent,
   WorkspaceChartNode,
@@ -15,6 +17,33 @@ import { LiveNote, LoadState } from './WorkspaceView'
 import styles from './workspace.module.css'
 
 type Employee = WorkspaceEmployee & Partial<Pick<WorkspaceChartNode, 'level' | 'model' | 'harness'>>
+
+/** New session filled in to talk to the agent: its role first, then the person's messages (both editable). */
+function talkTo(name: string, slug: string, employee: boolean): void {
+  const detail: NewSessionPreset = employee
+    ? {
+        title: `Conversa · ${name}`,
+        prompt:
+          `Quero falar com o funcionário digital "${name}" (${slug}) do Agent Hangar. Primeiro me diga qual é o papel ` +
+          'dele, o status e se há tarefas ou decisões abertas. Depois, passe para ele as tarefas que eu pedir e me ' +
+          'mostre os resultados.'
+      }
+    : {
+        title: `Conversa · ${name}`,
+        prompt:
+          `Quero conversar com o agente "${name}" (${slug}) do Agent Hangar. Primeiro me diga qual é o papel dele e o ` +
+          'que ele faz (pelo guia dele). Depois, repasse para ele o que eu escrever e me mostre as respostas.'
+      }
+  window.dispatchEvent(new CustomEvent(NEW_SESSION_PRESET_EVENT, { detail }))
+}
+
+function TalkButton({ name, slug, employee }: { name: string; slug: string; employee: boolean }) {
+  return (
+    <button className="btn" title="Abre uma sessão para conversar com ele" onClick={() => talkTo(name, slug, employee)}>
+      Conversar
+    </button>
+  )
+}
 
 function LastUse({ at, working }: { at?: string; working?: boolean }) {
   const text = working ? 'agora' : ago(at)
@@ -37,9 +66,12 @@ function EmployeeRow({ a }: { a: Employee }) {
           <span className={st.className}>{st.label}</span>
           {a.title && <div className={`muted ${styles.small} ${styles.oneLine}`}>{a.title}</div>}
         </div>
-        <button className="btn" onClick={open}>
-          Abrir ↗
-        </button>
+        <div className={styles.agentActions}>
+          <TalkButton name={a.name} slug={a.slug} employee />
+          <button className="btn" onClick={open}>
+            Abrir ↗
+          </button>
+        </div>
       </div>
       <div className={styles.chips}>
         {a.model && <span className={styles.chip}>{a.model}</span>}
@@ -79,9 +111,12 @@ function BuiltRow({ a }: { a: WorkspaceBuiltAgent }) {
           {a.why && <span className="pill">{BUILT_WHY[a.why] ?? a.why}</span>}
           {a.objective && <div className={`muted ${styles.small} ${styles.oneLine}`}>{a.objective}</div>}
         </div>
-        <button className="btn" onClick={open}>
-          Abrir ↗
-        </button>
+        <div className={styles.agentActions}>
+          <TalkButton name={a.name} slug={a.slug} employee={false} />
+          <button className="btn" onClick={open}>
+            Abrir ↗
+          </button>
+        </div>
       </div>
       <div className={styles.chips}>
         {a.version && <span className={styles.chip}>v{a.version}</span>}
