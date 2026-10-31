@@ -54,7 +54,7 @@ function reply(res: ServerResponse, status: number, message: string): void {
   res.end(JSON.stringify({ error: message }))
 }
 
-async function readBody(req: IncomingMessage): Promise<Uint8Array | undefined> {
+async function readBody(req: IncomingMessage): Promise<Uint8Array<ArrayBuffer> | undefined> {
   const chunks: Buffer[] = []
   for await (const chunk of req) chunks.push(chunk as Buffer)
   return chunks.length ? new Uint8Array(Buffer.concat(chunks)) : undefined

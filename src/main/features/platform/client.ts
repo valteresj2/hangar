@@ -146,7 +146,7 @@ export class ApiClient {
    */
   async forward(
     path: string,
-    init: { method: string; headers: Record<string, string>; body?: Uint8Array; signal: AbortSignal }
+    init: { method: string; headers: Record<string, string>; body?: Uint8Array<ArrayBuffer>; signal: AbortSignal }
   ): Promise<Response> {
     const send = async (token: string) => {
       const url = `${this.base()}${path}`
