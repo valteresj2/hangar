@@ -21,6 +21,7 @@ import {
   getState,
   inboxItems,
   markInbox,
+  openInVscode,
   openPortal,
   refresh,
   start,
@@ -46,6 +47,7 @@ export const workspaceFeature: Feature = {
     handle(WORKSPACE.decide, (_e, input: DecideInput) => decide(input))
     handle(WORKSPACE.agent, (_e, slug: string) => agentDetail(String(slug)))
     handle(WORKSPACE.agentAction, (_e, slug: string, action: AgentAction) => agentAction(String(slug), action))
+    handle(WORKSPACE.openInVscode, (_e, slug: string) => openInVscode(String(slug)))
     start(ctx)
   },
   dispose() {

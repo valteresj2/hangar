@@ -24,7 +24,8 @@ export const workspaceApi = {
   markInbox: (keys: string[], change: InboxMark) => bridge.invoke(WORKSPACE.markInbox, keys, change),
   decide: (input: DecideInput) => bridge.invoke(WORKSPACE.decide, input),
   agent: (slug: string) => bridge.invoke(WORKSPACE.agent, slug),
-  agentAction: (slug: string, action: AgentAction) => bridge.invoke(WORKSPACE.agentAction, slug, action)
+  agentAction: (slug: string, action: AgentAction) => bridge.invoke(WORKSPACE.agentAction, slug, action),
+  openInVscode: (slug: string) => bridge.invoke(WORKSPACE.openInVscode, slug)
 }
 
 export const useWorkspaceStore = create<{ state?: WorkspaceState }>(() => ({}))

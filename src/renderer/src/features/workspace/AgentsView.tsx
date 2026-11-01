@@ -344,6 +344,29 @@ function TalkButton({ name, slug, employee }: { name: string; slug: string; empl
   )
 }
 
+function VscodeButton({ slug }: { slug: string }) {
+  const [failed, setFailed] = useState('')
+  const open = (): void => {
+    setFailed('')
+    void workspaceApi.openInVscode(slug).then(
+      (ok) => setFailed(ok ? '' : 'Conecte o app à plataforma primeiro.'),
+      () => setFailed('O VS Code não abriu. Ele tem a extensão Agent Hangar?')
+    )
+  }
+  return (
+    <button
+      className="btn"
+      data-vscode={slug}
+      title={
+        failed || 'O VS Code (extensão Agent Hangar) passa a executar as tarefas dele numa pasta sua, sob a alçada'
+      }
+      onClick={open}
+    >
+      {failed ? 'VS Code não abriu' : 'Trabalhar no VS Code'}
+    </button>
+  )
+}
+
 function LastUse({ at, working }: { at?: string; working?: boolean }) {
   const text = working ? 'agora' : ago(at)
   return <span className={styles.chip}>Último uso: {text || '—'}</span>
@@ -368,6 +391,7 @@ function EmployeeRow({ a }: { a: Employee }) {
         </div>
         <div className={styles.agentActions}>
           <TalkButton name={a.name} slug={a.slug} employee />
+          {['probation', 'active'].includes(a.status) && <VscodeButton slug={a.slug} />}
           <ManageButton open={managing} onClick={() => setManaging(!managing)} />
           <button className="btn" onClick={open}>
             Abrir ↗

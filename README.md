@@ -191,6 +191,14 @@ que recebe e o que devolve. Depois é só escrever: o Claude repassa as suas men
 employee, a sessão também mostra o status, as tarefas abertas e as decisões pendentes, e você pode passar tarefas a
 ele por ali.
 
+### Um digital employee trabalhando no VS Code
+
+Em **Meus agentes**, o botão **Trabalhar no VS Code** de um digital employee chama a extensão Agent Hangar do VS
+Code. Você escolhe a pasta e confirma, e o VS Code passa a ser o posto de trabalho dele: pega as tarefas, raciocina com
+o próprio funcionário por AG-UI e lê e escreve arquivos, roda comandos num terminal que você acompanha e publica no seu
+GitHub. Tudo passa pela alçada dele. O que pede aprovação aparece em **Decisões**, com o comando exato à vista.
+Precisa da plataforma 0.57 ou mais nova.
+
 ### Para o admin da plataforma
 
 - **Dispositivos:** cada app conectado aparece no console, com o último contato, e o admin pode revogar o acesso.

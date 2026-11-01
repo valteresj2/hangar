@@ -91,4 +91,12 @@ test('workspace M2: decidir, caixa de entrada e gerenciar um agente pelo app', a
 
   // Nothing of this went through the portal.
   expect(await opened(hangar)).toEqual([])
+
+  // "Trabalhar no VS Code": the extension's link, built by the app from the slug and the connected platform.
+  await employee.getByRole('button', { name: 'Trabalhar no VS Code' }).click()
+  await expect
+    .poll(() => opened(hangar))
+    .toEqual([
+      `vscode://agent-hangar.agent-hangar/work?${new URLSearchParams({ employee: 'analista-dados', url: platform.url }).toString()}`
+    ])
 })

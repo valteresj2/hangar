@@ -25,6 +25,8 @@ export const WORKSPACE = {
   agent: 'workspace:agent',
   /** (slug, action: AgentAction) → AgentActionResult — stop, publish, delete an agent; pause, resume, offboard. */
   agentAction: 'workspace:agentAction',
+  /** (slug) → boolean — VS Code (Agent Hangar extension) starts working as this Digital employee. */
+  openInVscode: 'workspace:openInVscode',
 
   /** main → renderer: WorkspaceState after every change. */
   evState: 'workspace:event:state',
@@ -388,6 +390,7 @@ declare module '../ipc' {
     [WORKSPACE.decide]: (input: DecideInput) => DecideResult
     [WORKSPACE.agent]: (slug: string) => AgentDetail
     [WORKSPACE.agentAction]: (slug: string, action: AgentAction) => AgentActionResult
+    [WORKSPACE.openInVscode]: (slug: string) => boolean
   }
 
   interface IpcEventContract {

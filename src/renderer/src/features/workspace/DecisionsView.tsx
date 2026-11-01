@@ -100,7 +100,8 @@ function DecisionCard({ d }: { d: WorkspaceDecision }) {
       {d.question && d.taskTitle && <div className={`muted ${styles.small}`}>Tarefa: {d.taskTitle}</div>}
       {d.rationale && <p className={styles.decisionText}>{d.rationale}</p>}
       {(d.tool || d.payload) && (
-        <details className={styles.payload}>
+        // A short action (a terminal command, a file to publish) shows open: approving it means reading it.
+        <details className={styles.payload} open={!!d.payload && d.payload.length <= 600}>
           <summary>Ação: {d.tool ?? 'detalhes'}</summary>
           {d.payload && <pre>{d.payload}</pre>}
         </details>

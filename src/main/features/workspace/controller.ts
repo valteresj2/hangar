@@ -5,7 +5,7 @@
 // Files in <userData>/hangar-data/workspace/:
 //   cache.json   { v, key: "<url> <userId>", home, decisions, chart, inbox, savedAt } — no secrets; dropped on logout
 //   recent.json  [{ target, label, at }] — what the person opened from the app ("Vistos recentemente")
-import { app, powerMonitor } from 'electron'
+import { app, powerMonitor, shell } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import {
@@ -594,6 +594,17 @@ export async function openPortal(target: PortalTarget, label?: string): Promise<
     remember(target, label)
   if (opened && loginKey) emit()
   return opened
+}
+
+/** VS Code's Agent Hangar extension takes the employee as its worker in a folder of the person's choosing (the
+ *  extension confirms first). The link is built here from the slug and the configured platform — never a URL from the
+ *  renderer — since custom protocols are refused by openExternalLink. */
+export async function openInVscode(slug: string): Promise<boolean> {
+  const url = platformUrl()
+  if (!url || !/^[a-z0-9][a-z0-9-]{0,80}$/i.test(slug)) return false
+  const query = new URLSearchParams({ employee: slug, url }).toString()
+  await shell.openExternal(`vscode://agent-hangar.agent-hangar/work?${query}`)
+  return true
 }
 
 /** Where a valid deep link leads: native screens show in the window, the rest open the portal. */
