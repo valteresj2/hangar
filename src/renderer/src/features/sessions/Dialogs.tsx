@@ -4,7 +4,13 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { createPortal } from 'react-dom'
 import type { Project } from '@shared/contracts'
-import { OPEN_IMPORT_EVENT, type CliSessionInfo } from '@shared/features/sessions'
+import {
+  OPEN_CHATGPT_IMPORT_EVENT,
+  OPEN_IMPORT_EVENT,
+  type ChatgptProjectInfo,
+  type ChatgptScan,
+  type CliSessionInfo
+} from '@shared/features/sessions'
 import { api } from '../../core/api'
 import { useCollection } from '../../core/data'
 import {
@@ -12,7 +18,9 @@ import {
   deleteGroup,
   deleteProject,
   deleteSession,
+  importChatgpt,
   importCliSessions,
+  listChatgpt,
   listCliSessions,
   moveToGroup,
   renameGroup,
@@ -310,6 +318,186 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
   )
 }
 
+/** Projects of the ChatGPT desktop app, each with its conversations; a conversation brings its project along. */
+function ChatgptImportDialog({ onClose }: { onClose: () => void }) {
+  const [scan, setScan] = useState<ChatgptScan>()
+  const [error, setError] = useState<string>()
+  const [projects, setProjects] = useState<Set<string>>(new Set())
+  const [threads, setThreads] = useState<Set<string>>(new Set())
+  const [filter, setFilter] = useState('')
+  const [busy, setBusy] = useState(false)
+
+  useEffect(() => {
+    let alive = true
+    listChatgpt()
+      .then((r) => alive && setScan(r))
+      .catch((err) => alive && setError(errorText(err)))
+    return () => {
+      alive = false
+    }
+  }, [])
+
+  const visible = useMemo(() => {
+    const q = filter.trim().toLowerCase()
+    const match = (s: string) => s.toLowerCase().includes(q)
+    return (scan?.projects ?? []).flatMap((p) => {
+      if (!q || match(p.name) || match(p.cwd)) return [p]
+      const hits = p.threads.filter((t) => match(t.title))
+      return hits.length ? [{ ...p, threads: hits }] : []
+    })
+  }, [scan, filter])
+
+  const pending = (p: ChatgptProjectInfo) => p.threads.filter((t) => !t.imported)
+  const importable = (p: ChatgptProjectInfo) => p.exists && (!p.imported || pending(p).length > 0)
+  const projectChecked = (p: ChatgptProjectInfo) => projects.has(p.key) || p.threads.some((t) => threads.has(t.id))
+  const allChecked =
+    visible.some(importable) &&
+    visible.filter(importable).every((p) => projectChecked(p) && pending(p).every((t) => threads.has(t.id)))
+
+  const setProject = (p: ChatgptProjectInfo, on: boolean) => {
+    setProjects((prev) => {
+      const next = new Set(prev)
+      if (on) next.add(p.key)
+      else next.delete(p.key)
+      return next
+    })
+    setThreads((prev) => {
+      const next = new Set(prev)
+      for (const t of pending(p)) {
+        if (on) next.add(t.id)
+        else next.delete(t.id)
+      }
+      return next
+    })
+  }
+
+  const toggleThread = (id: string) =>
+    setThreads((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+
+  const toggleAll = () => {
+    for (const p of visible) if (importable(p)) setProject(p, !allChecked)
+  }
+
+  const chosenProjects = (scan?.projects ?? []).filter((p) => !p.imported && p.exists && projectChecked(p)).length
+  const submit = async () => {
+    setBusy(true)
+    const res = await importChatgpt({ projects: [...projects], threads: [...threads] })
+    setBusy(false)
+    if (res) onClose()
+  }
+
+  const metaOf = (p: ChatgptProjectInfo) =>
+    [
+      shortFolder(p.cwd),
+      `${p.threads.length} conversa${p.threads.length === 1 ? '' : 's'}`,
+      p.agentsMd ? 'com AGENTS.md' : '',
+      !p.exists ? 'pasta não encontrada' : p.imported ? 'projeto já importado' : ''
+    ]
+      .filter(Boolean)
+      .join(' · ')
+
+  return (
+    <Modal title="Importar projetos do ChatGPT" onClose={onClose} wide>
+      <div className={styles.modalBody}>
+        <span className="muted">
+          Projetos e conversas do app ChatGPT (Work e Codex) neste computador. Cada projeto vira um projeto do Hangar na
+          mesma pasta; cada conversa vira uma sessão com o histórico, e o modelo recebe a conversa como contexto ao
+          continuar.
+        </span>
+      </div>
+      <div className={styles.row}>
+        <input
+          className="input"
+          placeholder="Filtrar por projeto, pasta ou conversa"
+          value={filter}
+          onChange={(e) => setFilter(e.target.value)}
+        />
+        <button className="btn" disabled={!visible.some(importable)} onClick={toggleAll}>
+          {allChecked ? 'Desmarcar tudo' : 'Marcar tudo'}
+        </button>
+      </div>
+      <div className={styles.importList}>
+        {error && <div className={styles.importEmpty}>Não foi possível ler os dados do ChatGPT: {error}</div>}
+        {!error && !scan && <div className={styles.importEmpty}>Procurando projetos…</div>}
+        {scan && !scan.found && (
+          <div className={styles.importEmpty}>
+            Não encontramos o app ChatGPT neste computador (procuramos em {scan.dir}).
+          </div>
+        )}
+        {scan?.found && visible.length === 0 && <div className={styles.importEmpty}>Nenhum projeto encontrado.</div>}
+        {visible.map((p) => (
+          <div key={p.key}>
+            <label
+              className={`${styles.importRow} ${styles.importProject} ${importable(p) ? '' : styles.importDone}`}
+              title={p.cwd}
+            >
+              <input
+                type="checkbox"
+                aria-label={`Projeto ${p.name}`}
+                disabled={!importable(p)}
+                checked={(p.imported && p.exists) || projectChecked(p)}
+                onChange={(e) => setProject(p, e.target.checked)}
+              />
+              <span className={styles.importMain}>
+                <span className={styles.importTitle}>{p.name}</span>
+                <span className={styles.importMeta}>{metaOf(p)}</span>
+              </span>
+            </label>
+            {p.threads.map((t) => (
+              <label
+                key={t.id}
+                className={`${styles.importRow} ${styles.importThread} ${t.imported || !p.exists ? styles.importDone : ''}`}
+              >
+                <input
+                  type="checkbox"
+                  aria-label={`Conversa ${t.title}`}
+                  disabled={t.imported || !p.exists}
+                  checked={t.imported || threads.has(t.id)}
+                  onChange={() => toggleThread(t.id)}
+                />
+                <span className={styles.importMain}>
+                  <span className={styles.importTitle}>{t.title}</span>
+                  <span className={styles.importMeta}>
+                    {relativeTime(t.updatedAt)}
+                    {t.messages ? ` · ${t.messages} mensagens` : ''}
+                    {t.imported ? ' · já importada' : ''}
+                  </span>
+                </span>
+              </label>
+            ))}
+          </div>
+        ))}
+      </div>
+      <Actions>
+        <span className="muted">
+          {[
+            chosenProjects ? `${chosenProjects} projeto${chosenProjects > 1 ? 's' : ''}` : '',
+            threads.size ? `${threads.size} conversa${threads.size > 1 ? 's' : ''}` : ''
+          ]
+            .filter(Boolean)
+            .join(' e ')}
+        </span>
+        <div className={styles.spacer} />
+        <button className="btn" onClick={onClose}>
+          Cancelar
+        </button>
+        <button
+          className="btn btn-primary"
+          disabled={(!chosenProjects && !threads.size) || busy}
+          onClick={() => void submit()}
+        >
+          {busy ? 'Importando…' : 'Importar'}
+        </button>
+      </Actions>
+    </Modal>
+  )
+}
+
 function DeleteSessionDialog({
   dialog,
   onClose
@@ -408,6 +596,8 @@ function DialogSwitch({ dialog }: { dialog: SessionsDialog }) {
       )
     case 'import':
       return <ImportDialog onClose={close} />
+    case 'importChatgpt':
+      return <ChatgptImportDialog onClose={close} />
   }
 }
 
@@ -437,8 +627,13 @@ export function SessionsOverlay() {
   // Other features (e.g. the command palette) open the import dialog with a DOM event.
   useEffect(() => {
     const onImport = () => openDialog({ kind: 'import' })
+    const onChatgpt = () => openDialog({ kind: 'importChatgpt' })
     window.addEventListener(OPEN_IMPORT_EVENT, onImport)
-    return () => window.removeEventListener(OPEN_IMPORT_EVENT, onImport)
+    window.addEventListener(OPEN_CHATGPT_IMPORT_EVENT, onChatgpt)
+    return () => {
+      window.removeEventListener(OPEN_IMPORT_EVENT, onImport)
+      window.removeEventListener(OPEN_CHATGPT_IMPORT_EVENT, onChatgpt)
+    }
   }, [openDialog])
 
   // Re-key per dialog object so local form state resets between openings.

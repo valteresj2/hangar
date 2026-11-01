@@ -1,7 +1,22 @@
 // Main-side API of the engine feature, used by other features. Owned by the engine agent.
 import type { SendOptions, TranscriptEntry } from '../../../shared/features/engine'
 import { closeRunner, existingRunner, history, runnerFor, switchProvider } from './registry'
-import { searchEntries } from './transcript'
+import { makeEntry, searchEntries, writeEntries } from './transcript'
+
+/** One line of a conversation brought in from another app (see seedTranscript). */
+export interface SeedEntry {
+  kind: 'user' | 'assistant' | 'system'
+  text: string
+  ts: number
+}
+
+/** Writes the transcript of a session that has none yet: an imported conversation, shown as its history. */
+export function seedTranscript(sessionId: string, entries: SeedEntry[]): void {
+  writeEntries(
+    sessionId,
+    entries.map(({ kind, text, ts }) => makeEntry({ kind, text }, ts))
+  )
+}
 
 /**
  * Sends a prompt to the session, starting (or resuming) its Claude Code query if needed. Resolves once queued.

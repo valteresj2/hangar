@@ -577,6 +577,12 @@
   font-size: 11px;
   color: var(--text-muted);
 }
+.importProject .importTitle {
+  font-weight: 600;
+}
+.importThread {
+  padding-left: 34px;
+}
 .importEmpty {
   padding: 24px;
   text-align: center;

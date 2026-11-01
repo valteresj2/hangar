@@ -33,6 +33,7 @@ Prioridade: **P0** = MVP, **P1** = segunda onda, **P2** = depois / fora de escop
 | Grupos/seções na sidebar, arrastar sessões                                   | P1         | sessions       |
 | Projetos (pasta + instruções + sessões agrupadas)                            | P1         | sessions       |
 | Importar sessões do Claude Code CLI (`~/.claude/projects/*.jsonl`)           | P1         | sessions       |
+| Importar projetos e conversas do app ChatGPT (Work/Codex, `~/.codex`)        | P1         | sessions       |
 | Sessão em worktree git isolado                                               | P1         | sessions + git |
 | Split view (duas sessões lado a lado), reabrir sessão fechada                | P2         | shell          |
 | Exportar transcrição (Markdown)                                              | P1         | sessions       |

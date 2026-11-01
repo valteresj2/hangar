@@ -97,6 +97,9 @@ Passo a passo completo, por sistema: [docs/RELEASE.md](docs/RELEASE.md#como-abri
 - **Sidebar:** sessões fixadas, grupos com arrastar e soltar, arquivadas, busca em títulos e conversas, projetos com
   instruções próprias, worktree git isolado por sessão, exportação em Markdown e **importação das sessões do CLI
   `claude`**.
+- **Importar projetos do ChatGPT:** os projetos e as conversas do app ChatGPT (Work e Codex) neste computador viram
+  projetos e sessões do Hangar. A conversa aparece como histórico, e o modelo a recebe como contexto ao continuar. Se o
+  projeto tem um `AGENTS.md`, o Hangar passa a segui-lo.
 
 ### Painel lateral
 

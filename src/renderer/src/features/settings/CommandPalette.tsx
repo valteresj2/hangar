@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { Session, SidePanelTab } from '@shared/contracts'
-import { OPEN_IMPORT_EVENT } from '@shared/features/sessions'
+import { OPEN_CHATGPT_IMPORT_EVENT, OPEN_IMPORT_EVENT } from '@shared/features/sessions'
 import { api } from '../../core/api'
 import { useCollection } from '../../core/data'
 import { useUi } from '../../core/ui'
@@ -89,6 +89,17 @@ const ACTIONS: PaletteItem[] = [
       if (!ui().sidebarOpen) ui().toggleSidebar()
       // Let the sessions UI mount before asking it to open its dialog.
       setTimeout(() => window.dispatchEvent(new Event(OPEN_IMPORT_EVENT)), 50)
+    }
+  },
+  {
+    id: 'import-chatgpt',
+    group: 'Ações',
+    label: 'Importar projetos do ChatGPT',
+    icon: '⇣',
+    run: () => {
+      ui().setSettingsOpen(false)
+      if (!ui().sidebarOpen) ui().toggleSidebar()
+      setTimeout(() => window.dispatchEvent(new Event(OPEN_CHATGPT_IMPORT_EVENT)), 50)
     }
   }
 ]

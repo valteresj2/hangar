@@ -10,6 +10,7 @@ export type SessionsDialog =
   | { kind: 'project'; project?: Project }
   | { kind: 'deleteProject'; project: Project }
   | { kind: 'import' }
+  | { kind: 'importChatgpt' }
 
 export interface Toast {
   id: number

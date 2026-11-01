@@ -1,7 +1,15 @@
 // Session/group/project actions shared by the sidebar, the context menu and the session header.
 import { nanoid } from 'nanoid'
 import type { Group, Project, Session } from '@shared/contracts'
-import { DEFAULT_SESSION_TITLE, SESSIONS, type ImportCliResult, type CliSessionInfo } from '@shared/features/sessions'
+import {
+  DEFAULT_SESSION_TITLE,
+  SESSIONS,
+  type ChatgptImportInput,
+  type ChatgptImportResult,
+  type ChatgptScan,
+  type CliSessionInfo,
+  type ImportCliResult
+} from '@shared/features/sessions'
 import { api, bridge } from '../../core/api'
 import { useUi } from '../../core/ui'
 import type { MenuItem } from './ContextMenu'
@@ -126,6 +134,23 @@ export async function importCliSessions(ids: string[]): Promise<ImportCliResult 
   if (res) {
     const extra = res.skipped ? ` (${res.skipped} já importada${res.skipped > 1 ? 's' : ''})` : ''
     toast(`${res.imported} sess${res.imported === 1 ? 'ão importada' : 'ões importadas'}${extra}`)
+  }
+  return res
+}
+
+export function listChatgpt(): Promise<ChatgptScan> {
+  return bridge.invoke(SESSIONS.listChatgpt)
+}
+
+export async function importChatgpt(input: ChatgptImportInput): Promise<ChatgptImportResult | undefined> {
+  const res = await guard('Falha ao importar do ChatGPT', () => bridge.invoke(SESSIONS.importChatgpt, input))
+  if (res) {
+    const parts = [
+      res.projects ? `${res.projects} projeto${res.projects > 1 ? 's' : ''}` : '',
+      res.sessions ? `${res.sessions} conversa${res.sessions > 1 ? 's' : ''}` : ''
+    ].filter(Boolean)
+    const extra = res.skipped ? ` (${res.skipped} já importado${res.skipped > 1 ? 's' : ''} ou sem pasta)` : ''
+    toast(`${parts.length ? `Importado do ChatGPT: ${parts.join(' e ')}` : 'Nada novo para importar'}${extra}`)
   }
   return res
 }

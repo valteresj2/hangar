@@ -6,7 +6,9 @@ export const SESSIONS = {
   delete: 'sessions:delete',
   exportMarkdown: 'sessions:exportMarkdown',
   listCli: 'sessions:listCli',
-  importCli: 'sessions:importCli'
+  importCli: 'sessions:importCli',
+  listChatgpt: 'sessions:listChatgpt',
+  importChatgpt: 'sessions:importChatgpt'
 } as const
 
 /** Placeholder title; the engine replaces it with one derived from the first prompt. */
@@ -17,6 +19,9 @@ export const DEFAULT_SESSION_TITLE = 'Nova sessão'
  * Lets other features (e.g. the command palette) trigger it without importing sessions code.
  */
 export const OPEN_IMPORT_EVENT = 'hangar:sessions:open-import'
+
+/** Same, for the "import from ChatGPT" dialog. */
+export const OPEN_CHATGPT_IMPORT_EVENT = 'hangar:sessions:open-chatgpt-import'
 
 /**
  * Renderer-side DOM event (CustomEvent with a NewSessionPreset) that opens the new-session view filled in, e.g.
@@ -75,6 +80,54 @@ export interface ImportCliResult {
   skipped: number
 }
 
+/** A conversation of the ChatGPT desktop app (Work/Codex), from its local data folder (~/.codex). */
+export interface ChatgptThreadInfo {
+  id: string
+  title: string
+  createdAt: number
+  updatedAt: number
+  /** Messages of the person and of ChatGPT (0 when the app's history index is missing). */
+  messages: number
+  /** True when a Hangar session already holds this conversation. */
+  imported: boolean
+}
+
+/** A project of the ChatGPT desktop app: a named folder, or a folder used by conversations outside any project. */
+export interface ChatgptProjectInfo {
+  /** The ChatGPT project id, or `cwd:<folder>` for conversations outside a project. */
+  key: string
+  name: string
+  cwd: string
+  /** The folder still exists on this computer (sessions need it). */
+  exists: boolean
+  /** The folder has an AGENTS.md (ChatGPT's project instructions). */
+  agentsMd: boolean
+  /** True when a Hangar project already points at this folder. */
+  imported: boolean
+  threads: ChatgptThreadInfo[]
+}
+
+/** `sessions:listChatgpt` () → ChatgptScan */
+export interface ChatgptScan {
+  /** The ChatGPT desktop app's data folder was found and read. */
+  found: boolean
+  /** Where it was looked for. */
+  dir: string
+  projects: ChatgptProjectInfo[]
+}
+
+/** `sessions:importChatgpt` (input) → ChatgptImportResult. A thread's project comes along. */
+export interface ChatgptImportInput {
+  projects: string[]
+  threads: string[]
+}
+
+export interface ChatgptImportResult {
+  projects: number
+  sessions: number
+  skipped: number
+}
+
 // `sessions:exportMarkdown` (id) → string | undefined (saved file path; undefined when the dialog was canceled).
 
 // IPC contract of this feature (see src/shared/ipc.ts).
@@ -85,5 +138,7 @@ declare module '../ipc' {
     [SESSIONS.exportMarkdown]: (id: string) => string | undefined
     [SESSIONS.listCli]: () => CliSessionInfo[]
     [SESSIONS.importCli]: (ids: string[]) => ImportCliResult
+    [SESSIONS.listChatgpt]: () => ChatgptScan
+    [SESSIONS.importChatgpt]: (input: ChatgptImportInput) => ChatgptImportResult
   }
 }

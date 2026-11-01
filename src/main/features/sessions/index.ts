@@ -1,6 +1,7 @@
 // Feature "sessions" — main process side. Owned by the sessions agent.
 // Session/project/group CRUD goes through the generic core store; this module only handles what needs
-// main-side work: creation with defaults, deletion (with worktree cleanup), Markdown export and CLI import.
+// main-side work: creation with defaults, deletion (with worktree cleanup), Markdown export, CLI import and the
+// import from the ChatGPT desktop app.
 
 import { app, dialog } from 'electron'
 import { writeFile } from 'node:fs/promises'
@@ -10,6 +11,7 @@ import type { Session } from '../../../shared/contracts'
 import {
   DEFAULT_SESSION_TITLE,
   SESSIONS,
+  type ChatgptImportInput,
   type CreateSessionInput,
   type DeleteSessionOptions,
   type DeleteSessionResult
@@ -19,9 +21,11 @@ import { db, settings } from '../../core/store'
 import { interrupt, readTranscript } from '../engine/api'
 import { removeWorktree } from '../git/api'
 import { assertCanCreateSessions } from '../platform/api'
+import { importChatgpt, importedContextAppend, listChatgpt } from './chatgpt'
 import { importCliSessions, listCliSessions } from './cli'
 import { transcriptToMarkdown } from './markdown'
 import { handle } from '../../core/handle'
+import { registerSystemAppend } from '../../core/prompts'
 
 const RECENT_FOLDERS_MAX = 12
 
@@ -126,5 +130,9 @@ export const sessionsFeature: Feature = {
     handle(SESSIONS.exportMarkdown, (_e, id: string) => exportMarkdown(ctx, id))
     handle(SESSIONS.listCli, () => listCliSessions())
     handle(SESSIONS.importCli, (_e, ids: string[]) => importCliSessions(ids))
+    handle(SESSIONS.listChatgpt, () => listChatgpt())
+    handle(SESSIONS.importChatgpt, (_e, input: ChatgptImportInput) => importChatgpt(input))
+    // A conversation imported from ChatGPT is not in Claude Code's history: it goes along as context.
+    registerSystemAppend('chatgpt-import', importedContextAppend)
   }
 }

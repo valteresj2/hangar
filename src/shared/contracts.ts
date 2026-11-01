@@ -34,6 +34,16 @@ export interface Session {
   /** Claude Code session id, used to resume the conversation. */
   sdkSessionId?: string
   worktree?: Worktree
+  /** Set when the session was imported from another app (its conversation is shown, not resumed). */
+  imported?: ImportedConversation
+}
+
+/** A conversation brought in from the ChatGPT desktop app (Work/Codex). */
+export interface ImportedConversation {
+  from: 'chatgpt'
+  threadId: string
+  /** The conversation as text (latest part when long); every turn of the session gets it as context. */
+  context: string
 }
 
 export interface Project {

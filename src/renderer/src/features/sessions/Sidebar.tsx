@@ -310,6 +310,10 @@ function ProjectsFooter({ projects, sessions }: { projects: Project[]; sessions:
         <ImportIcon />
         Importar sessões do Claude Code
       </button>
+      <button className={styles.footerBtn} onClick={() => openDialog({ kind: 'importChatgpt' })}>
+        <ImportIcon />
+        Importar projetos do ChatGPT
+      </button>
       {menu && <ContextMenu items={menu.items} at={menu.at} onClose={() => setMenu(undefined)} />}
     </div>
   )
