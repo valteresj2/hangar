@@ -142,6 +142,10 @@ export interface MockPlatform {
   chart: { nodes: Record<string, unknown>[]; agents?: unknown[]; me?: unknown }
   /** Unread items of the inbox (GET /api/inbox → counts.unread). */
   inboxUnread: number
+  /** JSON-RPC methods received on /mcp, in order (initialize, notifications/initialized, tools/list…). */
+  mcpCalls: string[]
+  /** M2 writes the app made (decide, inbox mark, agent and employee actions), in order. */
+  actions: { method: string; path: string; body: Record<string, unknown> }[]
   /** Events published so far (GET /api/app/events replays those after Last-Event-ID). */
   events: MockEvent[]
   /** Publishes an event to every open stream. */
@@ -273,6 +277,11 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
   const proxied: MockProxied[] = []
   const events: MockEvent[] = []
   const eventResumes: string[] = []
+  const mcpCalls: string[] = []
+  const actions: { method: string; path: string; body: Record<string, unknown> }[] = []
+  /** Inbox items read (key → true) or archived. */
+  const inboxRead = new Set<string>()
+  const inboxArchived = new Set<string>()
   const openStreams = new Set<ServerResponse>()
   let eventsOn = true
   const member: Pick<MockPlatform, 'workspace' | 'decisions' | 'chart' | 'inboxUnread'> = {
@@ -632,11 +641,158 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
     if (req.method === 'GET' && path === '/api/inbox') {
       if (!appGrant(req, res)) return
       const open = member.decisions.filter((d) => d.kind !== 'notice').length
+      const view = url.searchParams.get('view') ?? 'all'
+      const all = [
+        ...member.decisions
+          .filter((d) => d.kind !== 'notice')
+          .map((d) => ({
+            key: `decision:${String(d.id)}`,
+            kind: 'decision',
+            title: d.question,
+            at: d.created_at,
+            employee: d.employee,
+            employee_name: d.employee_name
+          })),
+        {
+          key: 'task:501',
+          kind: 'task',
+          title: 'Relatório de vendas de outubro',
+          at: '2026-10-25T10:00:00+00:00',
+          task_id: 501,
+          status: 'done',
+          requested: true,
+          employee: 'analista-dados',
+          employee_name: 'Analista de Dados'
+        }
+      ].map((x) => ({ ...x, unread: !inboxRead.has(x.key), archived: inboxArchived.has(x.key) }))
+      const items = all.filter((x) =>
+        view === 'archived' ? x.archived : !x.archived && (view !== 'unread' || x.unread)
+      )
       return json(res, 200, {
-        view: url.searchParams.get('view') ?? 'all',
+        view,
         counts: { all: member.inboxUnread + 3, unread: member.inboxUnread, decisions: open, blocked: 0 },
-        items: []
+        items
       })
+    }
+
+    if (req.method === 'POST' && path === '/api/inbox/mark') {
+      if (!appGrant(req, res)) return
+      const body = JSON.parse((await readBody(req)) || '{}') as { keys?: string[]; read?: boolean; archived?: boolean }
+      actions.push({ method: 'POST', path, body })
+      for (const k of body.keys ?? []) {
+        if (body.read === true && !inboxRead.has(k)) {
+          inboxRead.add(k)
+          member.inboxUnread = Math.max(0, member.inboxUnread - 1)
+        } else if (body.read === false && inboxRead.has(k)) {
+          inboxRead.delete(k)
+          member.inboxUnread++
+        }
+        if (body.archived === true) inboxArchived.add(k)
+        if (body.archived === false) inboxArchived.delete(k)
+      }
+      return json(res, 200, { ok: true, updated: (body.keys ?? []).length })
+    }
+
+    const decision = /^\/api\/decisions\/(\d+)$/.exec(path)
+    if (req.method === 'POST' && decision) {
+      if (!appGrant(req, res)) return
+      const body = JSON.parse((await readBody(req)) || '{}') as { decision?: string; reason?: string }
+      const d = member.decisions.find((x) => String(x.id) === decision[1])
+      if (!d) return json(res, 400, { detail: `pedido #${decision[1]} não existe` })
+      if (d.kind === 'question' && !body.reason) return json(res, 400, { detail: 'responda a pergunta' })
+      actions.push({ method: 'POST', path, body })
+      member.decisions = member.decisions.filter((x) => x !== d)
+      return json(res, 200, { ...d, status: 'decided', decision: body.decision })
+    }
+
+    const agentRoute = /^\/api\/agents\/([a-z0-9_-]+)(\/(stop|ship))?$/.exec(path)
+    if (agentRoute) {
+      if (!appGrant(req, res)) return
+      const built = (member.workspace.built_agents as Record<string, unknown>[] | undefined) ?? []
+      const employees = (member.workspace.agents as Record<string, unknown>[] | undefined) ?? []
+      const a = [...built, ...employees].find((x) => x.slug === agentRoute[1])
+      if (!a) return json(res, 403, { detail: `Agente '${agentRoute[1]}' não encontrado ou sem acesso` })
+      if (req.method === 'GET' && !agentRoute[2])
+        return json(res, 200, {
+          slug: a.slug,
+          name: a.name,
+          kind: 'single',
+          status: a.status,
+          version: 3,
+          model: 'claude-sonnet-4-5',
+          stage: a.stage_running ? { version: 3 } : null,
+          prod: ['prod', 'production'].includes(String(a.status)) ? { version: 3 } : null,
+          cost_7d: 0.42,
+          requests_7d: 12,
+          permissions: ['view', 'usage', 'consume', 'edit', 'manage', 'approve', 'promote'],
+          versions: [
+            { version: 3, created_by: 'Ana Souza', created_at: '2026-10-20T10:00:00+00:00' },
+            { version: 2, created_by: 'Ana Souza', created_at: '2026-10-10T10:00:00+00:00' }
+          ],
+          last_test: { version: 3, status: 'passed', summary: '10/10' }
+        })
+      const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>
+      if (req.method === 'POST' && agentRoute[3] === 'stop') {
+        actions.push({ method: 'POST', path, body })
+        if (body.env === 'prod') a.status = 'stopped'
+        return json(res, 200, { ok: true })
+      }
+      if (req.method === 'POST' && agentRoute[3] === 'ship') {
+        actions.push({ method: 'POST', path, body })
+        a.status = 'prod'
+        return json(res, 200, [{ agent: a.slug, step: 'prod', status: 'deployed' }])
+      }
+      if (req.method === 'DELETE' && !agentRoute[2]) {
+        actions.push({ method: 'DELETE', path, body })
+        member.workspace = { ...member.workspace, built_agents: built.filter((x) => x !== a) }
+        return json(res, 200, { ok: true })
+      }
+    }
+
+    const employeeStatus = /^\/api\/employees\/([a-z0-9_-]+)\/status$/.exec(path)
+    if (req.method === 'POST' && employeeStatus) {
+      if (!appGrant(req, res)) return
+      const body = JSON.parse((await readBody(req)) || '{}') as Record<string, unknown>
+      actions.push({ method: 'POST', path, body })
+      return json(res, 200, { slug: employeeStatus[1], status: body.to })
+    }
+
+    // The platform's MCP server, just enough for Claude Code to list one tool (desktop sessions get it via the bridge).
+    if (path === '/mcp') {
+      const t = bearer(req)
+      const g = grants.find((x) => x.access === t)
+      if (!g || g.revoked || g.accessExpiresAt < Date.now() || !g.scope.split(' ').includes('mcp'))
+        return json(res, 401, { detail: 'token sem o escopo mcp' })
+      if (req.method !== 'POST') return json(res, 405, { detail: 'Method Not Allowed' })
+      const msg = JSON.parse((await readBody(req)) || '{}') as {
+        id?: number | string
+        method?: string
+        params?: { protocolVersion?: string }
+      }
+      mcpCalls.push(msg.method ?? '')
+      if (msg.id === undefined) {
+        res.writeHead(202)
+        return void res.end()
+      }
+      const result =
+        msg.method === 'initialize'
+          ? {
+              protocolVersion: msg.params?.protocolVersion ?? '2025-06-18',
+              capabilities: { tools: {} },
+              serverInfo: { name: 'agent-hangar-mock', version: '1.0.0' }
+            }
+          : msg.method === 'tools/list'
+            ? {
+                tools: [
+                  {
+                    name: 'list_agents',
+                    description: 'Lista os agentes do Agent Hangar',
+                    inputSchema: { type: 'object', properties: {} }
+                  }
+                ]
+              }
+            : {}
+      return json(res, 200, { jsonrpc: '2.0', id: msg.id, result })
     }
 
     if (req.method === 'GET' && path === '/api/app/events') {
@@ -782,6 +938,8 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
       eventsOn = on
     },
     eventResumes,
+    mcpCalls,
+    actions,
     count: (path, grantType) =>
       requests.filter((r) => r.path === path && (grantType === undefined || r.grantType === grantType)).length,
     close: () =>

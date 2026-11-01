@@ -98,6 +98,8 @@ export class Runner {
   private bypassAllowed = false
   /** Close the query when the current turn ends (permission capability changed); the next message resumes. */
   private restartAfterTurn = false
+  /** URL of the Agent Hangar tools (MCP bridge) the running query was started with; undefined = without them. */
+  private launchMcpUrl: string | undefined
   private streamText = ''
   private streamThinking = ''
   commands: SlashCommandInfo[] = []
@@ -155,6 +157,19 @@ export class Runner {
     const patch: Partial<Session> = {}
     if (DEFAULT_SESSION_TITLES.includes(session.title.trim()) && text.trim()) patch.title = makeTitle(text)
 
+    // Connected to (or disconnected from) Agent Hangar since the query started: its tools are a launch option, so the
+    // query restarts here (resume keeps the conversation) and this message already sees the change.
+    const mcpUrl = platformMcpServer()?.url
+    if (this.q && this.inflight === 0 && mcpUrl !== this.launchMcpUrl) {
+      this.record({
+        kind: 'system',
+        text: mcpUrl
+          ? 'O Hangar se conectou ao Agent Hangar: a partir desta mensagem a sessão também tem as ferramentas da plataforma.'
+          : 'O Hangar se desconectou do Agent Hangar: as ferramentas da plataforma saem desta sessão.'
+      })
+      this.close()
+    }
+
     const images = await Promise.all(pasted.map((img) => saveImage(this.sessionId, img)))
     const motion = opts.output === 'motion'
     // Our own UUID becomes the message's id in the Claude Code session: the anchor for rewind and fork.
@@ -186,10 +201,10 @@ export class Runner {
           kind: 'provider_error',
           providerId: info.id,
           providerName: info.name,
-          message: `Falha ao iniciar o Claude Code com este perfil: ${message}`
+          message: `Falha ao iniciar o agente com este perfil: ${message}`
         })
       } else {
-        this.record({ kind: 'error', message: `Falha ao iniciar o Claude Code: ${message}` })
+        this.record({ kind: 'error', message: `Falha ao iniciar o agente: ${message}` })
       }
       this.setStatus('error')
       throw err
@@ -231,6 +246,7 @@ export class Runner {
     const permissionMode = session.permissionMode ?? defaults.defaultPermissionMode
     // Connected to Agent Hangar: its tools (create agents, multi-agents, digital employees, talk to them) in the session.
     const platformMcp = platformMcpServer()
+    this.launchMcpUrl = platformMcp?.url
     this.bypassAllowed = permissionMode === 'bypassPermissions'
     this.restartAfterTurn = false
 
@@ -412,7 +428,7 @@ export class Runner {
           this.providerFailure(`O provedor recusou as credenciais (HTTP ${m.error_status ?? 401}).`, { fatal: true })
         } else if (m.error_status == null && m.attempt >= 3) {
           this.providerFailure(
-            `Sem resposta do endpoint deste perfil; o Claude Code continua tentando (${m.attempt}/${m.max_retries}). Pare a rodada se a configuração estiver errada.`,
+            `Sem resposta do endpoint deste perfil; o agente continua tentando (${m.attempt}/${m.max_retries}). Pare a rodada se a configuração estiver errada.`,
             { retrying: true }
           )
         }
@@ -643,8 +659,8 @@ export class Runner {
             kind: 'system',
             text:
               patch.permissionMode === 'bypassPermissions'
-                ? '"Ignorar permissões" vale a partir da próxima mensagem: o Claude Code reinicia ao fim desta rodada e retoma a conversa.'
-                : 'O Claude Code reinicia ao fim desta rodada, sem a opção de ignorar permissões.'
+                ? '"Ignorar permissões" vale a partir da próxima mensagem: o agente reinicia ao fim desta rodada e retoma a conversa.'
+                : 'O agente reinicia ao fim desta rodada, sem a opção de ignorar permissões.'
           })
         } else {
           this.close()

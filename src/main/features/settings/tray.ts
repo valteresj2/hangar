@@ -1,7 +1,7 @@
 // System notifications for session events, the tray icon and the app icon.
 
 import { BRAND } from '../../../shared/brand'
-import { app, type BrowserWindow, Menu, nativeImage, Notification, Tray, type NativeImage } from 'electron'
+import { app, type BrowserWindow, dialog, Menu, nativeImage, Notification, Tray, type NativeImage } from 'electron'
 import appIconPath from '../../../../resources/icon.png?asset&asarUnpack'
 import trayPath from '../../../../resources/tray.png?asset&asarUnpack'
 import tray15Path from '../../../../resources/tray@1.5x.png?asset&asarUnpack'
@@ -113,7 +113,12 @@ export function appIcon(): NativeImage {
   return (windowIcon ??= nativeImage.createFromPath(ICONS.app))
 }
 
-// ---- "Still running in the tray" notice, shown once ----
+// ---- First close: ask once whether the app stays in the tray ----
+
+interface TrayState {
+  /** The first-close question was asked (a notification used to say it, easy to miss: `trayNoticeShown`). */
+  closeAsked?: boolean
+}
 
 function stateFile(): string {
   const dir = join(app.getPath('userData'), 'hangar-data', 'settings')
@@ -121,33 +126,51 @@ function stateFile(): string {
   return join(dir, 'state.json')
 }
 
-function readState(): { trayNoticeShown?: boolean } {
+function readState(): TrayState {
   try {
-    return JSON.parse(readFileSync(stateFile(), 'utf8')) as { trayNoticeShown?: boolean }
+    return JSON.parse(readFileSync(stateFile(), 'utf8')) as TrayState
   } catch {
     return {}
   }
 }
 
-function onMainWindowHidden(ctx: FeatureContext): void {
+/**
+ * The window has just been hidden by the close button (the core's handler), not closed: the first time, say so in
+ * a dialog and let the person quit instead, which also makes the button quit from then on.
+ */
+async function askOnFirstClose(): Promise<void> {
   if (isQuitting() || !settings().get().minimizeToTray) return
   const state = readState()
-  if (state.trayNoticeShown) return
-  writeFileSync(stateFile(), JSON.stringify({ ...state, trayNoticeShown: true }, null, 2), 'utf8')
-  showNotification(
-    ctx,
-    'O Hangar continua rodando',
-    'Ele fica na bandeja do sistema. Use "Sair" no menu do ícone para encerrar.'
-  )
+  if (state.closeAsked) return
+  writeFileSync(stateFile(), JSON.stringify({ ...state, closeAsked: true }, null, 2), 'utf8')
+  const { response } = await dialog.showMessageBox({
+    type: 'info',
+    title: BRAND.productName,
+    message: 'O app continua aberto na bandeja',
+    detail:
+      'Fechar a janela não encerra o app: ele fica no ícone da bandeja do sistema, perto do relógio, e as sessões ' +
+      'em andamento e as tarefas agendadas continuam. Para encerrar, use "Sair" no menu desse ícone.\n\n' +
+      'Se preferir que o X feche o app, escolha "Sair do app" (dá para mudar em Configurações → Geral).',
+    buttons: ['Manter na bandeja', 'Sair do app'],
+    defaultId: 0,
+    cancelId: 0,
+    noLink: true,
+    icon: appIcon()
+  })
+  if (response === 1) {
+    settings().patch({ minimizeToTray: false })
+    markQuitting()
+    app.quit()
+  }
 }
 
-/** Hooks the main window (created later by the core, and possibly recreated) for the tray notice and cleanup. */
+/** Hooks the main window (created later by the core, and possibly recreated) for the first-close question and cleanup. */
 function watchMainWindow(ctx: FeatureContext): () => void {
   const onCreated = (_e: Electron.Event, win: BrowserWindow) => {
     // The core assigns its main window right after the constructor returns.
     setImmediate(() => {
       if (win.isDestroyed() || ctx.mainWindow() !== win) return
-      win.on('hide', () => onMainWindowHidden(ctx))
+      win.on('close', () => void askOnFirstClose())
       // A hidden Quick Entry window would keep 'window-all-closed' from firing when the app should quit.
       win.on('closed', () => {
         if (!settings().get().minimizeToTray) closeQuickEntry()

@@ -308,7 +308,7 @@ function ProjectsFooter({ projects, sessions }: { projects: Project[]; sessions:
       )}
       <button className={styles.footerBtn} onClick={() => openDialog({ kind: 'import' })}>
         <ImportIcon />
-        Importar sessões do Claude Code
+        Importar sessões do CLI claude
       </button>
       <button className={styles.footerBtn} onClick={() => openDialog({ kind: 'importChatgpt' })}>
         <ImportIcon />
@@ -481,7 +481,7 @@ export function Sidebar() {
         ) : empty ? (
           <div className={styles.emptyState}>
             <div>Nenhuma sessão ainda.</div>
-            <div className="muted">Comece uma nova ou importe do Claude Code.</div>
+            <div className="muted">Comece uma nova ou importe do CLI claude ou do ChatGPT.</div>
           </div>
         ) : (
           <>

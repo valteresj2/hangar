@@ -60,8 +60,9 @@ function Welcome() {
     <>
       <h1>Bem-vindo ao {BRAND.productName}</h1>
       <p className={styles.lead}>
-        Um app desktop para rodar e acompanhar sessões do Claude Code: chat com ferramentas, terminal, alterações do
-        git, navegador e artifacts lado a lado. Em poucos passos vamos conferir se está tudo pronto.
+        Um app desktop, inspirado no Claude Code, para rodar e acompanhar sessões de um agente de código: chat com
+        ferramentas, terminal, alterações do git, navegador e artifacts lado a lado. Em poucos passos vamos conferir se
+        está tudo pronto.
       </p>
       <div className={styles.features}>
         <div className={styles.feature}>
@@ -69,7 +70,7 @@ function Welcome() {
           <span>Cada sessão trabalha numa pasta (ou num worktree isolado) e continua de onde parou.</span>
         </div>
         <div className={styles.feature}>
-          <strong>Seu login do Claude Code</strong>
+          <strong>Sua assinatura ou outros modelos</strong>
           <span>Usa a assinatura que você já tem no CLI, ou perfis de chave de API e gateways.</span>
         </div>
         <div className={styles.feature}>
@@ -103,7 +104,7 @@ function ProviderStep({ onOpenProviders }: { onOpenProviders: () => void }) {
             <div style={{ fontWeight: 600 }}>{summary.name}</div>
             <div className="muted" style={{ fontSize: 13 }}>
               {summary.kind === 'subscription'
-                ? 'Login do Claude Code (assinatura). Não precisa de chave.'
+                ? 'Login da sua assinatura do Claude, pelo CLI claude. Não precisa de chave.'
                 : 'Perfil com credencial própria, guardada cifrada no Hangar.'}
               {summary.customProfiles ? ` ${summary.customProfiles} perfil(is) configurado(s).` : ''}
             </div>
@@ -289,7 +290,7 @@ export function OnboardingView() {
             <>
               <h2>Diagnóstico</h2>
               <p className={styles.lead}>
-                Conferimos o Claude Code, o login, gateways configurados, o provedor padrão e o git.
+                Conferimos o CLI claude, o login, gateways configurados, o provedor padrão e o git.
               </p>
               <DiagnosticsPanel onOpenProviders={openProviders} />
             </>

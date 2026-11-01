@@ -2,15 +2,17 @@
 // level from the org chart) and the plain agents they own, maintain or created — status, kind and last use. The
 // detail opens the portal until it moves to the app (M3); "Conversar" opens a session that talks to the agent
 // through the Agent Hangar tools every session gets while the app is connected.
-import type { ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { NEW_SESSION_PRESET_EVENT, type NewSessionPreset } from '@shared/features/sessions'
 import type {
+  AgentAction,
+  AgentDetail,
   WorkspaceBuiltAgent,
   WorkspaceChartNode,
   WorkspaceEmployee,
   WorkspaceState
 } from '@shared/features/workspace'
-import { openPortal } from './api'
+import { openPortal, workspaceApi } from './api'
 import { AGENT_STATUS, ago, BUILT_WHY, EMPLOYEE_STATUS, LEVEL_LABEL, statusOf, usd, when } from './format'
 import { AgentAvatar } from './parts'
 import { LiveNote, LoadState } from './WorkspaceView'
@@ -37,6 +39,277 @@ function talkTo(name: string, slug: string, employee: boolean): void {
   window.dispatchEvent(new CustomEvent(NEW_SESSION_PRESET_EVENT, { detail }))
 }
 
+/** What "Novo agente" offers: the request for each kind, with blanks for the person to fill in before sending. */
+export const NEW_AGENT_TEMPLATES: { kind: string; label: string; hint: string; preset: NewSessionPreset }[] = [
+  {
+    kind: 'simple',
+    label: 'Agente simples',
+    hint: 'Um agente para uma tarefa, como resumir textos ou responder dúvidas.',
+    preset: {
+      title: 'Novo agente',
+      prompt:
+        'Quero criar um agente no Agent Hangar.\n' +
+        'Objetivo: [o que ele deve fazer]\n' +
+        'Entrada: [o que ele recebe]\n' +
+        'Saída: [o que ele devolve]\n\n' +
+        'Planeje o agente, crie, teste em stage e me mostre o resultado dos testes antes de publicar em produção.'
+    }
+  },
+  {
+    kind: 'multi',
+    label: 'Multiagente',
+    hint: 'Uma equipe de agentes, cada um com um papel, coordenada por um orquestrador.',
+    preset: {
+      title: 'Novo multiagente',
+      prompt:
+        'Quero montar um multiagente no Agent Hangar.\n' +
+        'Objetivo da equipe: [o que a equipe entrega]\n' +
+        'Papéis: [por exemplo: um extrai os pontos-chave, outro escreve, outro revisa]\n' +
+        'Entrada: [o que a equipe recebe]\n' +
+        'Saída: [o que a equipe devolve]\n\n' +
+        'Planeje a equipe, crie os agentes e o orquestrador, teste em stage e me mostre o resultado antes de publicar.'
+    }
+  },
+  {
+    kind: 'employee',
+    label: 'Digital employee',
+    hint: 'Um funcionário digital com cargo, gestor, alçada e caixa de tarefas.',
+    preset: {
+      title: 'Novo digital employee',
+      prompt:
+        'Quero contratar um digital employee no Agent Hangar.\n' +
+        'Cargo: [o nome do cargo]\n' +
+        'Missão: [para que ele existe]\n' +
+        'Responsabilidades: [pelo menos três]\n' +
+        'Sistemas e ferramentas: [o que ele usa no trabalho]\n\n' +
+        'Monte o plano de contratação, me mostre para eu aprovar e só então contrate. Depois, passe uma tarefa de ' +
+        'teste e me mostre o resultado.'
+    }
+  }
+]
+
+function startNewAgent(preset: NewSessionPreset): void {
+  window.dispatchEvent(new CustomEvent(NEW_SESSION_PRESET_EVENT, { detail: preset }))
+}
+
+/** "Novo agente": a session filled in with the request for the chosen kind (the portal stays one click away). */
+function NewAgentMenu({ portal }: { portal: boolean }) {
+  const [open, setOpen] = useState(false)
+  const box = useRef<HTMLDivElement>(null)
+  useEffect(() => {
+    if (!open) return
+    const onDown = (e: MouseEvent) => {
+      if (!box.current?.contains(e.target as Node)) setOpen(false)
+    }
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+    }
+    window.addEventListener('mousedown', onDown)
+    window.addEventListener('keydown', onKey)
+    return () => {
+      window.removeEventListener('mousedown', onDown)
+      window.removeEventListener('keydown', onKey)
+    }
+  }, [open])
+  return (
+    <div className={styles.menuBox} ref={box}>
+      <button className="btn btn-primary" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+        Novo agente ▾
+      </button>
+      {open && (
+        <div className={styles.menu} role="menu">
+          {NEW_AGENT_TEMPLATES.map((t) => (
+            <button
+              key={t.kind}
+              role="menuitem"
+              className={styles.menuItem}
+              onClick={() => {
+                setOpen(false)
+                startNewAgent(t.preset)
+              }}
+            >
+              <span className={styles.menuLabel}>{t.label}</span>
+              <span className={styles.menuHint}>{t.hint}</span>
+            </button>
+          ))}
+          {portal && (
+            <button
+              role="menuitem"
+              className={styles.menuItem}
+              onClick={() => {
+                setOpen(false)
+                void openPortal({ screen: 'mine' })
+              }}
+            >
+              <span className={styles.menuLabel}>Agente pessoal no portal ↗</span>
+              <span className={styles.menuHint}>O formulário de agente pessoal da plataforma.</span>
+            </button>
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
+/** What the "Gerenciar" panel offers, from the agent's state and the person's permissions on the platform. */
+export function actionsFor(d: AgentDetail, employeeStatus?: string): { action: AgentAction; label: string }[] {
+  const can = (p: string) => d.permissions.includes(p)
+  const out: { action: AgentAction; label: string }[] = []
+  if (employeeStatus !== undefined) {
+    if (['probation', 'active'].includes(employeeStatus)) out.push({ action: 'pause', label: 'Pausar' })
+    if (employeeStatus === 'paused') out.push({ action: 'resume', label: 'Retomar' })
+    if (employeeStatus !== 'offboarded') out.push({ action: 'offboard', label: 'Desligar' })
+    if (employeeStatus === 'offboarded' && can('manage')) out.push({ action: 'delete', label: 'Excluir' })
+    return out
+  }
+  if (can('edit')) out.push({ action: 'ship', label: 'Testar e publicar' })
+  if (d.stageVersion && can('edit')) out.push({ action: 'stop-stage', label: 'Parar stage' })
+  if (d.prodVersion && can('manage')) out.push({ action: 'stop-prod', label: 'Parar produção' })
+  if (can('manage')) out.push({ action: 'delete', label: 'Excluir' })
+  return out
+}
+
+const EMPTY_DETAIL: AgentDetail = { slug: '', name: '', kind: '', status: '', permissions: [], versions: [] }
+
+const CONFIRM: Partial<Record<AgentAction, (name: string) => string>> = {
+  delete: (name) => `Excluir "${name}" de vez? Os containers, o histórico de uso e os agendamentos saem junto.`,
+  offboard: (name) =>
+    `Desligar "${name}"? As tarefas abertas são canceladas e ele sai do ar; o histórico continua guardado.`,
+  'stop-prod': (name) => `Parar "${name}" em produção? Quem usa o agente fica sem ele até a próxima publicação.`
+}
+
+const errorText = (err: unknown) =>
+  err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err)
+
+/** Where the agent runs, its model, cost, last test and versions. */
+function AgentFacts({ detail }: { detail: AgentDetail }) {
+  return (
+    <>
+      <div className={styles.chips}>
+        <span className={styles.chip}>Stage: {detail.stageVersion ? `v${detail.stageVersion} no ar` : 'parado'}</span>
+        <span className={styles.chip}>Produção: {detail.prodVersion ? `v${detail.prodVersion} no ar` : 'parado'}</span>
+        {detail.model && <span className={styles.chip}>{detail.model}</span>}
+        {detail.cost7d !== undefined && <span className={styles.chip}>7 dias: {usd(detail.cost7d)}</span>}
+        {detail.requests7d !== undefined && <span className={styles.chip}>{detail.requests7d} chamadas em 7 dias</span>}
+        {detail.lastTest && (
+          <span className={styles.chip}>
+            Último teste{detail.lastTest.version ? ` (v${detail.lastTest.version})` : ''}: {detail.lastTest.status}
+            {detail.lastTest.summary ? ` · ${detail.lastTest.summary}` : ''}
+          </span>
+        )}
+      </div>
+      {detail.versions.length > 0 && (
+        <details>
+          <summary className={styles.small}>Versões ({detail.versions.length})</summary>
+          <ul className={styles.versions}>
+            {detail.versions.slice(0, 10).map((v) => (
+              <li key={v.version}>
+                v{v.version}
+                {v.version === detail.version ? ' (atual)' : ''}
+                {v.createdBy ? ` · ${v.createdBy}` : ''}
+                {v.createdAt ? ` · ${when(v.createdAt)}` : ''}
+              </li>
+            ))}
+          </ul>
+        </details>
+      )}
+    </>
+  )
+}
+
+/** Versions, where each runs, the last test and the cost, with the actions the person may take. */
+function ManagePanel({ slug, name, employeeStatus }: { slug: string; name: string; employeeStatus?: string }) {
+  const [detail, setDetail] = useState<AgentDetail>()
+  const [error, setError] = useState<string>()
+  const [busy, setBusy] = useState<AgentAction>()
+  const [done, setDone] = useState<string>()
+
+  // Loaded when the panel opens and again after each action (`round`).
+  const [round, setRound] = useState(0)
+  useEffect(() => {
+    let alive = true
+    workspaceApi
+      .agent(slug)
+      .then((d) => {
+        if (!alive) return
+        setDetail(d)
+        setError(undefined)
+      })
+      .catch((err) => alive && setError(errorText(err)))
+    return () => {
+      alive = false
+    }
+  }, [slug, round])
+
+  const run = async (action: AgentAction, label: string) => {
+    const ask = CONFIRM[action]
+    if (ask && !window.confirm(ask(name))) return
+    setBusy(action)
+    setError(undefined)
+    setDone(undefined)
+    try {
+      const out = await workspaceApi.agentAction(slug, action)
+      setDone(out.message || `${label}: feito.`)
+      if (action !== 'delete') setRound((n) => n + 1)
+    } catch (err) {
+      setError(errorText(err))
+    } finally {
+      setBusy(undefined)
+    }
+  }
+
+  // A Digital employee's lifecycle actions do not depend on the agent's detail: they stay when it fails to load.
+  if (!detail && !(error && employeeStatus !== undefined))
+    return (
+      <div className={styles.manage}>
+        {error ? (
+          <div className={styles.decisionError} role="alert">
+            {error}
+          </div>
+        ) : (
+          <span className="muted">Carregando…</span>
+        )}
+      </div>
+    )
+  const actions = actionsFor(detail ?? EMPTY_DETAIL, employeeStatus)
+  return (
+    <div className={styles.manage} data-manage={slug}>
+      {detail && <AgentFacts detail={detail} />}
+      {error && (
+        <div className={styles.decisionError} role="alert">
+          {error}
+        </div>
+      )}
+      {done && (
+        <div className={styles.decisionDone} role="status">
+          {done}
+        </div>
+      )}
+      <div className={styles.decisionActions}>
+        {actions.length === 0 && <span className={`muted ${styles.small}`}>Você só pode ver este agente.</span>}
+        {actions.map((a) => (
+          <button
+            key={a.action}
+            className={a.action === 'delete' || a.action === 'offboard' ? 'btn btn-danger' : 'btn'}
+            disabled={!!busy}
+            onClick={() => void run(a.action, a.label)}
+          >
+            {busy === a.action ? (a.action === 'ship' ? 'Testando e publicando…' : 'Aguarde…') : a.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ManageButton({ open, onClick }: { open: boolean; onClick: () => void }) {
+  return (
+    <button className="btn" aria-expanded={open} onClick={onClick}>
+      {open ? 'Fechar' : 'Gerenciar'}
+    </button>
+  )
+}
+
 function TalkButton({ name, slug, employee }: { name: string; slug: string; employee: boolean }) {
   return (
     <button className="btn" title="Abre uma sessão para conversar com ele" onClick={() => talkTo(name, slug, employee)}>
@@ -54,6 +327,7 @@ function EmployeeRow({ a }: { a: Employee }) {
   const st = statusOf(EMPLOYEE_STATUS, a.status)
   const level = a.level ?? a.autonomyLevel
   const open = () => openPortal({ screen: 'employee', slug: a.slug }, a.name)
+  const [managing, setManaging] = useState(false)
   return (
     <div className={`${styles.card} ${styles.agentRow}`} data-agent={a.slug}>
       <div className={styles.agentHead}>
@@ -68,6 +342,7 @@ function EmployeeRow({ a }: { a: Employee }) {
         </div>
         <div className={styles.agentActions}>
           <TalkButton name={a.name} slug={a.slug} employee />
+          <ManageButton open={managing} onClick={() => setManaging(!managing)} />
           <button className="btn" onClick={open}>
             Abrir ↗
           </button>
@@ -92,6 +367,7 @@ function EmployeeRow({ a }: { a: Employee }) {
           </span>
         )}
       </div>
+      {managing && <ManagePanel slug={a.slug} name={a.name} employeeStatus={a.status} />}
     </div>
   )
 }
@@ -99,6 +375,7 @@ function EmployeeRow({ a }: { a: Employee }) {
 function BuiltRow({ a }: { a: WorkspaceBuiltAgent }) {
   const st = statusOf(AGENT_STATUS, a.status)
   const open = () => openPortal({ screen: 'agent', slug: a.slug }, a.name)
+  const [managing, setManaging] = useState(false)
   return (
     <div className={`${styles.card} ${styles.agentRow}`} data-agent={a.slug}>
       <div className={styles.agentHead}>
@@ -113,6 +390,7 @@ function BuiltRow({ a }: { a: WorkspaceBuiltAgent }) {
         </div>
         <div className={styles.agentActions}>
           <TalkButton name={a.name} slug={a.slug} employee={false} />
+          <ManageButton open={managing} onClick={() => setManaging(!managing)} />
           <button className="btn" onClick={open}>
             Abrir ↗
           </button>
@@ -127,6 +405,7 @@ function BuiltRow({ a }: { a: WorkspaceBuiltAgent }) {
         <span className={styles.chip}>30 dias: {usd(a.cost30dUsd)}</span>
         <LastUse at={a.lastUsedAt} />
       </div>
+      {managing && <ManagePanel slug={a.slug} name={a.name} />}
     </div>
   )
 }
@@ -183,11 +462,7 @@ export function AgentsView({ state }: { state: WorkspaceState }) {
           </div>
         </div>
         <div className={styles.headActions}>
-          {home?.personalAllowed && (
-            <button className="btn" onClick={() => openPortal({ screen: 'mine' })}>
-              Novo agente pessoal ↗
-            </button>
-          )}
+          <NewAgentMenu portal={!!home?.personalAllowed} />
           <button className="btn" onClick={() => openPortal({ screen: 'mine' })}>
             Abrir no portal ↗
           </button>

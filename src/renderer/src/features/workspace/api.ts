@@ -3,6 +3,10 @@
 import { create } from 'zustand'
 import {
   WORKSPACE,
+  type AgentAction,
+  type DecideInput,
+  type InboxMark,
+  type InboxView,
   type PortalTarget,
   type WorkspaceNavigation,
   type WorkspaceScope,
@@ -15,7 +19,12 @@ export const workspaceApi = {
   state: () => bridge.invoke(WORKSPACE.state),
   refresh: (scope?: WorkspaceScope) => bridge.invoke(WORKSPACE.refresh, scope),
   openPortal: (target: PortalTarget, label?: string) => bridge.invoke(WORKSPACE.openPortal, target, label),
-  takeNavigation: () => bridge.invoke(WORKSPACE.takeNavigation)
+  takeNavigation: () => bridge.invoke(WORKSPACE.takeNavigation),
+  inbox: (view: InboxView) => bridge.invoke(WORKSPACE.inbox, view),
+  markInbox: (keys: string[], change: InboxMark) => bridge.invoke(WORKSPACE.markInbox, keys, change),
+  decide: (input: DecideInput) => bridge.invoke(WORKSPACE.decide, input),
+  agent: (slug: string) => bridge.invoke(WORKSPACE.agent, slug),
+  agentAction: (slug: string, action: AgentAction) => bridge.invoke(WORKSPACE.agentAction, slug, action)
 }
 
 export const useWorkspaceStore = create<{ state?: WorkspaceState }>(() => ({}))

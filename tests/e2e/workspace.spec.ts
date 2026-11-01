@@ -110,12 +110,13 @@ test('workspace: Início with live badges, deep link to Meus agentes, portal lin
   const recent = page.locator('[data-card="recent"]')
   await expect(recent.getByRole('button', { name: 'Analista de Dados' })).toBeVisible()
 
-  // Decisões and Caixa de entrada open the portal (until M2).
+  // Decisões and Caixa de entrada are screens of the app (M2), not the portal.
+  const before2 = (await opened(hangar)).length
   await nav.getByRole('button', { name: /^Decisões/ }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Decisões' })).toBeVisible()
   await nav.getByRole('button', { name: /^Caixa de entrada/ }).click()
-  await expect
-    .poll(() => opened(hangar))
-    .toEqual(expect.arrayContaining([`${platform.url}/app#/decisions`, `${platform.url}/app#/inbox`]))
+  await expect(page.getByRole('heading', { level: 1, name: 'Caixa de entrada' })).toBeVisible()
+  expect((await opened(hangar)).length).toBe(before2)
 
   // A deep link from outside: a second launch hands it to this instance, which shows Meus agentes.
   await page
@@ -147,23 +148,35 @@ test('workspace: Início with live badges, deep link to Meus agentes, portal lin
   await nav.getByRole('button', { name: /^Meus agentes/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Meus agentes' })).toBeVisible()
 
+  // "Novo agente": the request for the chosen kind, with blanks to fill in.
+  await page.getByRole('button', { name: 'Novo agente ▾' }).click()
+  await expect(page.getByRole('menuitem')).toHaveCount(4)
+  await page.getByRole('menuitem', { name: /^Multiagente/ }).click()
+  await expect(page.getByLabel('Nome da sessão')).toHaveValue('Novo multiagente')
+  await expect(page.getByPlaceholder(/Descreva a tarefa/)).toHaveValue(/Quero montar um multiagente no Agent Hangar/)
+  await nav.getByRole('button', { name: /^Meus agentes/ }).click()
+  await expect(page.getByRole('heading', { level: 1, name: 'Meus agentes' })).toBeVisible()
+
   // An agent's status changes on the platform: the list follows.
   platform.emitEvent('agent.status', { slug: 'suporte-n1', status: 'paused' })
   await expect(page.locator('[data-agent="suporte-n1"]')).toContainText('Pausado')
 
-  // Links outside the closed list do nothing; routes not migrated open the portal.
+  // Links outside the closed list do nothing; a decision link opens Decisões in the app.
   const count = (await opened(hangar)).length
   expect(await launchWithLink(hangar, 'hangar://open/../../settings')).toBe(0)
   expect(await launchWithLink(hangar, 'hangar://open/agents/https:evil')).toBe(0)
   await expect(page.getByRole('heading', { level: 1, name: 'Meus agentes' })).toBeVisible()
   expect(await launchWithLink(hangar, 'hangar://open/decisions/90')).toBe(0)
-  await expect.poll(async () => (await opened(hangar)).slice(count)).toEqual([`${platform.url}/app#/decisions`])
+  await expect(page.getByRole('heading', { level: 1, name: 'Decisões' })).toBeVisible()
+  expect((await opened(hangar)).slice(count)).toEqual([])
 
   // The stream drops: the app reconnects, resuming after the last event it saw.
   const lastId = String(platform.events.at(-1)!.id)
   platform.dropStreams()
   await expect.poll(() => platform!.eventResumes.at(-1), { timeout: 15_000 }).toBe(lastId)
   await expect.poll(() => platform!.streams()).toBe(1)
+  // As on the platform, the count the event carries is the one GET /api/inbox answers (the app may refetch it).
+  platform.inboxUnread = 7
   platform.emitEvent('inbox.changed', { unread: 7 })
   await expect(inboxBadge).toHaveText('7')
 

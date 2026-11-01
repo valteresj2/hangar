@@ -103,7 +103,7 @@ function CliCard({ settings }: { settings: Settings }) {
 
   return (
     <Card
-      title="Claude Code"
+      title="Motor do agente (CLI claude)"
       actions={
         <>
           {/* Reopens the first-run assistant on its diagnosis step (onboarding feature). */}

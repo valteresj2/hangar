@@ -37,6 +37,20 @@ export function platformGet<T>(path: string): Promise<T> {
   return apiClient.request<T>('GET', path)
 }
 
+/**
+ * POST or DELETE on a member route the app token may use (decide, mark the inbox, act on the person's own agents:
+ * docs/platform/m1-contract.md §1). The platform checks the person's access as on the portal.
+ */
+export function platformSend<T>(
+  method: 'POST' | 'DELETE',
+  path: string,
+  body?: unknown,
+  opts?: { timeoutMs?: number }
+): Promise<T> {
+  if (!currentLogin()) return Promise.reject(new PlatformError('not_connected', 'O Hangar não está conectado.'))
+  return apiClient.request<T>(method, path, body, opts)
+}
+
 /** Opens an event stream (SSE) of the platform with the app's token. */
 export function platformStream(path: string, headers: Record<string, string>, signal: AbortSignal): Promise<Response> {
   if (!currentLogin()) return Promise.reject(new PlatformError('not_connected', 'O Hangar não está conectado.'))

@@ -93,7 +93,7 @@ export function SkillsSection() {
             <Spinner />
           </div>
         ) : plugins.length === 0 ? (
-          <div className={styles.empty}>Nenhum plugin instalado. Instale pelo Claude Code com /plugin.</div>
+          <div className={styles.empty}>Nenhum plugin instalado. Instale pelo CLI claude com /plugin.</div>
         ) : (
           <div className={styles.list}>
             {plugins.map((p) => (

@@ -1,10 +1,10 @@
-// The "Agent Hangar" section of the sidebar (above the sessions, collapsible): Início and Meus agentes open native
-// screens; Decisões and Caixa de entrada show live badges and open the portal until they move to the app (M2).
+// The "Agent Hangar" section of the sidebar (above the sessions, collapsible): Início, Meus agentes, Decisões and
+// Caixa de entrada open native screens; the last two show live badges.
 // Without a login it offers "Conecte à plataforma".
 import { useState } from 'react'
 import { useUi } from '../../core/ui'
 import { usePlatform } from '../platform'
-import { openPortal, useWorkspace } from './api'
+import { useWorkspace } from './api'
 import { badge } from './format'
 import styles from './workspace.module.css'
 
@@ -128,16 +128,14 @@ export function WorkspaceNav() {
             <NavItem
               label="Decisões"
               count={state.badges.decisions}
-              external
-              title="Abrir as decisões no portal (navegador)"
-              onClick={() => openPortal({ screen: 'decisions' })}
+              active={view === 'decisions'}
+              onClick={() => ui.openWorkspace('decisions')}
             />
             <NavItem
               label="Caixa de entrada"
               count={state.badges.inbox}
-              external
-              title="Abrir a caixa de entrada no portal (navegador)"
-              onClick={() => openPortal({ screen: 'inbox' })}
+              active={view === 'inbox'}
+              onClick={() => ui.openWorkspace('inbox')}
             />
           </div>
         ) : (

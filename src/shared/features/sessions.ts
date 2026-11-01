@@ -15,7 +15,7 @@ export const SESSIONS = {
 export const DEFAULT_SESSION_TITLE = 'Nova sessão'
 
 /**
- * Renderer-side DOM event (window.dispatchEvent) that opens the "import from Claude Code" dialog.
+ * Renderer-side DOM event (window.dispatchEvent) that opens the "import from the claude CLI" dialog.
  * Lets other features (e.g. the command palette) trigger it without importing sessions code.
  */
 export const OPEN_IMPORT_EVENT = 'hangar:sessions:open-import'

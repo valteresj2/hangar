@@ -38,7 +38,7 @@ type StoredProfile = Omit<ProviderProfile, 'hasSecret'>
 
 const SUBSCRIPTION_PROFILE: ProviderProfile = {
   id: SUBSCRIPTION_PROFILE_ID,
-  name: 'Assinatura Claude (login do Claude Code)',
+  name: 'Assinatura Claude (login do CLI claude)',
   kind: 'subscription',
   hasSecret: false,
   createdAt: 0,

@@ -84,6 +84,7 @@ Prioridade: **P0** = MVP, **P1** = segunda onda, **P2** = depois / fora de escop
 | Modelos de token sincronizados pelo admin (proxy da plataforma, seletor Assinatura × Token)                   | 1+   | platform  |
 | Instaladores sem certificado para Windows (NSIS e portátil), Linux (AppImage e .deb) e macOS (.dmg e .zip)    | —    | release   |
 | Workspace no Desktop: Início, Meus agentes, badges ao vivo, deep links `hangar://` (M1 do plano do portal)    | M1   | workspace |
+| Decisões e Caixa de entrada no app; Gerenciar agentes (parar, publicar, excluir, pausar); Novo agente         | M2   | workspace |
 | Skills e MCP geridos pelo admin, MCP agent-hangar nas sessões                                                 | 2    | —         |
 | Políticas, auditoria, uso e orçamento, versão mínima                                                          | 3    | —         |
 | Compartilhar projetos e artefatos                                                                             | 4    | —         |

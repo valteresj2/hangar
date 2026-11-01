@@ -87,7 +87,8 @@ na sessão. Para trocar provedor/modelo de uma sessão, `engine/api.ts` expõe `
 
 O feature `workspace` traz telas do portal da plataforma para o Desktop (plano em
 `docs/platform/portal-migration-plan.md`, contrato da M1 em `docs/platform/m1-contract.md`): seção **Agent Hangar** na
-sidebar, Início e Meus agentes nativos, badges ao vivo pelo SSE `/api/app/events` (com fallback de polling) e deep
+sidebar, Início, Meus agentes, Decisões e Caixa de entrada nativos (decidir, marcar a caixa e gerenciar os próprios
+agentes pelas rotas da M2, seção 5 do contrato), badges ao vivo pelo SSE `/api/app/events` (com fallback de polling) e deep
 links `hangar://open/<rota>` (lista fechada de rotas; o registro do protocolo considera o Windows portátil e o
 AppImage). A tela ativa fica em `useUi().workspaceView`, renderizada no centro pelo `App.tsx`.
 

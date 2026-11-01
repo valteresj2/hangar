@@ -41,7 +41,7 @@ const STATUS_PT: [RegExp, string][] = [
   [/^Disabled everywhere by Hangar/i, 'Desligado em todos os projetos pelo Hangar'],
   [
     /^Rejected \(see disabledMcpjsonServers in settings\)/i,
-    'Rejeitado por disabledMcpjsonServers num arquivo de configurações do Claude Code'
+    'Rejeitado por disabledMcpjsonServers num arquivo de configurações do CLI claude'
   ],
   [/^Rejected/i, 'Rejeitado'],
   [/^Disabled/i, 'Desligado']
@@ -51,8 +51,7 @@ const STATUS_PT: [RegExp, string][] = [
 const MECHANISM_TEXT: Record<NonNullable<McpServer['disabledBy']>, string> = {
   project: 'Desligado só nesta pasta, pela lista disabledMcpServers do ~/.claude.json (a mesma do /mcp).',
   mcpjson: 'Servidor do .mcp.json rejeitado nesta pasta (disabledMcpjsonServers em .claude/settings.local.json).',
-  hangar:
-    'Removido do Claude Code com `claude mcp remove`; o Hangar guardou a configuração para re-adicionar ao ligar.',
+  hangar: 'Removido do CLI claude com `claude mcp remove`; o Hangar guardou a configuração para re-adicionar ao ligar.',
   settings:
     'Rejeitado por disabledMcpjsonServers em .claude/settings.json ou ~/.claude/settings.json; edite esse arquivo para ligar.'
 }
@@ -260,7 +259,7 @@ function LogViewer({ server, cwd }: { server: McpServer; cwd?: string }) {
         <pre ref={preRef} className={styles.pre}>
           {log.lines.length
             ? `${log.truncated ? '… (início do arquivo omitido)\n' : ''}${log.lines.join('\n')}`
-            : 'O Claude Code ainda não gravou log para este servidor. Os logs aparecem depois que uma sessão usa o servidor.'}
+            : 'O agente ainda não gravou log para este servidor. Os logs aparecem depois que uma sessão usa o servidor.'}
         </pre>
       )}
     </div>
@@ -299,7 +298,7 @@ function ServerItem({ server, cwd, onChanged }: { server: McpServer; cwd?: strin
       if (mechanism === 'hangar' && !enabled) {
         const ok = window.confirm(
           `Desligar "${server.name}" em todos os projetos?\n\n` +
-            'O Claude Code não tem "desligar" para servidores do usuário: o Hangar guarda a configuração e remove o ' +
+            'O CLI claude não tem "desligar" para servidores do usuário: o Hangar guarda a configuração e remove o ' +
             'servidor com `claude mcp remove`. Ao ligar, ele volta com `claude mcp add-json`.'
         )
         if (!ok) return

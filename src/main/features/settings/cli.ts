@@ -74,13 +74,13 @@ export async function claudePath(): Promise<{ path?: string; fromOverride: boole
 
 export async function runClaude(args: string[], opts: { cwd?: string; timeout?: number } = {}): Promise<CliResult> {
   const { path } = await claudePath()
-  if (!path) return { ok: false, code: null, stdout: '', stderr: 'Claude Code CLI não encontrado no PATH.' }
+  if (!path) return { ok: false, code: null, stdout: '', stderr: 'CLI claude não encontrado no PATH.' }
   return exec(path, args, opts)
 }
 
 export async function cliInfo(): Promise<CliInfo> {
   const { path, fromOverride } = await claudePath()
-  if (!path) return { fromOverride, error: 'Claude Code CLI não encontrado no PATH.' }
+  if (!path) return { fromOverride, error: 'CLI claude não encontrado no PATH.' }
   if (!existsSync(path)) return { path, fromOverride, error: 'Arquivo não encontrado.' }
   const res = await exec(path, ['--version'], { timeout: 20_000 })
   if (!res.ok) return { path, fromOverride, error: res.stderr.trim() || 'Falha ao executar --version.' }

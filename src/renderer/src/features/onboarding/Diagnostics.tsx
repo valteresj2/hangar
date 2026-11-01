@@ -101,7 +101,7 @@ export function DiagnosticsPanel({ onOpenProviders }: { onOpenProviders: () => v
       <div className={styles.footer} style={{ marginBottom: 12 }}>
         <span className="muted" style={{ flex: 1 }}>
           {running
-            ? 'Verificando o Claude Code, o login, o gateway e o provedor (inclui uma consulta curta de teste)…'
+            ? 'Verificando o CLI claude, o login, o gateway e o provedor (inclui uma consulta curta de teste)…'
             : report
               ? problems
                 ? `${problems} problema${problems > 1 ? 's' : ''} encontrado${problems > 1 ? 's' : ''}.`

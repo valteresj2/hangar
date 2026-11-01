@@ -9,7 +9,7 @@ export const BRAND = {
   company: 'Agent Hangar',
   copyright: '© 2026 Agent Hangar',
   /** What the app is, in one line (pt-BR). */
-  tagline: 'App de desktop para rodar e conduzir sessões do Claude Code, conectado à plataforma Agent Hangar.',
+  tagline: 'App de desktop para rodar e conduzir sessões de um agente de código, conectado à plataforma Agent Hangar.',
   license: 'Software proprietário. Todos os direitos reservados.',
   /** Title bar height (px); the window controls overlay uses the same. */
   titleBarHeight: 36

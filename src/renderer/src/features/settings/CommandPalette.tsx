@@ -82,7 +82,7 @@ const ACTIONS: PaletteItem[] = [
   {
     id: 'import',
     group: 'Ações',
-    label: 'Importar sessões do Claude Code',
+    label: 'Importar sessões do CLI claude',
     icon: '⇣',
     run: () => {
       ui().setSettingsOpen(false)

@@ -152,14 +152,23 @@ Conectado, o app vira a porta de entrada da plataforma para você.
 
 ### O que aparece
 
-- **Seção Agent Hangar na sidebar**, com **Início** (o que precisa de você hoje) e **Meus agentes** (seus agentes
-  pessoais, os do time que você gerencia e os que você criou), atualizados ao vivo.
-- Contadores de **Decisões** e **Caixa de entrada**. Por enquanto, essas duas telas abrem no portal.
+- **Seção Agent Hangar na sidebar**, com **Início** (o que precisa de você hoje), **Meus agentes** (seus agentes
+  pessoais, os do time que você gerencia e os que você criou), **Decisões** e **Caixa de entrada**, atualizados ao
+  vivo e com contadores.
+- **Decisões:** cada pedido dos seus digital employees com o motivo, o risco e a ação exata. Você aprova, recusa,
+  instrui, responde a perguntas, admite e revisa resultados ali mesmo. Tipos mais raros abrem no portal.
+- **Caixa de entrada:** decisões, tarefas que você pediu e o que travou, com abas, marcar como lida e arquivar.
+- **Meus agentes → Gerenciar:** onde o agente roda (stage e produção), versões, último teste e custo de 7 dias.
+  Conforme as suas permissões, dá para parar, testar e publicar ou excluir. Para digital employees, pausar, retomar e
+  desligar.
+- **Novo agente:** um menu com três pedidos prontos (agente simples, multiagente e digital employee) que abre uma
+  sessão já preenchida. É só completar os campos entre colchetes e enviar.
 - Links `hangar://open/...` que o portal e as notificações usam para abrir a tela certa no app.
 
 ### Ferramentas da plataforma em toda sessão
 
-Com o app conectado, **toda sessão nova recebe as ferramentas MCP do Agent Hangar**: planejar, criar, testar e
+Com o app conectado, **toda sessão recebe as ferramentas MCP do Agent Hangar** (uma sessão aberta antes de conectar
+passa a tê-las na mensagem seguinte): planejar, criar, testar e
 publicar agentes, montar multiagentes, contratar digital employees, passar tarefas, acompanhar decisões, parar e
 pausar. As chamadas usam o **seu** login, com as suas permissões. O token não sai do app, e o modelo não o vê.
 
@@ -190,8 +199,9 @@ ele por ali.
 - **Política do Windows:** em `HKLM` ou `HKCU\Software\Policies\Hangar`, `PlatformUrl` define o endereço e `Mode`
   (`off`, `optional` ou `required`) define se conectar é obrigatório. Em `required`, o app só cria sessões
   conectado.
-- **Versão recomendada da plataforma:** 0.54 ou mais nova. Antes dela, agentes criados pelo app sem um modelo
-  escolhido ficavam no modelo de teste e só repetiam o texto recebido.
+- **Versão recomendada da plataforma:** 0.55 ou mais nova. A 0.55 libera para o app decidir, marcar a caixa de
+  entrada e gerenciar os próprios agentes. Antes da 0.54, agentes criados pelo app sem um modelo escolhido ficavam no
+  modelo de teste e só repetiam o texto recebido.
 
 ## Atalhos
 
@@ -231,8 +241,10 @@ As conversas das sessões ficam em `~/.claude/projects`, no mesmo formato do CLI
 
 | O que acontece                                          | O que fazer                                                                                                                                     |
 | ------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
-| Fechei a janela e o app continua aberto                 | O X esconde o app na bandeja. Para sair, use o ícone da bandeja → Sair, ou desligue em Configurações → Geral                                    |
-| A sessão diz que não tem as ferramentas do Agent Hangar | Confira se o app está conectado (pé da sidebar) e abra uma **sessão nova**: as ferramentas entram ao criar a sessão                             |
+| Fechei a janela e o app continua aberto                 | O X esconde o app na bandeja (o app pergunta na primeira vez). Para sair, use o ícone da bandeja → Sair, ou desligue em Configurações → Geral   |
+| A sessão diz que não tem as ferramentas do Agent Hangar | Confira se o app está conectado (pé da sidebar) e mande outra mensagem: a sessão reinicia com as ferramentas e continua a conversa              |
+| O custo aparece como "custo desconhecido"               | O modelo não tem preço no catálogo da plataforma (um admin cadastra) ou é um modelo não-Claude que o agente não sabe precificar                 |
+| Decisões ou Gerenciar dizem que a plataforma não deixou | A plataforma é anterior à 0.55, ou você não tem permissão para aquela ação naquele agente                                                       |
 | Um agente criado pelo app só repete o que recebe        | A plataforma está numa versão anterior à 0.54 e o agente ficou no modelo de teste; atualize a plataforma ou peça para trocar o modelo do agente |
 | "claude não encontrado" ou o login falha                | Em Configurações → Geral, rode o diagnóstico ou informe o caminho do `claude`                                                                   |
 | O Windows bloqueia o instalador sem botão para liberar  | É o Controle Inteligente de Aplicativos; veja [docs/RELEASE.md](docs/RELEASE.md#windows)                                                        |

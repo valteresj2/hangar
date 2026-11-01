@@ -1,7 +1,9 @@
 // Validation of the platform's member routes and events (docs/platform/m1-contract.md): untrusted JSON in, the
 // app's types out. Pure; garbage becomes empty values instead of exceptions, so one odd field never blanks a screen.
 import type {
+  AgentDetail,
   InboxCounts,
+  InboxItem,
   WorkingOn,
   WorkspaceBuiltAgent,
   WorkspaceChart,
@@ -138,8 +140,28 @@ export function parseDecision(v: unknown): WorkspaceDecision | undefined {
     taskTitle: optStr(task?.title, 300) ?? optStr(o.tool, 200),
     mine: o.mine === true,
     createdAt: when(o.created_at),
-    expiresAt: when(o.expires_at)
+    expiresAt: when(o.expires_at),
+    rationale: optStr(o.rationale, 2000),
+    risk: optStr(o.risk, 20),
+    tool: optStr(o.tool, 200),
+    payload: payloadText(o.payload),
+    taskId: id(task?.id),
+    approvals: list(o.approvals).length,
+    approvalsNeeded: o.mode === 'approve_2' ? 2 : 1
   }
+}
+
+/** The action's arguments as indented JSON, cut when long (the card shows it as is). */
+function payloadText(v: unknown): string | undefined {
+  if (v === undefined || v === null) return undefined
+  let text: string
+  try {
+    text = JSON.stringify(v, null, 2)
+  } catch {
+    return undefined
+  }
+  if (!text || text === '{}') return undefined
+  return text.length > 4000 ? `${text.slice(0, 4000)}\n…` : text
 }
 
 /** GET /api/decisions: a list (an object with `items` is accepted too). */
@@ -179,6 +201,72 @@ export function parseChart(v: unknown): WorkspaceChart {
 export function parseInbox(v: unknown): InboxCounts {
   const c = obj(obj(v)?.counts) ?? {}
   return { all: count(c.all), unread: count(c.unread), decisions: count(c.decisions), blocked: count(c.blocked) }
+}
+
+/** GET /api/inbox?view=… → its items (the counts come from parseInbox). */
+export function parseInboxItems(v: unknown): InboxItem[] {
+  const out: InboxItem[] = []
+  for (const x of list(obj(v)?.items)) {
+    const o = obj(x)
+    const key = str(o?.key, 80)
+    if (!o || !/^[a-z_]+:[^\s]{1,70}$/.test(key)) continue
+    const decision = key.startsWith('decision:') ? id(key.slice('decision:'.length)) : undefined
+    out.push({
+      key,
+      kind: str(o.kind, 40),
+      title: str(o.title, 500) || key,
+      at: when(o.at),
+      unread: o.unread === true,
+      archived: o.archived === true,
+      blocked: o.blocked === true,
+      requested: o.requested === true || o.mine === true,
+      employee: slug(o.employee),
+      employeeName: optStr(o.employee_name, 200),
+      status: optStr(o.status, 40),
+      decisionId: decision,
+      taskId: id(o.task_id)
+    })
+  }
+  return out
+}
+
+/** GET /api/agents/{slug}: what Meus agentes shows when an agent is opened. */
+export function parseAgentDetail(v: unknown): AgentDetail | undefined {
+  const o = obj(v)
+  const s = slug(o?.slug)
+  if (!o || !s) return undefined
+  const test = obj(o.last_test)
+  const cost = o.cost_7d
+  return {
+    slug: s,
+    name: str(o.name, 200) || s,
+    kind: str(o.kind, 40),
+    status: str(o.status, 40),
+    version: id(o.version),
+    model: optStr(o.model, 200),
+    stageVersion: id(obj(o.stage)?.version),
+    prodVersion: id(obj(o.prod)?.version),
+    requests7d: typeof o.requests_7d === 'number' ? count(o.requests_7d) : undefined,
+    cost7d: typeof cost === 'number' && Number.isFinite(cost) ? cost : undefined,
+    permissions: list(o.permissions).filter((p): p is string => typeof p === 'string' && p.length < 40),
+    versions: defined(
+      list(o.versions).map((x) => {
+        const vo = obj(x)
+        const n = id(vo?.version)
+        return vo && n
+          ? { version: n, createdBy: optStr(vo.created_by, 200), createdAt: when(vo.created_at) }
+          : undefined
+      })
+    ).sort((a, b) => b.version - a.version),
+    lastTest: test
+      ? {
+          version: id(test.version),
+          status: str(test.status, 40),
+          summary: optStr(test.summary, 300),
+          at: when(test.created_at)
+        }
+      : undefined
+  }
 }
 
 // ---------------------------------------------------------------- events (GET /api/app/events)

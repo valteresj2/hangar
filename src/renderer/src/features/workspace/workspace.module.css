@@ -178,6 +178,46 @@
   flex-wrap: wrap;
 }
 
+.menuBox {
+  position: relative;
+}
+.menu {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 4px);
+  right: 0;
+  width: 300px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  box-shadow: var(--shadow-pop);
+}
+.menuItem {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-sm);
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.menuItem:hover,
+.menuItem:focus-visible {
+  background: var(--bg-hover);
+}
+.menuLabel {
+  font-weight: 600;
+}
+.menuHint {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
 .liveNote {
   display: inline-flex;
   align-items: center;
@@ -485,4 +525,126 @@
   display: flex;
   flex-shrink: 0;
   gap: 6px;
+}
+
+/* ---- Decisões ---- */
+.decisionCard {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.decisionHead {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.decisionTitle {
+  font-size: 15px;
+  font-weight: 600;
+}
+.decisionText {
+  margin: 0;
+  white-space: pre-wrap;
+}
+.payload summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.payload pre {
+  max-height: 240px;
+  overflow: auto;
+  margin: 6px 0 0;
+  padding: 8px;
+  border-radius: var(--radius-sm);
+  background: var(--bg);
+  font-size: 12px;
+}
+.reason {
+  width: 100%;
+  resize: vertical;
+}
+.decisionActions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+.decisionError {
+  color: var(--danger, #c0392b);
+  font-size: 13px;
+}
+.decisionDone {
+  color: var(--success, #1e7f4f);
+  font-size: 13px;
+}
+
+/* ---- Caixa de entrada ---- */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  border-bottom: 1px solid var(--border);
+}
+.tab {
+  padding: 6px 10px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+.tabActive {
+  border-bottom-color: var(--accent);
+  color: inherit;
+  font-weight: 600;
+}
+.inboxRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.inboxMain {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  padding: 0;
+  border: none;
+  background: none;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+.inboxTitle {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.inboxUnread .inboxTitle {
+  font-weight: 600;
+}
+.unreadDot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--accent);
+}
+
+/* ---- Meus agentes: Gerenciar ---- */
+.manage {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--border);
+}
+.versions {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
 }

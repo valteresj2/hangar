@@ -93,12 +93,11 @@ export async function rewindPreview(sessionId: string, entryId: string): Promise
   const s = sessionOf(sessionId)
   const { entries, idx } = await findUserEntry(sessionId, entryId)
   const none = { canRewindFiles: false, filesChanged: [] }
-  if (!s.sdkSessionId)
-    return { canRewindConversation: true, ...none, filesError: 'Ainda não há sessão do Claude Code.' }
+  if (!s.sdkSessionId) return { canRewindConversation: true, ...none, filesError: 'Ainda não há sessão do agente.' }
   const chain = await chainOf(s)
   const at = locate(chain, entries, idx)
   if (at < 0)
-    return { canRewindConversation: false, ...none, filesError: 'Mensagem não encontrada na sessão do Claude Code.' }
+    return { canRewindConversation: false, ...none, filesError: 'Mensagem não encontrada na sessão do agente.' }
   try {
     const r = await runnerFor(sessionId).rewindFiles(chain[at].uuid, true)
     if (!r.canRewind)
@@ -128,7 +127,7 @@ export async function rewind(sessionId: string, entryId: string, opts: RewindOpt
   if (s.sdkSessionId) {
     const chain = await chainOf(s)
     const at = locate(chain, entries, idx)
-    if (at < 0) throw new Error('Não encontrei esta mensagem na sessão do Claude Code.')
+    if (at < 0) throw new Error('Não encontrei esta mensagem na sessão do agente.')
 
     if (opts.restoreFiles) {
       try {
@@ -175,7 +174,7 @@ export async function fork(sessionId: string, entryId: string): Promise<ForkResu
   if (s.sdkSessionId) {
     const chain = await chainOf(s)
     const at = locate(chain, entries, idx)
-    if (at < 0) throw new Error('Não encontrei esta mensagem na sessão do Claude Code.')
+    if (at < 0) throw new Error('Não encontrei esta mensagem na sessão do agente.')
     const next = chain.findIndex((m, i) => i > at && isPrompt(m))
     const cut = (next < 0 ? chain.length : next) - 1
     const { forkSession, getSessionMessages } = await loadSdk()

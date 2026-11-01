@@ -8,7 +8,7 @@ sessões; no Desktop o **dono pode testar e parar** agentes (M3). Mudanças nest
 
 - Uma dependência única marca as rotas do **membro** que aceitam o token OAuth com escopo `app`
   (ex.: `member_route(allow_app=True)`), sempre com o acesso da própria pessoa (times e papéis dela).
-- **Lista da M1** (só leitura): `GET /api/me/workspace`, `GET /api/decisions`, `GET /api/org-chart` (apenas com
+- **Lista da M1** (só leitura; a M2 amplia na seção 5): `GET /api/me/workspace`, `GET /api/decisions`, `GET /api/org-chart` (apenas com
   `mine=1`), `GET /api/inbox` (lista e contagem). As fases seguintes ampliam a lista explicitamente.
 - **Nunca** aceitam o token `app`: rotas de admin, auditor, configuração, chaves, segredos, OAuth/SSO, e qualquer
   rota fora da lista.
@@ -27,7 +27,7 @@ sessões; no Desktop o **dono pode testar e parar** agentes (M3). Mudanças nest
 ## 3. Desktop
 
 - Feature **`workspace`**: seção **Agent Hangar** na sidebar (acima das sessões; recolhível) com **Início** e
-  **Meus agentes** (Decisões e Caixa de entrada aparecem com badge e abrem o portal no navegador até a M2).
+  **Meus agentes** (Decisões e Caixa de entrada aparecem com badge; desde a M2 são telas do app, seção 5).
 - **Início**: cartões "Para você decidir", "Meus agentes", "Trabalhando agora", "Custo no mês", "Decisões" e
   "Vistos recentemente" (o equivalente nativo do Início do portal), com o tema da plataforma.
 - **Meus agentes**: lista com status, tipo (agente / digital employee), último uso; detalhe abre o portal até a M3.
@@ -51,7 +51,7 @@ da empresa vê como admin). Recusas: `401` sem token ou com token vencido (renov
 em qualquer rota fora da lista (ou com um token sem o escopo `app`); `403` com
 `{"detail": "forbidden: pelo app Hangar, só o organograma da pessoa (mine=1)"}` em `/api/org-chart` sem `mine=1`.
 Na plataforma, a lista é marcada com `member_route(allow_app=True)` (`central/app/routers/deps.py`), e um teste garante
-que só estas quatro rotas têm a marca.
+que só as rotas das seções 1 e 5 têm a marca.
 
 ### 4.1 `GET /api/me/workspace` — o Início
 
@@ -311,3 +311,26 @@ a autorização acaba (o app reconecta e recebe 401).
 a partir do cursor a cada 2 s e decide na entrega, com o acesso atual da pessoa, se ela pode ver o evento. Não precisa
 de infraestrutura nova (funciona com SQLite e Postgres). Detalhes em `central/app/services/app_events.py` e em
 `docs/api.md`.
+
+## 5. M2 — decidir, caixa de entrada e ações nos agentes
+
+A M2 amplia a lista da seção 1 com escritas do membro, sempre com o acesso da própria pessoa (as mesmas regras do
+portal: quem não pode decidir um pedido, ver um agente ou administrá-lo recebe `403`):
+
+| Rota                                | Para quê no Desktop                                                                          |
+| ----------------------------------- | -------------------------------------------------------------------------------------------- |
+| `POST /api/decisions/{id}`          | Decidir na tela **Decisões** (`{decision, reason}`; por tipo, abaixo)                        |
+| `POST /api/inbox/mark`              | **Caixa de entrada**: marcar como lida/não lida e arquivar (`{keys, read, archived}`)        |
+| `GET /api/agents/{slug}`            | **Meus agentes → Gerenciar**: versões, onde roda, último teste, custo de 7 dias e permissões |
+| `POST /api/agents/{slug}/stop`      | Parar em stage (`edit`) ou em produção (`manage`)                                            |
+| `POST /api/agents/{slug}/ship`      | Testar e publicar (sem `promote`, a produção vira pedido de aprovação)                       |
+| `DELETE /api/agents/{slug}`         | Excluir (`manage`; o Desktop pede confirmação)                                               |
+| `POST /api/employees/{slug}/status` | Pausar, retomar e desligar um Digital employee (`{to: paused                                 | active | offboarded}`) |
+
+`POST /api/decisions/batch` continua fora da lista. Decisões no Desktop, por tipo: aprovação `approve | instruct |
+reject`; pergunta `answer` (a resposta em `reason`); admissão `approve | reject`; revisão `approve | reject` (o que mudar
+em `reason`); plano `approve | instruct | reject`; aviso `ack`. Os demais tipos (capacidade, sombra, revisor de outro
+fornecedor e os tipos de módulos) abrem o portal.
+
+No Desktop, **Decisões** e **Caixa de entrada** viram telas do app (com os mesmos badges ao vivo), e os deep links
+`hangar://open/decisions[/<id>]` e `hangar://open/inbox` abrem essas telas em vez do portal.

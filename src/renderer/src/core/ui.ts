@@ -2,6 +2,7 @@
 // add new fields only through the chief.
 import { create } from 'zustand'
 import type { SidePanelTab } from '@shared/contracts'
+import type { WorkspaceView } from '@shared/features/workspace'
 
 interface UiState {
   activeSessionId?: string
@@ -15,7 +16,7 @@ interface UiState {
   /** Full-screen Harness Lab (compare variants) for this project directory. */
   labCwd?: string
   /** Native screen of the Agent Hangar workspace shown in the center (features/workspace); cleared by selectSession. */
-  workspaceView?: 'home' | 'agents'
+  workspaceView?: WorkspaceView
   selectSession(id: string | undefined): void
   toggleSidebar(): void
   openSidePanel(tab?: SidePanelTab): void
@@ -27,7 +28,7 @@ interface UiState {
   openLab(cwd: string): void
   closeLab(): void
   /** Shows a workspace screen (Início / Meus agentes) in place of the session. */
-  openWorkspace(view: 'home' | 'agents'): void
+  openWorkspace(view: WorkspaceView): void
   closeWorkspace(): void
 }
 

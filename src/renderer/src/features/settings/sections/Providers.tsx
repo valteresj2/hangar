@@ -43,7 +43,7 @@ const TEMPLATES: Template[] = [
   {
     key: 'subscription-direct',
     label: 'Assinatura (direto, sem gateway)',
-    help: 'Usa o login da sua assinatura do Claude Code, mas fala direto com a Anthropic (ou com a URL que você informar), ignorando um ANTHROPIC_BASE_URL do ~/.claude/settings.json. Útil quando o gateway configurado lá está fora do ar.',
+    help: 'Usa o login da sua assinatura do Claude, mas fala direto com a Anthropic (ou com a URL que você informar), ignorando um ANTHROPIC_BASE_URL do ~/.claude/settings.json. Útil quando o gateway configurado lá está fora do ar.',
     doc: DOCS.subscription,
     input: { name: 'Assinatura (direto)', kind: 'subscription', baseUrl: 'https://api.anthropic.com' }
   },
@@ -348,13 +348,13 @@ function ProviderForm({
           Modelos
         </div>
         <div className={`${styles.formFull} ${styles.hint}`}>
-          Vazio = padrão do Claude Code.{' '}
+          Vazio = padrão do agente.{' '}
           {kind === 'gateway' &&
             'Via LiteLLM/OpenRouter os nomes podem ser de outros fabricantes (ex.: um GPT ou Gemini configurado no proxy). '}
           {kind === 'foundry' && 'Use os nomes dos deployments. '}
           {kind === 'foundry' && (
             <strong>
-              Modelos que não são Claude podem não suportar bem ferramentas, thinking ou imagens no Claude Code.
+              Modelos que não são Claude podem não suportar bem ferramentas, thinking ou imagens neste agente.
             </strong>
           )}
         </div>
@@ -400,7 +400,7 @@ function ProviderForm({
               Modelos que não são Claude
             </div>
             <div className={`${styles.formFull} ${styles.hint}`}>
-              O Hangar adapta as requisições do Claude Code a cada modelo (sem campos exclusivos da Anthropic, limite de
+              O Hangar adapta as requisições do agente a cada modelo (sem campos exclusivos da Anthropic, limite de
               saída e janela do modelo, ferramentas essenciais, chamadas de ferramenta corrigidas). Os limites vêm de
               uma tabela de modelos conhecidos; preencha só se o seu modelo não estiver nela.
             </div>
@@ -425,7 +425,7 @@ function ProviderForm({
                     onChange={(toolset) => setCompat({ toolset: toolset === 'core' ? undefined : toolset })}
                     options={[
                       { value: 'core', label: 'Essenciais' },
-                      { value: 'full', label: 'Todas do Claude Code' }
+                      { value: 'full', label: 'Todas do agente' }
                     ]}
                   />
                 </div>
@@ -552,7 +552,7 @@ function ProviderItem({
         </div>
         <div className={`${styles.itemSub} ${styles.path}`}>
           {builtIn
-            ? `Login do Claude Code e o seu ~/.claude/settings.json, sem mudanças${userBaseUrl ? ` (inclusive ANTHROPIC_BASE_URL = ${userBaseUrl})` : ''}.`
+            ? `Login do CLI claude e o seu ~/.claude/settings.json, sem mudanças${userBaseUrl ? ` (inclusive ANTHROPIC_BASE_URL = ${userBaseUrl})` : ''}.`
             : [
                 profile.baseUrl ?? (profile.kind === 'anthropic' ? 'https://api.anthropic.com' : undefined),
                 profile.project,
@@ -566,7 +566,7 @@ function ProviderItem({
                 .filter(Boolean)
                 .join(' · ') || '—'}
         </div>
-        {testing && <div className={styles.hint}>Testando (uma consulta curta pelo Claude Code)…</div>}
+        {testing && <div className={styles.hint}>Testando (uma consulta curta pelo agente)…</div>}
         {test &&
           (test.ok ? (
             <div className={`${styles.hint} ${styles.okText}`}>
@@ -632,9 +632,9 @@ export function ProvidersSection() {
     <>
       <div className={styles.toolbar}>
         <span className="muted" style={{ flex: 1 }}>
-          Por padrão o Hangar usa o login do Claude Code (assinatura). Perfis permitem usar chave de API, gateways
-          (LiteLLM, OpenRouter…), Bedrock, Vertex ou Foundry. As chaves ficam cifradas pelo sistema e nunca voltam para
-          a tela.
+          Por padrão o Hangar usa o login da sua assinatura do Claude (CLI claude). Perfis permitem usar chave de API,
+          gateways (LiteLLM, OpenRouter…), Bedrock, Vertex ou Foundry. As chaves ficam cifradas pelo sistema e nunca
+          voltam para a tela.
         </span>
         {!editing && (
           <button className="btn btn-primary" onClick={() => setPicking((v) => !v)}>

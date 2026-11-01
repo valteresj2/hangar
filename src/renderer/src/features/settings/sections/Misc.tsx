@@ -59,7 +59,7 @@ export function AboutSection() {
       <UpdaterPanel />
 
       <Card title="Componentes">
-        <Row label="Claude Code" hint="Embutido no Agent SDK; usado quando não há um claude instalado.">
+        <Row label="Motor do agente" hint="Embutido no Agent SDK; usado quando não há um claude instalado.">
           <span>{info.claudeCode ?? '—'}</span>
         </Row>
         <Row label="Claude Agent SDK">

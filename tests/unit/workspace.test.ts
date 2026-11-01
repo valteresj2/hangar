@@ -3,11 +3,13 @@
 // `hangar://open/<route>` deep links with their closed list of routes (src/shared/features/workspace.ts).
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import {
+  parseAgentDetail,
   parseChart,
   parseDecisions,
   parseEvent,
   parseHome,
   parseInbox,
+  parseInboxItems,
   toDecide
 } from '../../src/main/features/workspace/parse'
 import {
@@ -110,6 +112,80 @@ describe('member routes', () => {
     expect(parseDecisions({ items: mockDecisions() })).toHaveLength(2)
     expect(parseDecisions('x')).toEqual([])
     expect(parseDecisions([{ id: 0 }, { kind: 'approval' }])).toEqual([])
+  })
+
+  it('parses what a decision card shows: rationale, risk, the action and its approvals', () => {
+    const [d] = parseDecisions([
+      {
+        id: 9,
+        kind: 'approval',
+        tool: 'send_email',
+        payload: { to: 'diretoria@acme.com' },
+        rationale: 'O relatório está pronto.',
+        risk: 'high',
+        mode: 'approve_2',
+        approvals: [{ by: 'Ana' }],
+        task: { id: 31, title: 'Relatório' }
+      }
+    ])
+    expect(d).toMatchObject({
+      rationale: 'O relatório está pronto.',
+      risk: 'high',
+      tool: 'send_email',
+      taskId: 31,
+      approvals: 1,
+      approvalsNeeded: 2
+    })
+    expect(d.payload).toContain('"to": "diretoria@acme.com"')
+    expect(parseDecisions([{ id: 3, kind: 'question', payload: {} }])[0]).toMatchObject({
+      payload: undefined,
+      approvals: 0,
+      approvalsNeeded: 1
+    })
+  })
+
+  it('parses the inbox items and an agent detail (bad keys and odd fields dropped)', () => {
+    const items = parseInboxItems({
+      items: [
+        { key: 'decision:12', kind: 'decision', title: 'Enviar?', unread: true, employee: 'analista-dados' },
+        { key: 'task:7', kind: 'task', title: 'Relatório', task_id: 7, status: 'done', requested: true },
+        { key: 'sem dois pontos', title: 'x' },
+        { key: 'decision:1 drop', title: 'x' }
+      ]
+    })
+    expect(items.map((i) => [i.key, i.decisionId, i.taskId, i.unread, i.requested])).toEqual([
+      ['decision:12', 12, undefined, true, false],
+      ['task:7', undefined, 7, false, true]
+    ])
+    const a = parseAgentDetail({
+      slug: 'resumo-diario',
+      name: 'Resumo diário',
+      kind: 'single',
+      status: 'prod',
+      version: 3,
+      stage: null,
+      prod: { version: 3 },
+      cost_7d: 0.42,
+      requests_7d: 12,
+      permissions: ['view', 'edit', 'manage', 7],
+      versions: [
+        { version: 2, created_by: 'ana', created_at: '2026-10-01T10:00:00' },
+        { version: 3, created_by: 'ana' },
+        { version: 'x' }
+      ],
+      last_test: { version: 3, status: 'passed', summary: '10/10' }
+    })
+    expect(a).toMatchObject({
+      slug: 'resumo-diario',
+      stageVersion: undefined,
+      prodVersion: 3,
+      cost7d: 0.42,
+      requests7d: 12,
+      permissions: ['view', 'edit', 'manage'],
+      lastTest: { version: 3, status: 'passed', summary: '10/10' }
+    })
+    expect(a?.versions.map((v) => v.version)).toEqual([3, 2])
+    expect(parseAgentDetail({ slug: '../x' })).toBeUndefined()
   })
 
   it('parses /api/org-chart?mine=1 and /api/inbox', () => {
@@ -348,9 +424,11 @@ describe('deep links', () => {
     expect(parseDeepLink('hangar://open/workspace/agents')).toEqual({ view: 'agents' })
     expect(parseDeepLink('hangar://open/workspace/agents/')).toEqual({ view: 'agents' })
     expect(parseDeepLink('HANGAR://open/mine')).toEqual({ view: 'agents' })
-    expect(parseDeepLink('hangar://open/decisions')).toEqual({ portal: { screen: 'decisions' } })
-    expect(parseDeepLink('hangar://open/decisions/42')).toEqual({ portal: { screen: 'decision', id: 42 } })
-    expect(parseDeepLink('hangar://open/inbox')).toEqual({ portal: { screen: 'inbox' } })
+    // Decisões and Caixa de entrada are native screens since M2.
+    expect(parseDeepLink('hangar://open/decisions')).toEqual({ view: 'decisions' })
+    expect(parseDeepLink('hangar://open/decisions/42')).toEqual({ view: 'decisions' })
+    expect(parseDeepLink('hangar://open/decisions/abc')).toBeUndefined()
+    expect(parseDeepLink('hangar://open/inbox')).toEqual({ view: 'inbox' })
     expect(parseDeepLink('hangar://open/tasks/501')).toEqual({ portal: { screen: 'task', id: 501 } })
     expect(parseDeepLink('hangar://open/agents/resumo-diario')).toEqual({
       portal: { screen: 'agent', slug: 'resumo-diario' }

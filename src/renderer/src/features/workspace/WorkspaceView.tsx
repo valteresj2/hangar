@@ -1,13 +1,15 @@
-// The workspace screen shown in the center (Início or Meus agentes): App.tsx renders it in <main> in place of the
-// session while useUi().workspaceView is set.
+// The workspace screen shown in the center (Início, Meus agentes, Decisões or Caixa de entrada): App.tsx renders it in
+// <main> in place of the session while useUi().workspaceView is set.
 import { useEffect, type ReactNode } from 'react'
-import type { Loadable, WorkspaceState, WorkspaceView as View } from '@shared/features/workspace'
+import type { Loadable, WorkspaceScope, WorkspaceState, WorkspaceView as View } from '@shared/features/workspace'
 import { useUi } from '../../core/ui'
 import { usePlatform } from '../platform'
 import { useWorkspace, workspaceApi } from './api'
 import { AgentsView } from './AgentsView'
+import { DecisionsView } from './DecisionsView'
 import { ago } from './format'
 import { HomeView } from './HomeView'
+import { InboxView } from './InboxView'
 import styles from './workspace.module.css'
 
 function ConnectCard() {
@@ -29,7 +31,7 @@ function ConnectCard() {
 }
 
 /** Loading / error / stale banner of a screen made of several resources. */
-export function LoadState(props: { parts: Loadable<unknown>[]; scope: 'home' | 'agents'; children: ReactNode }) {
+export function LoadState(props: { parts: Loadable<unknown>[]; scope: WorkspaceScope; children: ReactNode }) {
   const { parts, scope } = props
   const main = parts[0]
   const failed = parts.find((p) => p.status === 'error')
@@ -92,7 +94,8 @@ export function WorkspaceView({ view }: { view: View }) {
   const close = () => useUi.getState().closeWorkspace()
 
   useEffect(() => {
-    if (state?.connected) void workspaceApi.refresh(view).catch(() => undefined)
+    const scope: WorkspaceScope = view === 'decisions' || view === 'inbox' ? 'badges' : view
+    if (state?.connected) void workspaceApi.refresh(scope).catch(() => undefined)
     // Fetch when the screen opens (or the login changes); events and polling keep it current afterwards.
   }, [view, state?.connected])
 
@@ -110,6 +113,10 @@ export function WorkspaceView({ view }: { view: View }) {
         <ConnectCard />
       ) : view === 'home' ? (
         <HomeView state={state} />
+      ) : view === 'decisions' ? (
+        <DecisionsView state={state} />
+      ) : view === 'inbox' ? (
+        <InboxView state={state} />
       ) : (
         <AgentsView state={state} />
       )}

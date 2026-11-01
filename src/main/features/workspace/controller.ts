@@ -12,7 +12,15 @@ import {
   portalHash,
   validPortalTarget,
   WORKSPACE,
+  type AgentAction,
+  type AgentActionResult,
+  type AgentDetail,
+  type DecideInput,
+  type DecideResult,
   type InboxCounts,
+  type InboxItem,
+  type InboxMark,
+  type InboxView,
   type Loadable,
   type PortalTarget,
   type RecentItem,
@@ -31,6 +39,7 @@ import {
   onPlatformState,
   platformGet,
   platformLogin,
+  platformSend,
   platformState,
   platformStream,
   platformUrl,
@@ -39,7 +48,17 @@ import {
   syncPlatformModels,
   type PlatformState
 } from '../platform/api'
-import { parseChart, parseDecisions, parseEvent, parseHome, parseInbox, toDecide, type WorkspaceEvent } from './parse'
+import {
+  parseAgentDetail,
+  parseChart,
+  parseDecisions,
+  parseEvent,
+  parseHome,
+  parseInbox,
+  parseInboxItems,
+  toDecide,
+  type WorkspaceEvent
+} from './parse'
 import { EventStream, type SseMessage } from './sse'
 
 interface Resources {
@@ -297,6 +316,146 @@ function refreshSoon(scope: WorkspaceScope): void {
   }, EVENT_REFRESH_MS)
 }
 
+// ---------------------------------------------------------------- actions (M2: decide, inbox, agents)
+
+const INBOX_VIEWS: InboxView[] = ['all', 'unread', 'decisions', 'blocked', 'mine', 'archived']
+const DECISIONS = new Set(['approve', 'reject', 'instruct', 'answer', 'ack'])
+
+function connected(): void {
+  if (!loginKey) throw new PlatformError('not_connected', 'O Hangar não está conectado à plataforma.')
+}
+
+function actionError(err: unknown): Error {
+  if (err instanceof PlatformError && err.code === 'forbidden')
+    return new Error(
+      'A plataforma não deixou: você não tem permissão para isso, ou ela é de uma versão anterior à 0.55.'
+    )
+  return err instanceof Error ? err : new Error(String(err))
+}
+
+export async function inboxItems(view: InboxView): Promise<InboxItem[]> {
+  connected()
+  const v = INBOX_VIEWS.includes(view) ? view : 'all'
+  try {
+    return parseInboxItems(await platformGet<unknown>(`/api/inbox?view=${v}`))
+  } catch (err) {
+    throw actionError(err)
+  }
+}
+
+export async function markInbox(keys: string[], change: InboxMark): Promise<void> {
+  connected()
+  const clean = keys.filter((k) => typeof k === 'string' && /^[a-z_]+:[^\s]{1,70}$/.test(k)).slice(0, 200)
+  if (!clean.length) return
+  const body: { keys: string[]; read?: boolean; archived?: boolean } = { keys: clean }
+  if (typeof change.read === 'boolean') body.read = change.read
+  if (typeof change.archived === 'boolean') body.archived = change.archived
+  try {
+    await platformSend('POST', '/api/inbox/mark', body)
+  } catch (err) {
+    throw actionError(err)
+  }
+  void load('inbox').then(emit)
+}
+
+export async function decide(input: DecideInput): Promise<DecideResult> {
+  connected()
+  const rid = Number(input?.id)
+  if (!Number.isInteger(rid) || rid <= 0) throw new Error('Decisão inválida.')
+  if (!DECISIONS.has(input.decision)) throw new Error('Escolha uma opção da decisão.')
+  const reason = typeof input.reason === 'string' ? input.reason.trim().slice(0, 4000) : ''
+  let out: { message?: unknown; status?: unknown }
+  try {
+    out = await platformSend<{ message?: unknown; status?: unknown }>('POST', `/api/decisions/${rid}`, {
+      decision: input.decision,
+      reason
+    })
+  } catch (err) {
+    throw actionError(err)
+  }
+  // Gone from the list at once; the refresh brings the rest (badges, Início, the inbox).
+  if (res.decisions.data && out?.status !== 'open')
+    res.decisions = { ...res.decisions, data: res.decisions.data.filter((d) => d.id !== rid) }
+  emit()
+  void Promise.all([load('decisions'), load('inbox'), load('home')])
+  const message =
+    typeof out?.message === 'string'
+      ? out.message
+      : out?.status === 'open'
+        ? 'Aprovação registrada. Falta a aprovação de outra pessoa.'
+        : undefined
+  return message ? { message } : {}
+}
+
+const SLUG_OK = /^[a-z0-9][a-z0-9_-]{0,79}$/
+
+export async function agentDetail(slug: string): Promise<AgentDetail> {
+  connected()
+  if (!SLUG_OK.test(slug)) throw new Error('Agente inválido.')
+  let raw: unknown
+  try {
+    raw = await platformGet<unknown>(`/api/agents/${slug}`)
+  } catch (err) {
+    throw actionError(err)
+  }
+  const detail = parseAgentDetail(raw)
+  if (!detail) throw new Error('A plataforma devolveu um agente inválido.')
+  return detail
+}
+
+/** Publishing tests every member and promotes: it can take minutes. */
+const SHIP_TIMEOUT_MS = 15 * 60_000
+
+export async function agentAction(slug: string, action: AgentAction): Promise<AgentActionResult> {
+  connected()
+  if (!SLUG_OK.test(slug)) throw new Error('Agente inválido.')
+  let message: string
+  try {
+    switch (action) {
+      case 'stop-stage':
+      case 'stop-prod': {
+        const env = action === 'stop-prod' ? 'prod' : 'stage'
+        await platformSend('POST', `/api/agents/${slug}/stop`, { env })
+        message = env === 'prod' ? 'Parado em produção.' : 'Parado em stage.'
+        break
+      }
+      case 'ship': {
+        const steps = await platformSend<unknown>(
+          'POST',
+          `/api/agents/${slug}/ship`,
+          {},
+          { timeoutMs: SHIP_TIMEOUT_MS }
+        )
+        const pending =
+          Array.isArray(steps) &&
+          steps.some((s) => s && typeof s === 'object' && (s as { status?: unknown }).status === 'approval_pending')
+        message = pending
+          ? 'Testado em stage. A publicação em produção aguarda a aprovação de quem pode promover.'
+          : 'Testado e publicado em produção.'
+        break
+      }
+      case 'delete':
+        await platformSend('DELETE', `/api/agents/${slug}`)
+        message = 'Agente excluído.'
+        break
+      case 'pause':
+      case 'resume':
+      case 'offboard': {
+        const to = action === 'pause' ? 'paused' : action === 'resume' ? 'active' : 'offboarded'
+        await platformSend('POST', `/api/employees/${slug}/status`, { to, reason: 'pelo Hangar desktop' })
+        message = action === 'pause' ? 'Pausado.' : action === 'resume' ? 'Retomado.' : 'Desligado.'
+        break
+      }
+      default:
+        throw new Error('Ação desconhecida.')
+    }
+  } catch (err) {
+    throw actionError(err)
+  }
+  void Promise.all([load('home'), chartWanted ? load('chart') : Promise.resolve()])
+  return { message }
+}
+
 // ---------------------------------------------------------------- events
 
 function patchStatus(slug: string, status: string): void {
@@ -340,7 +499,9 @@ export function applyEvent(e: WorkspaceEvent): void {
               employeeTitle: '',
               question: e.title || undefined,
               mine: true,
-              createdAt: new Date().toISOString()
+              createdAt: new Date().toISOString(),
+              approvals: 0,
+              approvalsNeeded: 1
             },
             ...list
           ]

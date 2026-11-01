@@ -77,7 +77,13 @@ export class ApiClient {
     return t.url
   }
 
-  private async send(method: string, path: string, token: string, body?: unknown): Promise<Response> {
+  private async send(
+    method: string,
+    path: string,
+    token: string,
+    body?: unknown,
+    timeoutMs = HTTP_TIMEOUT_MS
+  ): Promise<Response> {
     const url = `${this.base()}${path}`
     try {
       return await this.fetchFn(url, {
@@ -88,7 +94,7 @@ export class ApiClient {
           ...(body === undefined ? {} : { 'content-type': 'application/json' })
         },
         body: body === undefined ? undefined : JSON.stringify(body),
-        signal: AbortSignal.timeout(HTTP_TIMEOUT_MS)
+        signal: AbortSignal.timeout(timeoutMs)
       })
     } catch (err) {
       throw networkError(url, err)
@@ -172,12 +178,17 @@ export class ApiClient {
   }
 
   /** JSON request to the app API; a 401 triggers one refresh and one retry. */
-  async request<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  async request<T>(
+    method: 'GET' | 'POST' | 'DELETE',
+    path: string,
+    body?: unknown,
+    opts?: { timeoutMs?: number }
+  ): Promise<T> {
     let token = await this.tokens.accessToken()
-    let res = await this.send(method, path, token, body)
+    let res = await this.send(method, path, token, body, opts?.timeoutMs)
     if (res.status === 401) {
       token = (await this.tokens.refresh(token)).accessToken
-      res = await this.send(method, path, token, body)
+      res = await this.send(method, path, token, body, opts?.timeoutMs)
     }
     let data: unknown
     try {

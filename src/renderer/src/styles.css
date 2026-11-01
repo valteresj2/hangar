@@ -265,6 +265,13 @@ input[type='range']:focus-visible {
   background: var(--accent-hover);
   border-color: var(--accent-hover);
 }
+.btn-danger {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+.btn-danger:hover {
+  background: var(--danger-bg);
+}
 .icon-btn {
   display: inline-flex;
   align-items: center;

@@ -259,7 +259,7 @@ function ImportDialog({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Modal title="Importar sessões do Claude Code" onClose={onClose} wide>
+    <Modal title="Importar sessões do CLI claude" onClose={onClose} wide>
       <div className={styles.modalBody}>
         <span className="muted">
           Sessões encontradas em %USERPROFILE%\.claude\projects. Ao abrir, a conversa é retomada.

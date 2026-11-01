@@ -14,6 +14,7 @@ import { bridge } from '../../core/api'
 import { useUi } from '../../core/ui'
 import { estimateCost, formatUsd, modelOrigin, usePlatformModels } from '../platform'
 import { Composer, type ComposerDraft } from './Composer'
+import { isCostUnknown } from './cost'
 import { useOutputMode } from './MotionCard'
 import { blobToImage, type ComposerImage } from './pasted'
 import { useProviders } from './providers'
@@ -75,6 +76,14 @@ function Footer({ entries, providers }: { entries: TranscriptEntry[]; providers:
     : undefined
   // Claude Code prices tokens at Anthropic list prices; a key, gateway or cloud account bills its own way.
   const estimated = !!last.providerKind && last.providerKind !== 'subscription'
+  const unknownCost = isCostUnknown({
+    tokens: last.inputTokens + last.cacheReadTokens + last.cacheCreationTokens + last.outputTokens,
+    viaPlatform: !!origin?.connection,
+    platformCost: tokenCost,
+    estimated,
+    reportedUsd: last.costUsd,
+    model: origin?.model?.id ?? last.model
+  })
   return (
     <div className={styles.footer}>
       {(last.model || origin) && (
@@ -83,7 +92,17 @@ function Footer({ entries, providers }: { entries: TranscriptEntry[]; providers:
         </span>
       )}
       <span title="Duração da última rodada">{(last.durationMs / 1000).toFixed(1)} s</span>
-      {tokenCost !== undefined ? (
+      {unknownCost ? (
+        <span
+          title={
+            origin?.connection
+              ? 'A plataforma não tem o preço deste modelo no catálogo. Um admin cadastra em Catálogo → Conexões de LLM.'
+              : 'O agente só conhece os preços da Anthropic; o custo deste modelo é o que o provedor cobrar.'
+          }
+        >
+          custo desconhecido
+        </span>
+      ) : tokenCost !== undefined ? (
         <span title="Custo desta rodada pelos preços da plataforma (entrada e saída por 1M tokens); o custo oficial é o da plataforma">
           US$ {formatUsd(tokenCost)} (estimado)
         </span>

@@ -1,5 +1,6 @@
 // IPC channels and payload types for the "workspace" feature: the member's screens of the Agent Hangar platform in
-// the app (Início, Meus agentes), live badges from the platform's events and `hangar://` deep links.
+// the app (Início, Meus agentes, Decisões, Caixa de entrada), live badges from the platform's events and `hangar://`
+// deep links.
 // Owned by the workspace agent. Contract with the platform: docs/platform/m1-contract.md.
 
 export const WORKSPACE = {
@@ -14,6 +15,16 @@ export const WORKSPACE = {
   openPortal: 'workspace:openPortal',
   /** () → WorkspaceNavigation | undefined — a deep link that arrived before the window could take it. */
   takeNavigation: 'workspace:takeNavigation',
+  /** (view: InboxView) → InboxItem[] — the inbox, fetched now. */
+  inbox: 'workspace:inbox',
+  /** (keys: string[], change: InboxMark) → void — marks items read/unread or archives them. */
+  markInbox: 'workspace:markInbox',
+  /** (input: DecideInput) → DecideResult — decides an open request (the decisions and badges refresh). */
+  decide: 'workspace:decide',
+  /** (slug) → AgentDetail — an agent's status, versions and cost, with what the person may do. */
+  agent: 'workspace:agent',
+  /** (slug, action: AgentAction) → AgentActionResult — stop, publish, delete an agent; pause, resume, offboard. */
+  agentAction: 'workspace:agentAction',
 
   /** main → renderer: WorkspaceState after every change. */
   evState: 'workspace:event:state',
@@ -25,7 +36,7 @@ export const WORKSPACE = {
 export type WorkspaceScope = 'all' | 'home' | 'agents' | 'badges'
 
 /** Native screens of the workspace. */
-export type WorkspaceView = 'home' | 'agents'
+export type WorkspaceView = 'home' | 'agents' | 'decisions' | 'inbox'
 
 /** How badges stay current: the event stream (`live`), polling every 60 s while it is down, or nothing (`off`). */
 export type WorkspaceLive = 'off' | 'connecting' | 'live' | 'polling'
@@ -124,6 +135,87 @@ export interface WorkspaceDecision {
   mine: boolean
   createdAt?: string
   expiresAt?: string
+  /** Why the employee asks (approvals). */
+  rationale?: string
+  /** low | medium | high */
+  risk?: string
+  /** The tool the action would call, and its arguments as indented JSON (cut when long). */
+  tool?: string
+  payload?: string
+  taskId?: number
+  /** Approvals so far and how many the action needs (`approve_2` asks two people). */
+  approvals: number
+  approvalsNeeded: number
+}
+
+/** A screen of the inbox: everything, unread, decisions, blocked, what I asked for, archived. */
+export type InboxView = 'all' | 'unread' | 'decisions' | 'blocked' | 'mine' | 'archived'
+
+/** One item of the inbox (GET /api/inbox?view=…): a decision, a task I asked for, something stuck… */
+export interface InboxItem {
+  /** `decision:12`, `task:7`, `connector:x:tools`… (what POST /api/inbox/mark takes). */
+  key: string
+  /** decision | task | stuck | connector | model_suggestion | … */
+  kind: string
+  title: string
+  at?: string
+  unread: boolean
+  archived: boolean
+  blocked: boolean
+  /** A task the person asked for. */
+  requested: boolean
+  employee?: string
+  employeeName?: string
+  status?: string
+  decisionId?: number
+  taskId?: number
+}
+
+export interface InboxMark {
+  read?: boolean
+  archived?: boolean
+}
+
+/**
+ * A decision on an open request. `decision` by kind: approvals approve | reject | instruct; questions answer
+ * (the answer in `reason`); admissions approve | reject; reviews approve | reject (what to change in `reason`);
+ * plans approve | reject | instruct; notices ack.
+ */
+export interface DecideInput {
+  id: number
+  decision: string
+  reason?: string
+}
+
+export interface DecideResult {
+  /** What the platform says came of it (e.g. the second approval still missing). */
+  message?: string
+}
+
+/** An agent as Meus agentes shows it when opened (GET /api/agents/{slug}). */
+export interface AgentDetail {
+  slug: string
+  name: string
+  kind: string
+  status: string
+  version?: number
+  model?: string
+  /** Versions running in stage and in production. */
+  stageVersion?: number
+  prodVersion?: number
+  requests7d?: number
+  cost7d?: number
+  /** What the person may do (view, consume, edit, manage, approve, usage…). */
+  permissions: string[]
+  versions: { version: number; createdBy?: string; createdAt?: string }[]
+  lastTest?: { version?: number; status: string; summary?: string; at?: string }
+}
+
+/** What the agent cards offer. Pause/resume/offboard are for Digital employees. */
+export type AgentAction = 'stop-stage' | 'stop-prod' | 'ship' | 'delete' | 'pause' | 'resume' | 'offboard'
+
+export interface AgentActionResult {
+  message: string
 }
 
 /** GET /api/org-chart?mine=1, the part Meus agentes uses. */
@@ -243,7 +335,8 @@ export const DEEP_LINK_MAX = 200
  *
  *   workspace | workspace/home        Início (native)
  *   workspace/agents | mine           Meus agentes (native)
- *   decisions[/<id>] | inbox          portal (until M2)
+ *   decisions[/<id>]                  Decisões (native)
+ *   inbox                             Caixa de entrada (native)
  *   tasks/<id> | agents/<slug> | employees/<slug> | org | connect-ai | my-issues   portal
  *
  * No query, fragment, credentials, port, percent-encoding or extra segments; one trailing `/` is tolerated.
@@ -265,8 +358,7 @@ export function parseDeepLink(raw: unknown): WorkspaceNavigation | undefined {
     case 'mine':
       return one({ view: 'agents' })
     case 'decisions':
-      if (arg === undefined) return { portal: { screen: 'decisions' } }
-      return ID_RE.test(arg) ? { portal: { screen: 'decision', id: Number(arg) } } : undefined
+      return arg === undefined || ID_RE.test(arg) ? { view: 'decisions' } : undefined
     case 'tasks':
       return arg !== undefined && ID_RE.test(arg) ? { portal: { screen: 'task', id: Number(arg) } } : undefined
     case 'agents':
@@ -274,6 +366,7 @@ export function parseDeepLink(raw: unknown): WorkspaceNavigation | undefined {
     case 'employees':
       return arg !== undefined && SLUG_RE.test(arg) ? { portal: { screen: 'employee', slug: arg } } : undefined
     case 'inbox':
+      return one({ view: 'inbox' })
     case 'org':
     case 'connect-ai':
     case 'my-issues':
@@ -290,6 +383,11 @@ declare module '../ipc' {
     [WORKSPACE.refresh]: (scope?: WorkspaceScope) => WorkspaceState
     [WORKSPACE.openPortal]: (target: PortalTarget, label?: string) => boolean
     [WORKSPACE.takeNavigation]: () => WorkspaceNavigation | undefined
+    [WORKSPACE.inbox]: (view: InboxView) => InboxItem[]
+    [WORKSPACE.markInbox]: (keys: string[], change: InboxMark) => void
+    [WORKSPACE.decide]: (input: DecideInput) => DecideResult
+    [WORKSPACE.agent]: (slug: string) => AgentDetail
+    [WORKSPACE.agentAction]: (slug: string, action: AgentAction) => AgentActionResult
   }
 
   interface IpcEventContract {

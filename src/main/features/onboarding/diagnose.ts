@@ -75,7 +75,7 @@ const isAnthropicApi = (url: string) => {
 
 async function checkClaude(): Promise<{ item: DiagnosticItem; exe?: string }> {
   const exe = resolveClaudeExecutable()
-  const title = 'Claude Code'
+  const title = 'CLI claude'
   if (!exe) {
     return {
       item: {
@@ -84,7 +84,7 @@ async function checkClaude(): Promise<{ item: DiagnosticItem; exe?: string }> {
         status: 'warn',
         message:
           'O comando claude não foi encontrado no PATH nem em ~/.local/bin. O Hangar vai usar o executável embutido no SDK.',
-        action: { kind: 'openUrl', label: 'Instalar o Claude Code', url: 'https://code.claude.com/docs/en/setup' }
+        action: { kind: 'openUrl', label: 'Instalar o CLI claude', url: 'https://code.claude.com/docs/en/setup' }
       }
     }
   }
@@ -96,7 +96,7 @@ async function checkClaude(): Promise<{ item: DiagnosticItem; exe?: string }> {
         id: 'claude',
         title,
         status: 'error',
-        message: 'O executável do Claude Code foi encontrado mas não respondeu.',
+        message: 'O executável do CLI claude foi encontrado mas não respondeu.',
         detail: `${exe}\n${maskSecrets(res.stderr.trim())}`
       }
     }
@@ -105,7 +105,7 @@ async function checkClaude(): Promise<{ item: DiagnosticItem; exe?: string }> {
 }
 
 async function checkLogin(exe: string | undefined): Promise<DiagnosticItem> {
-  const title = 'Login do Claude Code'
+  const title = 'Login do CLI claude'
   if (!exe)
     return {
       id: 'login',
@@ -122,7 +122,7 @@ async function checkLogin(exe: string | undefined): Promise<DiagnosticItem> {
         id: 'login',
         title,
         status: 'error',
-        message: 'O Claude Code não está conectado. Abra um terminal, rode `claude` e entre com sua conta (/login).'
+        message: 'O CLI claude não está conectado. Abra um terminal, rode `claude` e entre com sua conta (/login).'
       }
     }
     const method = typeof status.authMethod === 'string' ? status.authMethod : 'credencial'
@@ -223,7 +223,7 @@ function gatewayItem(g: GatewayInfo, profile: ProviderProfile): DiagnosticItem {
       id: 'gateway',
       title,
       status: 'ok',
-      message: 'Nenhum gateway configurado: o Claude Code fala direto com a Anthropic.',
+      message: 'Nenhum gateway configurado: o agente fala direto com a Anthropic.',
       detail: creds + helper
     }
   }
@@ -242,7 +242,7 @@ function gatewayItem(g: GatewayInfo, profile: ProviderProfile): DiagnosticItem {
       title,
       status: 'ok',
       message:
-        `O Claude Code tem um gateway configurado (${g.baseUrl}), mas o provedor padrão do Hangar, “${profile.name}”, não passa por ele. ` +
+        `O CLI claude tem um gateway configurado (${g.baseUrl}), mas o provedor padrão do Hangar, “${profile.name}”, não passa por ele. ` +
         'O claude no terminal continua usando o gateway.',
       detail: creds + helper
     }
@@ -258,7 +258,7 @@ function gatewayItem(g: GatewayInfo, profile: ProviderProfile): DiagnosticItem {
     title,
     status: 'warn',
     message:
-      `O Claude Code está configurado ${where} para passar por um gateway: ${g.baseUrl}. ` +
+      `O CLI claude está configurado ${where} para passar por um gateway: ${g.baseUrl}. ` +
       'Com o login da assinatura, todas as requisições vão para esse endereço; se ele estiver fora do ar ou não repassar o login, as sessões falham.',
     detail: creds + helper
   }
@@ -336,7 +336,7 @@ export async function diagnose(opts: DiagnoseOptions = {}): Promise<DiagnosticRe
             id: 'direct',
             title: 'Assinatura direto na Anthropic',
             status: 'error',
-            message: `Direto na Anthropic também falhou (${direct.error}). O problema não é só o gateway: confira o login do Claude Code.`
+            message: `Direto na Anthropic também falhou (${direct.error}). O problema não é só o gateway: confira o login do CLI claude.`
           }
     )
   }
