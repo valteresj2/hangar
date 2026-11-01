@@ -62,7 +62,7 @@ async function launchWithLink(hangar: Hangar, link: string): Promise<number | nu
 test('workspace: Início with live badges, deep link to Meus agentes, portal links, reconnection', async ({
   hangar
 }) => {
-  const { page, invoke } = hangar
+  const { page, invoke, app } = hangar
   platform = await startMockPlatform({ keepaliveMs: 1_000 })
 
   // Before connecting: the section offers the connection.
@@ -148,12 +148,24 @@ test('workspace: Início with live badges, deep link to Meus agentes, portal lin
   await nav.getByRole('button', { name: /^Meus agentes/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Meus agentes' })).toBeVisible()
 
-  // "Novo agente": the request for the chosen kind, with blanks to fill in.
+  // "Novo agente": the request for the chosen kind, with blanks to fill in. In a narrow window (CI's) the header's
+  // buttons wrap to the left: the menu must still open clear of the sidebar.
+  const size = await app.evaluate(({ BrowserWindow }) => {
+    const w = BrowserWindow.getAllWindows().find((x) => !x.webContents.getURL().includes('quick-entry'))!
+    const old = w.getSize()
+    w.setSize(980, 720)
+    return old
+  })
   await page.getByRole('button', { name: 'Novo agente ▾' }).click()
   await expect(page.getByRole('menuitem')).toHaveCount(4)
   await page.getByRole('menuitem', { name: /^Multiagente/ }).click()
   await expect(page.getByLabel('Nome da sessão')).toHaveValue('Novo multiagente')
   await expect(page.getByPlaceholder(/Descreva a tarefa/)).toHaveValue(/Quero montar um multiagente no Agent Hangar/)
+  await app.evaluate(({ BrowserWindow }, [w, h]) => {
+    BrowserWindow.getAllWindows()
+      .find((x) => !x.webContents.getURL().includes('quick-entry'))!
+      .setSize(w, h)
+  }, size)
   await nav.getByRole('button', { name: /^Meus agentes/ }).click()
   await expect(page.getByRole('heading', { level: 1, name: 'Meus agentes' })).toBeVisible()
 

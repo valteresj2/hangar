@@ -182,10 +182,9 @@
   position: relative;
 }
 .menu {
-  position: absolute;
-  z-index: 20;
-  top: calc(100% + 4px);
-  right: 0;
+  /* top/left set by NewAgentMenu from the button's place on the screen */
+  position: fixed;
+  z-index: 1000;
   width: 300px;
   padding: 4px;
   border: 1px solid var(--border);

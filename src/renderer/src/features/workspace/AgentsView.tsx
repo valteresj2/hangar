@@ -93,9 +93,22 @@ function startNewAgent(preset: NewSessionPreset): void {
 }
 
 /** "Novo agente": a session filled in with the request for the chosen kind (the portal stays one click away). */
+/** Width of the "Novo agente" menu (keep in sync with `.menu` in workspace.module.css). */
+const MENU_WIDTH = 300
+
 function NewAgentMenu({ portal }: { portal: boolean }) {
   const [open, setOpen] = useState(false)
+  // Placed on the screen, under the button and inside the window: in a narrow window the header's buttons wrap to
+  // the left, and a menu hanging off the button's right edge ended up under the sidebar, where it could not be clicked.
+  const [at, setAt] = useState<{ top: number; left: number }>()
   const box = useRef<HTMLDivElement>(null)
+  const toggle = (button: HTMLElement) => {
+    if (open) return setOpen(false)
+    const r = button.getBoundingClientRect()
+    // From the button's left edge, moved left only as much as the window's right edge requires.
+    setAt({ top: r.bottom + 4, left: Math.max(8, Math.min(r.left, window.innerWidth - MENU_WIDTH - 8)) })
+    setOpen(true)
+  }
   useEffect(() => {
     if (!open) return
     const onDown = (e: MouseEvent) => {
@@ -104,20 +117,33 @@ function NewAgentMenu({ portal }: { portal: boolean }) {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') setOpen(false)
     }
+    // The menu is placed on the screen: scrolling or resizing would leave it behind, so it closes.
+    const onMove = (e: Event) => {
+      if (!(e.target instanceof Node && box.current?.contains(e.target))) setOpen(false)
+    }
     window.addEventListener('mousedown', onDown)
     window.addEventListener('keydown', onKey)
+    window.addEventListener('scroll', onMove, true)
+    window.addEventListener('resize', onMove)
     return () => {
       window.removeEventListener('mousedown', onDown)
       window.removeEventListener('keydown', onKey)
+      window.removeEventListener('scroll', onMove, true)
+      window.removeEventListener('resize', onMove)
     }
   }, [open])
   return (
     <div className={styles.menuBox} ref={box}>
-      <button className="btn btn-primary" aria-haspopup="menu" aria-expanded={open} onClick={() => setOpen(!open)}>
+      <button
+        className="btn btn-primary"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        onClick={(e) => toggle(e.currentTarget)}
+      >
         Novo agente ▾
       </button>
       {open && (
-        <div className={styles.menu} role="menu">
+        <div className={styles.menu} role="menu" style={at}>
           {NEW_AGENT_TEMPLATES.map((t) => (
             <button
               key={t.kind}
