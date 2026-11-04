@@ -147,7 +147,7 @@ function toolScript(
   const results = lastToolResults(ctx.req)
   if (results.length) return text(done(results[0]))
   if (!hasTool(ctx.req, tool)) {
-    const offered = (ctx.req.tools ?? []).map((t) => t.name).filter((n) => /mcp|search/i.test(n))
+    const offered = (ctx.req.tools ?? []).map((t) => t.name ?? '').filter((n) => /mcp|search/i.test(n))
     return text(
       `(mock) a ferramenta ${tool} não foi oferecida nesta requisição. Ferramentas MCP: ${offered.join(', ') || 'nenhuma'}.`
     )
