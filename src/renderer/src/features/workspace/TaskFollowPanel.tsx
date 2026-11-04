@@ -45,7 +45,8 @@ function Jobs({ t }: { t: FollowedTask }) {
     <div className={styles.followSection} data-follow-jobs>
       {t.jobs.map((j) => {
         const pct = j.total ? Math.min(100, Math.round((j.done / j.total) * 100)) : undefined
-        const ends = j.state === 'running' && j.etaS !== undefined && j.at ? Date.parse(j.at) + j.etaS * 1000 : undefined
+        const ends =
+          j.state === 'running' && j.etaS !== undefined && j.at ? Date.parse(j.at) + j.etaS * 1000 : undefined
         const took = j.state !== 'running' && j.started && j.at ? (Date.parse(j.at) - Date.parse(j.started)) / 1000 : 0
         return (
           <div key={j.id} className={styles.followJob} data-job={j.id} data-job-state={j.state}>
@@ -58,7 +59,9 @@ function Jobs({ t }: { t: FollowedTask }) {
                     ? 'parou com erro'
                     : `${amount(j.done, j.unit)}${j.total && j.unit !== '%' ? ` de ${amount(j.total, j.unit)}` : ''}` +
                       (pct !== undefined && j.unit !== '%' ? ` · ${pct}%` : '') +
-                      (ends ? ` · fim previsto às ${time(new Date(ends).toISOString())} (~${duration(j.etaS ?? 0)})` : '')}
+                      (ends
+                        ? ` · fim previsto às ${time(new Date(ends).toISOString())} (~${duration(j.etaS ?? 0)})`
+                        : '')}
               </span>
             </div>
             {pct !== undefined && (
@@ -148,9 +151,7 @@ function TaskCard({
   const waiting = (TASK_WAITING as readonly string[]).includes(t.status)
   // The task's open requests the person may decide (still open on the task: one decided elsewhere leaves at once); the
   // rest are only described.
-  const decisions = (ws?.decisions.data ?? []).filter(
-    (d) => d.taskId === t.id && t.requests.some((r) => r.id === d.id)
-  )
+  const decisions = (ws?.decisions.data ?? []).filter((d) => d.taskId === t.id && t.requests.some((r) => r.id === d.id))
   const others = t.requests.filter((r) => !decisions.some((d) => d.id === r.id))
   const kids = t.children.map((c) => (depth < 3 ? byId.get(c.id) : undefined))
   return (

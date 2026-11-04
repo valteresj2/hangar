@@ -587,8 +587,16 @@ describe('acompanhar uma tarefa na sessão', () => {
           { kind: 'tool', payload: { tool: 'edit_file', summary: 'a.py', ok: false, ms: 10 }, at },
           { kind: 'tool', payload: { tool: 'save_file', args: {} }, at },
           { kind: 'file', payload: { name: 'relatorio.md', version: 2 }, at },
-          { kind: 'job', payload: { id: 'cmd-1', label: 'baixando', done: 10, total: 10, state: 'done', started: at, at }, at },
-          { kind: 'job', payload: { id: 'cmd-2', label: 'escorando', done: 4, total: 0, unit: '%', eta_s: 90, at }, at },
+          {
+            kind: 'job',
+            payload: { id: 'cmd-1', label: 'baixando', done: 10, total: 10, state: 'done', started: at, at },
+            at
+          },
+          {
+            kind: 'job',
+            payload: { id: 'cmd-2', label: 'escorando', done: 4, total: 0, unit: '%', eta_s: 90, at },
+            at
+          },
           { kind: 'job', payload: { label: 'sem id' }, at }
         ]
       },

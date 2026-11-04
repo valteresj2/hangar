@@ -75,24 +75,24 @@ Prioridade: **P0** = MVP, **P1** = segunda onda, **P2** = depois / fora de escop
 
 ## 6. Plataforma Agent Hangar (governança)
 
-| Função                                                                                                          | Fase | Dono      |
-| --------------------------------------------------------------------------------------------------------------- | ---- | --------- |
-| Conectar à plataforma (OAuth loopback), Configurações → Plataforma, passo no onboarding, indicador na sidebar   | 1    | platform  |
-| Dispositivo registrado, heartbeat e revogação pelo admin (aba "App Hangar" no console)                          | 1    | platform  |
-| Política do Windows (`PlatformUrl`, `Mode`) e modo híbrido/obrigatório                                          | 1    | platform  |
-| Tema e tipografia do console Agent Hangar                                                                       | 1    | shell     |
-| Modelos de token sincronizados pelo admin (proxy da plataforma, seletor Assinatura × Token)                     | 1+   | platform  |
-| Instaladores sem certificado para Windows (NSIS e portátil), Linux (AppImage e .deb) e macOS (.dmg e .zip)      | —    | release   |
-| Workspace no Desktop: Início, Meus agentes, badges ao vivo, deep links `hangar://` (M1 do plano do portal)      | M1   | workspace |
-| Decisões e Caixa de entrada no app; Gerenciar agentes (parar, publicar, excluir, pausar); Novo agente           | M2   | workspace |
-| Trabalhar no VS Code: o digital employee usa o VS Code como posto (extensão Agent Hangar, plataforma 0.57)      | M3   | workspace |
-| Acompanhar a tarefa até o fim na sessão: cartão ao vivo e a sessão retomada com o resultado (plataforma 0.58.2) | M3   | workspace |
+| Função                                                                                                                                 | Fase | Dono      |
+| -------------------------------------------------------------------------------------------------------------------------------------- | ---- | --------- |
+| Conectar à plataforma (OAuth loopback), Configurações → Plataforma, passo no onboarding, indicador na sidebar                          | 1    | platform  |
+| Dispositivo registrado, heartbeat e revogação pelo admin (aba "App Hangar" no console)                                                 | 1    | platform  |
+| Política do Windows (`PlatformUrl`, `Mode`) e modo híbrido/obrigatório                                                                 | 1    | platform  |
+| Tema e tipografia do console Agent Hangar                                                                                              | 1    | shell     |
+| Modelos de token sincronizados pelo admin (proxy da plataforma, seletor Assinatura × Token)                                            | 1+   | platform  |
+| Instaladores sem certificado para Windows (NSIS e portátil), Linux (AppImage e .deb) e macOS (.dmg e .zip)                             | —    | release   |
+| Workspace no Desktop: Início, Meus agentes, badges ao vivo, deep links `hangar://` (M1 do plano do portal)                             | M1   | workspace |
+| Decisões e Caixa de entrada no app; Gerenciar agentes (parar, publicar, excluir, pausar); Novo agente                                  | M2   | workspace |
+| Trabalhar no VS Code: o digital employee usa o VS Code como posto (extensão Agent Hangar, plataforma 0.57)                             | M3   | workspace |
+| Acompanhar a tarefa até o fim na sessão: cartão ao vivo e a sessão retomada com o resultado (plataforma 0.58.2)                        | M3   | workspace |
 | No cartão da tarefa: decidir ali mesmo, repasses aninhados, entregáveis que abrem com um clique e aviso do sistema (plataforma 0.58.3) | M3   | workspace |
 | No cartão da tarefa: cada ferramenta do posto como um passo e os trabalhos longos com barra e hora prevista do fim (plataforma 0.58.3) | M3   | workspace |
-| Skills e MCP geridos pelo admin, MCP agent-hangar nas sessões                                                   | 2    | —         |
-| Políticas, auditoria, uso e orçamento, versão mínima                                                            | 3    | —         |
-| Compartilhar projetos e artefatos                                                                               | 4    | —         |
-| Agendados viram agentes da plataforma                                                                           | 5    | —         |
+| Skills e MCP geridos pelo admin, MCP agent-hangar nas sessões                                                                          | 2    | —         |
+| Políticas, auditoria, uso e orçamento, versão mínima                                                                                   | 3    | —         |
+| Compartilhar projetos e artefatos                                                                                                      | 4    | —         |
+| Agendados viram agentes da plataforma                                                                                                  | 5    | —         |
 
 ## Fora de escopo (por depender de serviços da Anthropic)
 

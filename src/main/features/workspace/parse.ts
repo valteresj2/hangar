@@ -412,7 +412,9 @@ function taskFile(v: unknown): TaskFile | undefined {
   const o = obj(v)
   const i = id(o?.id)
   const name = str(o?.name, 200)
-  return o && i && name ? { id: i, name, version: count(o.version) || 1, kind: str(o.kind, 20), size: count(o.size) } : undefined
+  return o && i && name
+    ? { id: i, name, version: count(o.version) || 1, kind: str(o.kind, 20), size: count(o.size) }
+    : undefined
 }
 
 /** The task's long jobs (one `job` event each, updated in place), the running ones first, the last few. */

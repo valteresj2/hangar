@@ -342,13 +342,14 @@ essa tarefa até o fim, e as tarefas que ela repassa a colegas também.
 
 **Plataforma (0.58.2 ou mais nova):**
 
-| Rota ou evento | O que é |
-|---|---|
-| `GET /api/tasks/{task_id}` | Aberta ao token `app`, com o acesso da própria pessoa (a mesma regra de leitura do portal). Devolve a tarefa com `events` (a linha do tempo), `plan`, `progress`, `result`, `error`, `cost_usd`, `tokens`, `requests` (os pedidos da tarefa, com `status`), `children` e `parent` (os repasses). |
-| `GET /api/files/{file_id}` | Aberta ao token `app` (0.58.3 ou mais nova), com a mesma regra de leitura da tarefa do arquivo. Baixa um entregável listado em `files` da tarefa (sempre como anexo). |
-| `task.updated` em `GET /api/app/events` | `{id, status}` a cada evento novo na linha do tempo da tarefa e a cada mudança de status, plano ou resultado. Vários no mesmo lote viram um por tarefa. Só vai para quem pediu a tarefa, gerencia o funcionário ou mantém o time dele. |
+| Rota ou evento                          | O que é                                                                                                                                                                                                                                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/tasks/{task_id}`              | Aberta ao token `app`, com o acesso da própria pessoa (a mesma regra de leitura do portal). Devolve a tarefa com `events` (a linha do tempo), `plan`, `progress`, `result`, `error`, `cost_usd`, `tokens`, `requests` (os pedidos da tarefa, com `status`), `children` e `parent` (os repasses). |
+| `GET /api/files/{file_id}`              | Aberta ao token `app` (0.58.3 ou mais nova), com a mesma regra de leitura da tarefa do arquivo. Baixa um entregável listado em `files` da tarefa (sempre como anexo).                                                                                                                            |
+| `task.updated` em `GET /api/app/events` | `{id, status}` a cada evento novo na linha do tempo da tarefa e a cada mudança de status, plano ou resultado. Vários no mesmo lote viram um por tarefa. Só vai para quem pediu a tarefa, gerencia o funcionário ou mantém o time dele.                                                           |
 
 **Desktop:**
+
 - O resultado de `assign_task` numa sessão (o número da tarefa) liga a tarefa à sessão.
 - Um cartão acima do campo de mensagem mostra a tarefa ao vivo: status, plano e progresso, as últimas linhas da linha
   do tempo, custo e tokens, os pedidos que esperam uma pessoa, as tarefas repassadas e, no fim, o resultado.

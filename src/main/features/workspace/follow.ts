@@ -272,8 +272,10 @@ function requestMessage(t: FollowedTask, r: { id: number; kind: string; text: st
 
 /** Opened with a click; anything else (a program, a script, a page) is only shown in its folder. */
 const OPENS = new Set(
-  ('.md .txt .log .csv .tsv .json .yaml .yml .xml .pdf .png .jpg .jpeg .gif .webp .ipynb .parquet .xlsx .docx ' +
-    '.pptx .odt .ods .zip').split(' ')
+  (
+    '.md .txt .log .csv .tsv .json .yaml .yml .xml .pdf .png .jpg .jpeg .gif .webp .ipynb .parquet .xlsx .docx ' +
+    '.pptx .odt .ods .zip'
+  ).split(' ')
 )
 
 const safeName = (name: string): string =>
