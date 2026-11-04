@@ -144,6 +144,37 @@ test('no cartão: a decisão da tarefa, o repasse aninhado e os entregáveis que
   await expect(child).toContainText('Engenheiro') // the colleague's name, from the handoff
   await expect(page.locator('[data-follow-task="950"]')).toHaveCount(1) // inside, not also on its own
 
+  // Each tool the workstation ran is a step of the timeline; a long job shows a bar and when it should end.
+  const now = new Date().toISOString()
+  ;(t.events as unknown[]).push(
+    {
+      kind: 'tool',
+      payload: { tool: 'run_command', summary: 'python baixar.py', ok: true, ms: 4200, worker: true },
+      at: now
+    },
+    {
+      kind: 'job',
+      payload: {
+        id: 'cmd-1',
+        label: 'baixando os arquivos',
+        done: 3,
+        total: 10,
+        unit: 'arquivos',
+        eta_s: 600,
+        state: 'running',
+        started: now,
+        at: now
+      },
+      at: now
+    }
+  )
+  platform.emitEvent('task.updated', { id: 901, status: 'waiting_task' })
+  await expect(card).toContainText('run_command: python baixar.py · 4 s')
+  const job = card.locator('[data-job="cmd-1"]')
+  await expect(job).toContainText('baixando os arquivos')
+  await expect(job).toContainText('3 arquivos de 10 arquivos · 30% · fim previsto às')
+  await expect(job).toContainText('(~10 min)')
+
   // It stops for a decision: approved right in the card.
   platform.decisions.unshift({
     id: 88,

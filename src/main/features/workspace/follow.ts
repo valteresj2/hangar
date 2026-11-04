@@ -46,6 +46,7 @@ const timers = new Map<number, ReturnType<typeof setTimeout>>()
 let poll: ReturnType<typeof setInterval> | undefined
 let nameOf: (slug: string) => string | undefined = () => undefined
 let notify: (title: string, body: string, sessionId: string) => void = () => undefined
+let refreshDecisions: () => void = () => undefined
 
 // ---------------------------------------------------------------- disk
 
@@ -147,6 +148,7 @@ function placeholder(id: number, e: Entry): FollowedTask {
     children: [],
     files: [],
     links: [],
+    jobs: [],
     wake: e.wake,
     updatedAt: new Date().toISOString()
   }
@@ -184,6 +186,10 @@ async function refreshTask(taskId: number): Promise<void> {
     return
   }
   snapshots.set(taskId, next)
+  // a request opened or was decided: the card decides from the app's list, so bring it up to date now (the decision
+  // events may come late, or not at all, for a request that is not the person's)
+  const ids = (t?: FollowedTask) => (t?.requests ?? []).map((r) => r.id).join(',')
+  if (ids(before) !== ids(next)) refreshDecisions()
   // a colleague took part of the work: the session follows that task too
   for (const c of next.children) if (!entries[c.id]) follow(c.id, e.sessionId, c.employee, e.wake, c.employeeName)
   emitSession(e.sessionId)
@@ -309,10 +315,12 @@ export async function openTaskFile(fileId: number, reveal = false): Promise<stri
 
 export function startFollowing(
   resolveName: (slug: string) => string | undefined,
-  notifier?: (title: string, body: string, sessionId: string) => void
+  notifier?: (title: string, body: string, sessionId: string) => void,
+  decisionsChanged?: () => void
 ): void {
   nameOf = resolveName
   if (notifier) notify = notifier
+  if (decisionsChanged) refreshDecisions = decisionsChanged
   load()
   for (const id of Object.keys(entries)) void refreshTask(Number(id))
   poll = setInterval(() => {

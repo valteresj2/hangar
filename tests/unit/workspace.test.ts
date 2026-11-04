@@ -575,6 +575,37 @@ describe('acompanhar uma tarefa na sessão', () => {
     expect(resultLinks(undefined)).toEqual([])
   })
 
+  it('mostra cada ferramenta do posto como um passo e os trabalhos longos com o progresso', () => {
+    const at = '2026-11-04T10:00:00Z'
+    const t = parseFollowedTask(
+      {
+        id: 1489,
+        title: 'Escorar',
+        status: 'in_progress',
+        events: [
+          { kind: 'tool', payload: { tool: 'run_command', summary: 'python a.py', ok: true, ms: 64000 }, at },
+          { kind: 'tool', payload: { tool: 'edit_file', summary: 'a.py', ok: false, ms: 10 }, at },
+          { kind: 'tool', payload: { tool: 'save_file', args: {} }, at },
+          { kind: 'file', payload: { name: 'relatorio.md', version: 2 }, at },
+          { kind: 'job', payload: { id: 'cmd-1', label: 'baixando', done: 10, total: 10, state: 'done', started: at, at }, at },
+          { kind: 'job', payload: { id: 'cmd-2', label: 'escorando', done: 4, total: 0, unit: '%', eta_s: 90, at }, at },
+          { kind: 'job', payload: { label: 'sem id' }, at }
+        ]
+      },
+      { sessionId: 's1', employeeName: 'Cientista', wake: true }
+    )!
+    expect(t.lines.map((l) => l.text)).toEqual([
+      'run_command: python a.py · 64 s',
+      'edit_file: a.py (falhou)',
+      'Ferramenta save_file',
+      'Arquivo relatorio.md v2'
+    ])
+    expect(t.jobs.map((j) => [j.id, j.state, j.total, j.etaS])).toEqual([
+      ['cmd-2', 'running', undefined, 90],
+      ['cmd-1', 'done', 10, undefined]
+    ])
+  })
+
   it('reconhece o evento task.updated', () => {
     expect(parseEvent('task.updated', '{"id": 12, "status": "done"}')).toEqual({
       type: 'task.updated',

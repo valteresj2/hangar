@@ -787,3 +787,30 @@
   padding: 1px 8px;
   font-size: 12px;
 }
+.followJob {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+.followJobHead {
+  display: flex;
+  gap: 8px;
+  justify-content: space-between;
+  min-width: 0;
+}
+.followJobHead > span:first-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 600;
+}
+.followJobHead > span:last-child {
+  flex-shrink: 0;
+}
+.followProgress[data-wide] {
+  width: 100%;
+}
+.followJob[data-job-state='failed'] .followProgress span {
+  background: var(--stop, #d33);
+}

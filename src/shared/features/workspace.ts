@@ -439,6 +439,21 @@ export interface TaskLink {
   employeeName: string
 }
 
+/** A long job of the employee (a download, training, scoring): its progress and when it should end. */
+export interface TaskJob {
+  id: string
+  label: string
+  done: number
+  total?: number
+  unit: string
+  /** Seconds left when the worker last reported (`at`). */
+  etaS?: number
+  /** running | done | failed */
+  state: string
+  started: string
+  at: string
+}
+
 /** A file the task delivered (or got as input): the latest version of each name. */
 export interface TaskFile {
   id: number
@@ -480,6 +495,8 @@ export interface FollowedTask {
   files: TaskFile[]
   /** The web links in the result (a repository, a report, a dashboard…). */
   links: string[]
+  /** Long jobs (download, scoring…) with their progress, the running ones first. */
+  jobs: TaskJob[]
   /** The session gets a message (and answers) when the task ends or stops for a person. */
   wake: boolean
   updatedAt: string

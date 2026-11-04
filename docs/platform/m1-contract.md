@@ -362,3 +362,6 @@ essa tarefa até o fim, e as tarefas que ela repassa a colegas também.
   - Cada tarefa repassada a um colega aparece como um cartão aninhado dentro da tarefa que a repassou.
   - Os entregáveis (`files` da tarefa) abrem com um clique: o app baixa o arquivo para Downloads/Agent Hangar/tarefa-<id> e o abre. Os links do resultado também aparecem como entregáveis.
   - Quando a tarefa termina ou para esperando uma pessoa, um aviso do sistema aparece se o app não estiver em foco. Clicar no aviso abre a sessão.
+- No cartão (Desktop 0.7.0, plataforma 0.58.3):
+  - Cada ferramenta que o posto do VS Code roda é um passo da linha do tempo (evento `tool` com `summary`, `ok` e `ms`).
+  - Um trabalho longo do posto (download, treino, escoragem) aparece como uma barra, com quanto já foi, o total e a hora prevista do fim. Vem do evento `job` da tarefa (um por trabalho, atualizado no lugar; cada atualização manda `task.updated`).

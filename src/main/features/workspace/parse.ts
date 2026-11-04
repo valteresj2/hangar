@@ -17,6 +17,7 @@ import {
   SLUG_RE,
   type FollowedTask,
   type TaskFile,
+  type TaskJob,
   type TaskLine,
   type TaskLink,
   type TaskRequest
@@ -350,8 +351,14 @@ export function taskLine(v: unknown): TaskLine | undefined {
         return 'Tarefa criada'
       case 'run':
         return `Rodada ${count(p.run)}${p.env ? ` (${short(p.env, 20)})` : ''}`
-      case 'tool':
-        return `Ferramenta ${short(p.tool, 80)}`
+      case 'tool': {
+        // a step of the workstation (summary, whether it worked, how long) or of a platform round
+        const secs = count(p.ms) >= 1000 ? ` · ${Math.round(count(p.ms) / 1000)} s` : ''
+        const what = p.summary ? `${short(p.tool, 40)}: ${short(p.summary, 160)}` : `Ferramenta ${short(p.tool, 80)}`
+        return `${what}${p.ok === false || p.error ? ' (falhou)' : ''}${secs}`
+      }
+      case 'file':
+        return `Arquivo ${short(p.name, 120)}${count(p.version) > 1 ? ` v${count(p.version)}` : ''}`
       case 'gate':
         return `Alçada: ${short(p.tool, 60)} → ${short(p.mode, 20) || short(p.status, 20)}`
       case 'note':
@@ -408,6 +415,31 @@ function taskFile(v: unknown): TaskFile | undefined {
   return o && i && name ? { id: i, name, version: count(o.version) || 1, kind: str(o.kind, 20), size: count(o.size) } : undefined
 }
 
+/** The task's long jobs (one `job` event each, updated in place), the running ones first, the last few. */
+export function taskJobs(events: unknown[], max = 4): TaskJob[] {
+  const jobs = new Map<string, TaskJob>()
+  for (const ev of events) {
+    const o = obj(ev)
+    const p = obj(o?.payload)
+    const jid = str(p?.id, 60)
+    if (o?.kind !== 'job' || !p || !jid) continue
+    const total = num(p.total)
+    jobs.set(jid, {
+      id: jid,
+      label: str(p.label, 120),
+      done: num(p.done),
+      total: total > 0 ? total : undefined,
+      unit: str(p.unit, 20),
+      etaS: typeof p.eta_s === 'number' ? count(p.eta_s) : undefined,
+      state: str(p.state, 20) || 'running',
+      started: when(p.started) ?? '',
+      at: when(p.at) ?? when(o.at) ?? ''
+    })
+  }
+  const list = [...jobs.values()].slice(-max)
+  return [...list.filter((j) => j.state === 'running'), ...list.filter((j) => j.state !== 'running')]
+}
+
 /** The web links in a result, in order and once each (trailing punctuation and markdown brackets left out). */
 export function resultLinks(text: string | undefined, max = 10): string[] {
   const out: string[] = []
@@ -451,6 +483,7 @@ export function parseFollowedTask(
     parent: taskLink(o.parent),
     files: [...files.filter((f) => f.kind !== 'input'), ...files.filter((f) => f.kind === 'input')],
     links: resultLinks(result),
+    jobs: taskJobs(list(o.events)),
     wake: base.wake,
     updatedAt: new Date().toISOString()
   }

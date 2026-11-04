@@ -63,7 +63,11 @@ export const workspaceFeature: Feature = {
     })
     bus.on('session:tool-result', onToolResult)
     start(ctx)
-    startFollowing(agentName, (title, body, sessionId) => notifyAway(ctx, title, body, sessionId))
+    startFollowing(
+      agentName,
+      (title, body, sessionId) => notifyAway(ctx, title, body, sessionId),
+      () => void refresh('badges').catch(() => undefined)
+    )
   },
   dispose() {
     stopFollowing()

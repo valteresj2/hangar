@@ -205,7 +205,9 @@ Quando a sessão passa uma tarefa a um digital employee, ela passa a acompanhar 
 do campo de mensagem mostra, ao vivo:
 
 - o status e o plano do funcionário, com o progresso;
-- os últimos passos da linha do tempo;
+- os últimos passos da linha do tempo, com cada ferramenta que o funcionário rodou no posto do VS Code (se deu certo e
+  quanto tempo levou);
+- os trabalhos longos (download, treino, escoragem) como uma barra, com quanto já foi e a hora prevista do fim;
 - o custo e os tokens;
 - o que espera uma decisão sua, para aprovar, instruir, recusar ou responder ali mesmo;
 - as tarefas que ele repassou a colegas, como cartões dentro do cartão da tarefa;
