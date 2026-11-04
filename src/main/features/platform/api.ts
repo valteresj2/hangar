@@ -57,6 +57,13 @@ export function platformStream(path: string, headers: Record<string, string>, si
   return apiClient.stream(path, headers, signal)
 }
 
+/** Downloads a file from a route the app token may use (a task's deliverable: GET /api/files/{id}). */
+export async function platformDownload(path: string, timeoutMs = 120_000): Promise<Uint8Array> {
+  if (!currentLogin()) throw new PlatformError('not_connected', 'O Hangar não está conectado.')
+  const res = await apiClient.stream(path, {}, AbortSignal.timeout(timeoutMs))
+  return new Uint8Array(await res.arrayBuffer())
+}
+
 /** Checks the login again (heartbeat + /me): a refused token ends it the usual way (notice, logout). */
 export const recheckPlatform = (): Promise<unknown> => refresh().catch(() => undefined)
 

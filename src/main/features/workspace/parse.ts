@@ -16,6 +16,7 @@ import type {
 import {
   SLUG_RE,
   type FollowedTask,
+  type TaskFile,
   type TaskLine,
   type TaskLink,
   type TaskRequest
@@ -382,7 +383,13 @@ function taskLink(v: unknown): TaskLink | undefined {
   const o = obj(v)
   const i = id(o?.id)
   return o && i
-    ? { id: i, title: str(o.title, 200), status: str(o.status, 40), employeeName: str(o.employee_name, 120) }
+    ? {
+        id: i,
+        title: str(o.title, 200),
+        status: str(o.status, 40),
+        employee: slug(o.employee) ?? '',
+        employeeName: str(o.employee_name, 120)
+      }
     : undefined
 }
 
@@ -394,6 +401,24 @@ function taskRequest(v: unknown): TaskRequest | undefined {
   return { id: i, kind: str(o.kind, 30), text: short(o.question ?? p?.need ?? o.tool ?? o.kind, 400) }
 }
 
+function taskFile(v: unknown): TaskFile | undefined {
+  const o = obj(v)
+  const i = id(o?.id)
+  const name = str(o?.name, 200)
+  return o && i && name ? { id: i, name, version: count(o.version) || 1, kind: str(o.kind, 20), size: count(o.size) } : undefined
+}
+
+/** The web links in a result, in order and once each (trailing punctuation and markdown brackets left out). */
+export function resultLinks(text: string | undefined, max = 10): string[] {
+  const out: string[] = []
+  for (const m of (text ?? '').matchAll(/https?:\/\/[^\s<>"'`)\]]+/g)) {
+    const url = m[0].replace(/[.,;:!?*_]+$/, '')
+    if (!out.includes(url)) out.push(url)
+    if (out.length >= max) break
+  }
+  return out
+}
+
 /** GET /api/tasks/{id} → what the session's task card shows (the last lines of the timeline, newest last). */
 export function parseFollowedTask(
   v: unknown,
@@ -403,6 +428,8 @@ export function parseFollowedTask(
   const i = id(o?.id)
   if (!o || !i) return undefined
   const prog = obj(o.progress)
+  const result = optStr(o.result, 20000)
+  const files = defined(list(o.files).map(taskFile))
   return {
     id: i,
     sessionId: base.sessionId,
@@ -417,11 +444,13 @@ export function parseFollowedTask(
     lines: defined(list(o.events).map(taskLine)).slice(-8),
     costUsd: num(o.cost_usd),
     tokens: count(o.tokens),
-    result: optStr(o.result, 20000),
+    result,
     error: optStr(o.error, 2000),
     requests: defined(list(o.requests).map(taskRequest)),
     children: defined(list(o.children).map(taskLink)),
     parent: taskLink(o.parent),
+    files: [...files.filter((f) => f.kind !== 'input'), ...files.filter((f) => f.kind === 'input')],
+    links: resultLinks(result),
     wake: base.wake,
     updatedAt: new Date().toISOString()
   }

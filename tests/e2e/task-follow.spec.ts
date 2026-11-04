@@ -1,6 +1,8 @@
 // Following a Digital employee task from the session that started it: the session's assign_task (platform MCP) makes
 // the session follow the task; a card above the composer shows it live (task.updated → GET /api/tasks/{id}); when it
-// ends, the session gets the result as a message and answers.
+// ends, the session gets the result as a message and answers. Inside the card: the task's decisions, the tasks it handed
+// off and its deliverables.
+import { readFileSync } from 'node:fs'
 import { TEXT_REPLY } from '../mock-anthropic/scripts.ts'
 import { startMockPlatform, type MockPlatform } from '../mock-platform/server.ts'
 import { expect, test } from './fixtures.ts'
@@ -81,4 +83,111 @@ test('a sessão acompanha a tarefa que passou até o fim e retoma a conversa com
   platform.emitEvent('task.updated', { id: 901, status: 'done' })
   await page.waitForTimeout(3_000)
   expect(mock.requests.filter((r) => r.path === '/v1/messages').length).toBe(before)
+})
+
+test('no cartão: a decisão da tarefa, o repasse aninhado e os entregáveis que abrem com um clique', async ({
+  hangar
+}) => {
+  const { page, invoke, app } = hangar
+  const downloads = await app.evaluate(({ app: electronApp, shell }) => {
+    const g = globalThis as unknown as { __opened: string[] }
+    g.__opened = []
+    const dir = `${electronApp.getPath('userData')}/downloads-test`
+    electronApp.setPath('downloads', dir)
+    shell.openPath = async (p: string) => {
+      g.__opened.push(p)
+      return ''
+    }
+    shell.showItemInFolder = (p: string) => void g.__opened.push(`pasta:${p}`)
+    shell.openExternal = async (url: string) => {
+      void fetch(url).then((r) => r.text()) // the login page: the mock platform completes it
+    }
+    return dir
+  })
+  const opened = () => app.evaluate(() => (globalThis as unknown as { __opened: string[] }).__opened)
+  await invoke('platform:setConfig', { url: platform.url, mode: 'optional' })
+  await invoke('platform:connect')
+  await expect.poll(async () => (await invoke<{ status: string }>('platform:state')).status).toBe('connected')
+  await expect.poll(() => platform.streams()).toBe(1)
+  await hangar.useMockProvider()
+  await hangar.openNewSession({ title: 'Fase 2' })
+
+  const composer = page.getByPlaceholder(/Responder ao Claude/)
+  await composer.fill('[[script:assign-task title=Modelo-de-churn]] passe a tarefa ao cientista')
+  await composer.press('Enter')
+  await page.getByRole('button', { name: 'Permitir', exact: true }).click({ timeout: 60_000 })
+  const card = page.locator('[data-follow-task="901"]')
+  await expect(card).toContainText('#901 · Modelo-de-churn', { timeout: 60_000 })
+  const t = platform.tasks.get(901)!
+
+  // The employee hands part of the work to a colleague: that task shows inside this one's card.
+  platform.tasks.set(950, {
+    id: 950,
+    title: 'Preparar a base',
+    status: 'in_progress',
+    cost_usd: 0.05,
+    tokens: 2000,
+    events: [{ kind: 'note', payload: { worker: 'baixando os arquivos' }, at: new Date().toISOString() }],
+    requests: [],
+    children: [],
+    parent: { id: 901, title: 'Modelo-de-churn', status: 'waiting_task', employee_name: 'Cientista' },
+    files: []
+  })
+  Object.assign(t, {
+    status: 'waiting_task',
+    children: [{ id: 950, title: 'Preparar a base', status: 'in_progress', employee_name: 'Engenheiro' }]
+  })
+  platform.emitEvent('task.updated', { id: 901, status: 'waiting_task' })
+  const child = card.locator('[data-follow-task="950"]')
+  await expect(child).toContainText('Preparar a base')
+  await expect(child).toContainText('baixando os arquivos')
+  await expect(child).toContainText('Engenheiro') // the colleague's name, from the handoff
+  await expect(page.locator('[data-follow-task="950"]')).toHaveCount(1) // inside, not also on its own
+
+  // It stops for a decision: approved right in the card.
+  platform.decisions.unshift({
+    id: 88,
+    kind: 'approval',
+    employee: 'cientista-de-dados',
+    employee_name: 'Cientista',
+    employee_title: 'Cientista de Dados',
+    task: { id: 901, title: 'Modelo-de-churn' },
+    tool: 'publish_github',
+    question: 'Publicar o repositório com o modelo?',
+    status: 'open',
+    created_at: new Date().toISOString(),
+    mine: true
+  })
+  Object.assign(t, {
+    status: 'waiting_human',
+    requests: [{ id: 88, kind: 'approval', status: 'open', tool: 'publish_github', question: 'Publicar?' }]
+  })
+  platform.emitEvent('decision.created', { id: 88, title: 'Publicar o repositório com o modelo?', agent: 'x' })
+  platform.emitEvent('task.updated', { id: 901, status: 'waiting_human' })
+  const decision = card.locator('[data-decision="88"]')
+  await expect(decision).toContainText('Publicar o repositório com o modelo?', { timeout: 30_000 })
+  await expect(card).toContainText('decidir (1)')
+  await decision.getByRole('button', { name: 'Aprovar', exact: true }).click()
+  await expect.poll(() => platform.actions.map((a) => a.path)).toContain('/api/decisions/88')
+
+  // It ends with a report and a link: both open from the card.
+  platform.files.set(5, { name: 'relatorio.md', data: '# Churn\nAUC 0,91' })
+  Object.assign(t, {
+    status: 'done',
+    requests: [],
+    result: 'Modelo pronto. Código em https://github.com/exemplo/churn-model.',
+    files: [{ id: 5, name: 'relatorio.md', version: 2, kind: 'output', size: 18 }]
+  })
+  platform.emitEvent('task.updated', { id: 901, status: 'done' })
+  const files = card.locator('[data-follow-deliverables]')
+  await expect(files).toContainText('relatorio.md')
+  await expect(files).toContainText('v2')
+  await expect(files.getByRole('link', { name: /github\.com\/exemplo\/churn-model/ })).toBeVisible()
+  await files.locator('[data-task-file="5"]').getByRole('button', { name: 'Abrir' }).click()
+  await expect.poll(opened).toHaveLength(1)
+  const [path] = await opened()
+  const slash = (p: string) => p.split('\\').join('/')
+  expect(slash(path)).toBe(`${slash(downloads)}/Agent Hangar/tarefa-901/relatorio.md`)
+  expect(readFileSync(path, 'utf8')).toBe('# Churn\nAUC 0,91')
+  if (process.env.SHOT) await page.screenshot({ path: 'test-results/follow-phase2.png' })
 })

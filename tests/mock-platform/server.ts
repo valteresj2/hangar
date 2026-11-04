@@ -16,6 +16,7 @@
 //                                                   streaming the answer through
 //   GET  /api/me/workspace, /api/decisions,         member routes the app token may read (docs/platform/
 //        /api/org-chart?mine=1, /api/inbox          m1-contract.md); org-chart without mine=1 refuses it
+//   GET  /api/tasks/:id, /api/files/:id              a task followed by a session, and its deliverables (files)
 //   GET  /api/app/events                            SSE: `id:` increasing, replay after Last-Event-ID, keepalive
 //                                                   comments; addDecision()/emitEvent() publish
 //
@@ -148,6 +149,8 @@ export interface MockPlatform {
   actions: { method: string; path: string; body: Record<string, unknown> }[]
   /** Employee tasks by id (GET /api/tasks/{id}); assign_task on /mcp creates one. Change them, then emit task.updated. */
   tasks: Map<number, Record<string, unknown>>
+  /** Task files by id (GET /api/files/{id}); list them in the task's `files` too. */
+  files: Map<number, { name: string; data: string }>
   /** Events published so far (GET /api/app/events replays those after Last-Event-ID). */
   events: MockEvent[]
   /** Publishes an event to every open stream. */
@@ -281,6 +284,7 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
   const eventResumes: string[] = []
   const mcpCalls: string[] = []
   const tasks = new Map<number, Record<string, unknown>>()
+  const files = new Map<number, { name: string; data: string }>()
   const actions: { method: string; path: string; body: Record<string, unknown> }[] = []
   /** Inbox items read (key → true) or archived. */
   const inboxRead = new Set<string>()
@@ -562,6 +566,19 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
       return t ? json(res, 200, t) : json(res, 404, { detail: 'tarefa não encontrada' })
     }
 
+    const fileRoute = /^\/api\/files\/(\d+)$/.exec(path)
+    if (req.method === 'GET' && fileRoute) {
+      if (!appGrant(req, res)) return
+      const f = files.get(Number(fileRoute[1]))
+      if (!f) return json(res, 403, { detail: 'arquivo não encontrado ou sem acesso' })
+      res.writeHead(200, {
+        'content-type': 'application/octet-stream',
+        'content-disposition': `attachment; filename*=UTF-8''${encodeURIComponent(f.name)}`
+      })
+      res.end(f.data)
+      return
+    }
+
     if (req.method === 'GET' && path === '/api/app/me') {
       if (!appGrant(req, res)) return
       return json(res, 200, {
@@ -825,6 +842,7 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
                     requests: [],
                     children: [],
                     parent: null,
+                    files: [],
                     result: '',
                     error: ''
                   }
@@ -980,6 +998,7 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
     eventResumes,
     mcpCalls,
     tasks,
+    files,
     actions,
     count: (path, grantType) =>
       requests.filter((r) => r.path === path && (grantType === undefined || r.grantType === grantType)).length,

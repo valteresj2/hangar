@@ -1,9 +1,11 @@
 // The platform tasks this session follows, at the bottom of the session (above the composer): status, the employee's
-// plan, the latest steps of the timeline, cost, what waits for a person and, at the end, the full result. Live: main
+// plan, the latest steps of the timeline, cost, the decisions it waits for (decided right in the card), the tasks it
+// handed off (cards inside its card), the deliverables (open with a click) and, at the end, the full result. Live: main
 // pushes each change (task.updated). The session answers on its own when a task ends (turn it off per task).
 import { useEffect, useState, type ReactNode } from 'react'
-import { TASK_DONE, TASK_WAITING, type FollowedTask } from '@shared/features/workspace'
-import { loadFollowedTasks, openPortal, useFollowedTasks, workspaceApi } from './api'
+import { TASK_DONE, TASK_WAITING, type FollowedTask, type TaskFile } from '@shared/features/workspace'
+import { loadFollowedTasks, openPortal, useFollowedTasks, useWorkspace, workspaceApi } from './api'
+import { DecisionCard } from './DecisionsView'
 import { usd } from './format'
 import styles from './workspace.module.css'
 
@@ -25,17 +27,95 @@ const STEP_MARK: Record<string, string> = { done: '✓', doing: '◐', skipped: 
 const isDone = (s: string): boolean => (TASK_DONE as readonly string[]).includes(s)
 const time = (iso: string): string =>
   iso ? new Date(iso).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : ''
+const size = (n: number): string =>
+  n < 1024 ? `${n} B` : n < 1024 ** 2 ? `${(n / 1024).toFixed(0)} KB` : `${(n / 1024 ** 2).toFixed(1)} MB`
+const cleanError = (err: unknown): string =>
+  err instanceof Error ? err.message.replace(/^Error invoking remote method '[^']+': (Error: )?/, '') : String(err)
 
-function TaskCard({ t, renderText }: { t: FollowedTask; renderText: (text: string) => ReactNode }) {
+/** The task's files (open, or show in the folder) and the links of its result. */
+function Deliverables({ t }: { t: FollowedTask }) {
+  const [busy, setBusy] = useState<number>()
+  const [error, setError] = useState<string>()
+  if (!t.files.length && !t.links.length) return null
+  const open = async (f: TaskFile, reveal: boolean) => {
+    setBusy(f.id)
+    setError(undefined)
+    try {
+      await workspaceApi.openTaskFile(f.id, reveal)
+    } catch (err) {
+      setError(cleanError(err))
+    } finally {
+      setBusy(undefined)
+    }
+  }
+  return (
+    <div className={styles.followSection} data-follow-deliverables>
+      <h4>Entregáveis</h4>
+      <ul className={styles.followFiles}>
+        {t.files.map((f) => (
+          <li key={f.id} data-task-file={f.id}>
+            <span title={f.name}>
+              {f.name}
+              <span className="muted">
+                {' '}
+                · {f.version > 1 ? `v${f.version} · ` : ''}
+                {size(f.size)}
+                {f.kind === 'input' ? ' · anexo' : ''}
+              </span>
+            </span>
+            <button className="btn" disabled={busy === f.id} onClick={() => void open(f, false)}>
+              {busy === f.id ? 'Baixando…' : 'Abrir'}
+            </button>
+            <button className="btn" disabled={busy === f.id} onClick={() => void open(f, true)}>
+              Pasta
+            </button>
+          </li>
+        ))}
+        {t.links.map((url) => (
+          <li key={url}>
+            <a href={url} target="_blank" rel="noreferrer" title={url}>
+              {url.replace(/^https?:\/\//, '')} ↗
+            </a>
+          </li>
+        ))}
+      </ul>
+      {error && (
+        <div className={styles.followProblem} role="alert">
+          {error}
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TaskCard({
+  t,
+  byId,
+  renderText,
+  depth = 0
+}: {
+  t: FollowedTask
+  byId: Map<number, FollowedTask>
+  renderText: (text: string) => ReactNode
+  /** How deep inside other cards (a handoff of a handoff…). */
+  depth?: number
+}) {
+  const nested = depth > 0
   const [open, setOpen] = useState(!isDone(t.status))
+  const ws = useWorkspace()
   const [label, cls] = STATUS[t.status] ?? [t.status || 'carregando…', 'pill']
   const waiting = (TASK_WAITING as readonly string[]).includes(t.status)
+  // The task's open requests the person may decide; the rest are only described.
+  const decisions = (ws?.decisions.data ?? []).filter((d) => d.taskId === t.id)
+  const others = t.requests.filter((r) => !decisions.some((d) => d.id === r.id))
+  const kids = t.children.map((c) => (depth < 3 ? byId.get(c.id) : undefined))
   return (
-    <div className={styles.followCard} data-follow-task={t.id}>
+    <div className={`${styles.followCard} ${nested ? styles.followNested : ''}`} data-follow-task={t.id}>
       <button className={styles.followHead} onClick={() => setOpen((o) => !o)} aria-expanded={open}>
         <span className={styles.followTitle}>
           #{t.id} · {t.title}
         </span>
+        {decisions.length > 0 && <span className="pill pill-hold">decidir ({decisions.length})</span>}
         <span className={cls}>{label}</span>
         {t.progress && (
           <span className={styles.followProgress} title={`${t.progress.done} de ${t.progress.total} etapas`}>
@@ -49,7 +129,7 @@ function TaskCard({ t, renderText }: { t: FollowedTask; renderText: (text: strin
           <div className={`muted ${styles.small}`}>
             {t.employeeName || 'Digital employee'} · {usd(t.costUsd)}
             {t.tokens ? ` · ${(t.tokens / 1000).toFixed(0)}k tokens` : ''}
-            {t.parent ? ` · repassada da tarefa #${t.parent.id}` : ''}
+            {t.parent && !nested ? ` · repassada da tarefa #${t.parent.id}` : ''}
           </div>
           {t.problem && <div className={styles.followProblem}>{t.problem}</div>}
           {t.steps.length > 0 && (
@@ -71,41 +151,58 @@ function TaskCard({ t, renderText }: { t: FollowedTask; renderText: (text: strin
               ))}
             </ul>
           )}
-          {waiting && t.requests.length > 0 && (
+          {decisions.map((d) => (
+            <DecisionCard key={d.id} d={d} />
+          ))}
+          {waiting && others.length > 0 && (
             <div className={styles.followAsk}>
-              {t.requests.map((r) => (
+              {others.map((r) => (
                 <div key={r.id}>
                   <b>Pedido #{r.id}</b> ({r.kind}): {r.text}
                 </div>
               ))}
-              <span className="muted">A decisão fica em Decisões, no app.</span>
+              <span className="muted">A decisão fica com quem responde pelo funcionário (Decisões, no portal).</span>
             </div>
           )}
-          {t.children.length > 0 && (
-            <div className={`muted ${styles.small}`}>
-              Repassadas:{' '}
-              {t.children
-                .map((c) => `#${c.id} ${c.title} (${c.employeeName || 'colega'}, ${STATUS[c.status]?.[0] ?? c.status})`)
-                .join(' · ')}
-            </div>
+          {kids.map((k, i) =>
+            k ? (
+              <TaskCard key={k.id} t={k} byId={byId} renderText={renderText} depth={depth + 1} />
+            ) : (
+              <div key={t.children[i].id} className={`muted ${styles.small}`}>
+                Repassada: #{t.children[i].id} {t.children[i].title} ({t.children[i].employeeName || 'colega'},{' '}
+                {STATUS[t.children[i].status]?.[0] ?? t.children[i].status})
+              </div>
+            )
           )}
+          <Deliverables t={t} />
           {isDone(t.status) && (t.result || t.error) && (
             <div className={styles.followResult}>{t.result ? renderText(t.result) : <span>{t.error}</span>}</div>
           )}
           <div className={styles.followActions}>
-            <label className={styles.small}>
-              <input
-                type="checkbox"
-                checked={t.wake}
-                onChange={(e) => void workspaceApi.setFollow(t.id, { wake: e.target.checked })}
-              />{' '}
-              Retomar a conversa quando terminar ou pedir decisão
-            </label>
+            {!nested ? (
+              <label className={styles.small}>
+                <input
+                  type="checkbox"
+                  checked={t.wake}
+                  onChange={(e) => void workspaceApi.setFollow(t.id, { wake: e.target.checked })}
+                />{' '}
+                Retomar a conversa quando terminar ou pedir decisão
+              </label>
+            ) : (
+              <span className={styles.small} />
+            )}
             <button className="btn" onClick={() => openPortal({ screen: 'task', id: t.id }, t.title)}>
               No portal ↗
             </button>
-            {isDone(t.status) && (
-              <button className="btn" onClick={() => void workspaceApi.setFollow(t.id, { unfollow: true })}>
+            {!nested && isDone(t.status) && (
+              <button
+                className="btn"
+                onClick={() => {
+                  // the tasks it handed off go with it
+                  for (const c of t.children) if (byId.has(c.id)) void workspaceApi.setFollow(c.id, { unfollow: true })
+                  void workspaceApi.setFollow(t.id, { unfollow: true })
+                }}
+              >
                 Fechar
               </button>
             )}
@@ -127,11 +224,16 @@ export function TaskFollowPanel({
   const tasks = useFollowedTasks((s) => s.bySession[sessionId])
   useEffect(() => loadFollowedTasks(sessionId), [sessionId])
   if (!tasks?.length) return null
+  const byId = new Map(tasks.map((t) => [t.id, t]))
+  // A task handed off from another one this session follows shows inside that one's card.
+  const nestedIds = new Set(tasks.flatMap((t) => t.children.map((c) => c.id)).filter((id) => byId.has(id)))
   return (
     <div className={styles.follow} aria-label="Tarefas acompanhadas">
-      {tasks.map((t) => (
-        <TaskCard key={t.id} t={t} renderText={renderText} />
-      ))}
+      {tasks
+        .filter((t) => !nestedIds.has(t.id))
+        .map((t) => (
+          <TaskCard key={t.id} t={t} byId={byId} renderText={renderText} />
+        ))}
     </div>
   )
 }

@@ -59,6 +59,12 @@ export function showNotification(ctx: FeatureContext, title: string, body: strin
   return true
 }
 
+/** A notification about a session (a platform task it follows…) when notifications are on and the app is away. */
+export function notifyAway(ctx: FeatureContext, title: string, body: string, sessionId?: string): void {
+  if (!settings().get().notifications || windowFocused(ctx)) return
+  showNotification(ctx, title, body, sessionId)
+}
+
 function notifySession(
   ctx: FeatureContext,
   sessionId: string,

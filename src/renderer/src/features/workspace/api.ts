@@ -29,7 +29,8 @@ export const workspaceApi = {
   agentAction: (slug: string, action: AgentAction) => bridge.invoke(WORKSPACE.agentAction, slug, action),
   openInVscode: (slug: string) => bridge.invoke(WORKSPACE.openInVscode, slug),
   followedTasks: (sessionId: string) => bridge.invoke(WORKSPACE.followedTasks, sessionId),
-  setFollow: (taskId: number, change: FollowChange) => bridge.invoke(WORKSPACE.setFollow, taskId, change)
+  setFollow: (taskId: number, change: FollowChange) => bridge.invoke(WORKSPACE.setFollow, taskId, change),
+  openTaskFile: (fileId: number, reveal?: boolean) => bridge.invoke(WORKSPACE.openTaskFile, fileId, reveal)
 }
 
 /** The platform tasks this session follows, live (main pushes each change). */

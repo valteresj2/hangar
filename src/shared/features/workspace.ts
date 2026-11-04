@@ -31,6 +31,11 @@ export const WORKSPACE = {
   followedTasks: 'workspace:followedTasks',
   /** (taskId, change: FollowChange) → void — stop following a task, or turn the session wake-up on or off. */
   setFollow: 'workspace:setFollow',
+  /**
+   * (fileId, reveal?) → string — downloads a deliverable of a followed task (Downloads/Agent Hangar/tarefa-<id>) and
+   * opens it, or shows it in its folder; returns the local path.
+   */
+  openTaskFile: 'workspace:openTaskFile',
 
   /** main → renderer: WorkspaceState after every change. */
   evState: 'workspace:event:state',
@@ -399,6 +404,7 @@ declare module '../ipc' {
     [WORKSPACE.openInVscode]: (slug: string) => boolean
     [WORKSPACE.followedTasks]: (sessionId: string) => FollowedTask[]
     [WORKSPACE.setFollow]: (taskId: number, change: FollowChange) => void
+    [WORKSPACE.openTaskFile]: (fileId: number, reveal?: boolean) => string
   }
 
   interface IpcEventContract {
@@ -428,7 +434,19 @@ export interface TaskLink {
   id: number
   title: string
   status: string
+  /** The employee's slug ('' when unknown). */
+  employee: string
   employeeName: string
+}
+
+/** A file the task delivered (or got as input): the latest version of each name. */
+export interface TaskFile {
+  id: number
+  name: string
+  version: number
+  /** output (delivered by the employee) | input (attached by a person) */
+  kind: string
+  size: number
 }
 
 /** An open request of the task (a decision, a question, a missing capability) waiting for a person. */
@@ -458,6 +476,10 @@ export interface FollowedTask {
   requests: TaskRequest[]
   children: TaskLink[]
   parent?: TaskLink
+  /** The task's files, outputs first. */
+  files: TaskFile[]
+  /** The web links in the result (a repository, a report, a dashboard…). */
+  links: string[]
   /** The session gets a message (and answers) when the task ends or stops for a person. */
   wake: boolean
   updatedAt: string

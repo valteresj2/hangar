@@ -52,7 +52,8 @@ export function choicesOf(kind: string): Choice[] | undefined {
 
 const RISK: Record<string, string> = { low: 'risco baixo', medium: 'risco médio', high: 'risco alto' }
 
-function DecisionCard({ d }: { d: WorkspaceDecision }) {
+/** One open request, decided right here (also inside a session's task card). */
+export function DecisionCard({ d }: { d: WorkspaceDecision }) {
   const [reason, setReason] = useState('')
   const [busy, setBusy] = useState<string>()
   const [error, setError] = useState<string>()

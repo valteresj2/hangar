@@ -8,6 +8,7 @@ import {
   parseDecisions,
   parseEvent,
   parseFollowedTask,
+  resultLinks,
   parseHome,
   parseInbox,
   parseInboxItems,
@@ -540,9 +541,38 @@ describe('acompanhar uma tarefa na sessão', () => {
     ])
     expect(t.requests).toEqual([{ id: 618, kind: 'question', text: 'O retrato 2024-10 tem defeito. Como seguir?' }])
     expect(t.children).toEqual([
-      { id: 1487, title: 'Modelo', status: 'in_progress', employeeName: 'Cientista de Dados' }
+      { id: 1487, title: 'Modelo', status: 'in_progress', employee: '', employeeName: 'Cientista de Dados' }
     ])
     expect(t.costUsd).toBe(6.44)
+  })
+
+  it('lista os entregáveis (os do funcionário primeiro) e os links do resultado', () => {
+    const t = parseFollowedTask(
+      {
+        id: 1487,
+        title: 'Modelo',
+        status: 'done',
+        result:
+          'Pronto. Repositório: https://github.com/valteresj2/cnpj-model. Relatório em ' +
+          '[aqui](https://github.com/valteresj2/cnpj-model/blob/main/REPORT.md), de novo https://github.com/valteresj2/cnpj-model',
+        files: [
+          { id: 3, name: 'dados.csv', version: 1, kind: 'input', size: 900 },
+          { id: 4, name: 'relatorio.md', version: 3, kind: 'output', size: 120 },
+          { id: 0, name: 'sem-id.txt' },
+          { id: 5, name: '', kind: 'output' }
+        ]
+      },
+      { sessionId: 's1', employeeName: 'Cientista', wake: true }
+    )!
+    expect(t.files).toEqual([
+      { id: 4, name: 'relatorio.md', version: 3, kind: 'output', size: 120 },
+      { id: 3, name: 'dados.csv', version: 1, kind: 'input', size: 900 }
+    ])
+    expect(t.links).toEqual([
+      'https://github.com/valteresj2/cnpj-model',
+      'https://github.com/valteresj2/cnpj-model/blob/main/REPORT.md'
+    ])
+    expect(resultLinks(undefined)).toEqual([])
   })
 
   it('reconhece o evento task.updated', () => {

@@ -16,7 +16,8 @@ import {
 import { bus } from '../../core/bus'
 import type { Feature } from '../../core/feature'
 import { handle } from '../../core/handle'
-import { followedTasks, onToolResult, setFollow, startFollowing, stopFollowing } from './follow'
+import { notifyAway } from '../settings/tray'
+import { followedTasks, onToolResult, openTaskFile, setFollow, startFollowing, stopFollowing } from './follow'
 import {
   agentAction,
   agentName,
@@ -56,9 +57,13 @@ export const workspaceFeature: Feature = {
     handle(WORKSPACE.setFollow, (_e, taskId: number, change: FollowChange) => {
       if (Number.isInteger(taskId) && change && typeof change === 'object') setFollow(taskId, change)
     })
+    handle(WORKSPACE.openTaskFile, (_e, fileId: number, reveal?: boolean) => {
+      if (!Number.isInteger(fileId) || fileId <= 0) throw new Error('Arquivo inválido.')
+      return openTaskFile(fileId, reveal === true)
+    })
     bus.on('session:tool-result', onToolResult)
     start(ctx)
-    startFollowing(agentName)
+    startFollowing(agentName, (title, body, sessionId) => notifyAway(ctx, title, body, sessionId))
   },
   dispose() {
     stopFollowing()

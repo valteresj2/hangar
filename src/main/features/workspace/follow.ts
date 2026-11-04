@@ -1,14 +1,16 @@
 // Following a platform task from the session that started it, until the end. When a session's assign_task answers with
 // a task, the session follows it: the card in the session shows the plan, the timeline, the cost and, at the end, the
 // result; tasks it hands off to a colleague are followed too. When the task ends or stops for a person, the session
-// gets a message and answers it (turn the wake-up off per task in the card). Details come from GET /api/tasks/{id}
-// (app token, platform 0.58.2 or newer), refreshed on each task.updated event and every minute while open.
+// gets a message and answers it (turn the wake-up off per task in the card), and a system notification says so.
+// Details come from GET /api/tasks/{id} (app token, platform 0.58.2 or newer), refreshed on each task.updated event
+// and every minute while open. The task's deliverables open from the card (GET /api/files/{id}, platform 0.58.3).
 //
-// File in <userData>/hangar-data/workspace/:
-//   follow.json  { v, tasks: { "<id>": { sessionId, employee, wake, woken: ["done", "req:12", …] } } }
-import { app } from 'electron'
+// Files:
+//   <userData>/hangar-data/workspace/follow.json  { v, tasks: { "<id>": { sessionId, employee, wake, woken: […] } } }
+//   <Downloads>/Agent Hangar/tarefa-<id>/<name>    a deliverable opened from the card (the latest version)
+import { app, shell } from 'electron'
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { extname, join } from 'node:path'
 import {
   TASK_DONE,
   TASK_WAITING,
@@ -19,7 +21,7 @@ import {
 import { broadcast } from '../../core/broadcast'
 import { db } from '../../core/store'
 import { noteSession, sendPrompt, sessionState } from '../engine/api'
-import { platformGet, PlatformError } from '../platform/api'
+import { platformDownload, platformGet, PlatformError } from '../platform/api'
 import { parseFollowedTask, taskIdFromToolResult } from './parse'
 
 const REFRESH_MS = 60_000 // a fallback while the event stream is down
@@ -32,6 +34,8 @@ const STARTS = /(?:^|__)(assign_task)$/
 interface Entry {
   sessionId: string
   employee: string
+  /** The employee's name as the platform gave it (a colleague's handoff), when the app has no agent with that slug. */
+  name?: string
   wake: boolean
   woken: string[]
 }
@@ -41,6 +45,7 @@ const snapshots = new Map<number, FollowedTask>()
 const timers = new Map<number, ReturnType<typeof setTimeout>>()
 let poll: ReturnType<typeof setInterval> | undefined
 let nameOf: (slug: string) => string | undefined = () => undefined
+let notify: (title: string, body: string, sessionId: string) => void = () => undefined
 
 // ---------------------------------------------------------------- disk
 
@@ -82,9 +87,9 @@ export function onToolResult(e: {
   follow(taskId, e.sessionId, typeof input.slug === 'string' ? input.slug : '')
 }
 
-function follow(taskId: number, sessionId: string, employee: string, wake = true): void {
+function follow(taskId: number, sessionId: string, employee: string, wake = true, name?: string): void {
   if (entries[taskId]) return
-  entries[taskId] = { sessionId, employee, wake, woken: [] }
+  entries[taskId] = { sessionId, employee, wake, woken: [], ...(name ? { name } : {}) }
   save()
   void refreshTask(taskId)
 }
@@ -125,12 +130,14 @@ export function onTaskUpdated(taskId: number): void {
   )
 }
 
+const employeeName = (e: Entry): string => (e.employee && nameOf(e.employee)) || e.name || e.employee
+
 function placeholder(id: number, e: Entry): FollowedTask {
   return {
     id,
     sessionId: e.sessionId,
     title: `Tarefa #${id}`,
-    employeeName: nameOf(e.employee) ?? e.employee,
+    employeeName: employeeName(e),
     status: '',
     steps: [],
     lines: [],
@@ -138,6 +145,8 @@ function placeholder(id: number, e: Entry): FollowedTask {
     tokens: 0,
     requests: [],
     children: [],
+    files: [],
+    links: [],
     wake: e.wake,
     updatedAt: new Date().toISOString()
   }
@@ -162,7 +171,7 @@ async function refreshTask(taskId: number): Promise<void> {
     next =
       parseFollowedTask(raw, {
         sessionId: e.sessionId,
-        employeeName: nameOf(e.employee) ?? e.employee,
+        employeeName: employeeName(e),
         wake: e.wake
       }) ?? placeholder(taskId, e)
   } catch (err) {
@@ -176,7 +185,7 @@ async function refreshTask(taskId: number): Promise<void> {
   }
   snapshots.set(taskId, next)
   // a colleague took part of the work: the session follows that task too
-  for (const c of next.children) if (!entries[c.id]) follow(c.id, e.sessionId, '', e.wake)
+  for (const c of next.children) if (!entries[c.id]) follow(c.id, e.sessionId, c.employee, e.wake, c.employeeName)
   emitSession(e.sessionId)
   wakeIfNeeded(taskId, next)
 }
@@ -198,6 +207,12 @@ function wakeIfNeeded(taskId: number, t: FollowedTask): void {
   e.woken.push(...fresh.map((m) => m.key))
   save()
   const text = fresh.map((m) => m.text).join('\n\n---\n\n')
+  const waits = fresh.some((m) => m.key.startsWith('req:')) || t.status === 'in_review'
+  notify(
+    `Tarefa #${t.id} ${waits ? 'precisa de você' : (STATUS_PT[t.status] ?? t.status)}`,
+    waits ? (t.requests[0]?.text ?? t.title) : `${t.title} · ${t.employeeName || 'Digital employee'}`,
+    e.sessionId
+  )
   if (!e.wake) {
     noteSession(e.sessionId, `Agent Hangar · tarefa #${taskId}: ${t.status}`)
     return
@@ -247,10 +262,57 @@ function requestMessage(t: FollowedTask, r: { id: number; kind: string; text: st
   )
 }
 
+// ---------------------------------------------------------------- deliverables
+
+/** Opened with a click; anything else (a program, a script, a page) is only shown in its folder. */
+const OPENS = new Set(
+  ('.md .txt .log .csv .tsv .json .yaml .yml .xml .pdf .png .jpg .jpeg .gif .webp .ipynb .parquet .xlsx .docx ' +
+    '.pptx .odt .ods .zip').split(' ')
+)
+
+const safeName = (name: string): string =>
+  [...name]
+    .map((ch) => (ch.charCodeAt(0) < 32 || '\\/:*?"<>|'.includes(ch) ? '_' : ch))
+    .join('')
+    .replace(/^[.\s]+/, '')
+    .slice(0, 180) || 'arquivo'
+
+/**
+ * A deliverable of a followed task: downloads it to Downloads/Agent Hangar/tarefa-<id> and opens it (or shows it in
+ * its folder when asked, or when it is not a document). Only files of tasks a session follows.
+ */
+export async function openTaskFile(fileId: number, reveal = false): Promise<string> {
+  const task = [...snapshots.values()].find((t) => t.files.some((f) => f.id === fileId))
+  const f = task?.files.find((x) => x.id === fileId)
+  if (!task || !f) throw new Error('Esse arquivo não é de uma tarefa acompanhada.')
+  let data: Uint8Array
+  try {
+    data = await platformDownload(`/api/files/${fileId}`)
+  } catch (err) {
+    throw new Error(
+      err instanceof PlatformError && /403|forbidden/i.test(`${err.code} ${err.message}`)
+        ? 'A plataforma não deixou o app baixar o arquivo (precisa da 0.58.3 ou mais nova). Abra pelo portal.'
+        : `Não consegui baixar o arquivo: ${(err as Error).message}`,
+      { cause: err }
+    )
+  }
+  const dir = join(app.getPath('downloads'), 'Agent Hangar', `tarefa-${task.id}`)
+  mkdirSync(dir, { recursive: true })
+  const path = join(dir, safeName(f.name))
+  writeFileSync(path, data)
+  if (reveal || !OPENS.has(extname(path).toLowerCase())) shell.showItemInFolder(path)
+  else if (await shell.openPath(path)) shell.showItemInFolder(path) // no app for it: the folder at least
+  return path
+}
+
 // ---------------------------------------------------------------- lifecycle
 
-export function startFollowing(resolveName: (slug: string) => string | undefined): void {
+export function startFollowing(
+  resolveName: (slug: string) => string | undefined,
+  notifier?: (title: string, body: string, sessionId: string) => void
+): void {
   nameOf = resolveName
+  if (notifier) notify = notifier
   load()
   for (const id of Object.keys(entries)) void refreshTask(Number(id))
   poll = setInterval(() => {

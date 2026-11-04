@@ -207,13 +207,19 @@ do campo de mensagem mostra, ao vivo:
 - o status e o plano do funcionário, com o progresso;
 - os últimos passos da linha do tempo;
 - o custo e os tokens;
-- o que espera uma decisão sua;
-- as tarefas que ele repassou a colegas, que a sessão também acompanha;
+- o que espera uma decisão sua, para aprovar, instruir, recusar ou responder ali mesmo;
+- as tarefas que ele repassou a colegas, como cartões dentro do cartão da tarefa;
+- os entregáveis: os arquivos da tarefa abrem com um clique (o app baixa em Downloads/Agent Hangar/tarefa-<número>),
+  e os links do resultado também aparecem;
 - no fim, o resultado completo.
 
 Quando a tarefa termina ou para esperando você, a sessão recebe o resultado (ou o pedido) e responde: confere com o que
-foi pedido, resume e sugere o próximo passo. Para não ser chamado, desmarque **Retomar a conversa…** no cartão. Precisa
-da plataforma 0.58.2 ou mais nova.
+foi pedido, resume e sugere o próximo passo. Para não ser chamado, desmarque **Retomar a conversa…** no cartão. Se o
+app não estiver em foco, um aviso do sistema também aparece, e clicar nele abre a sessão. Precisa da plataforma 0.58.2
+ou mais nova (0.58.3 para abrir os arquivos no app).
+
+Só documentos abrem direto (texto, Markdown, CSV, JSON, PDF, imagens, planilhas, notebooks). Programas, scripts e
+páginas aparecem só na pasta, para você decidir.
 
 ### Para o admin da plataforma
 

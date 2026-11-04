@@ -749,3 +749,41 @@
 .followActions label {
   flex: 1;
 }
+.followNested {
+  margin-left: 4px;
+  border-left-color: var(--info, var(--border));
+}
+.followSection {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.followSection h4 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted, inherit);
+}
+.followFiles {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.followFiles li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+.followFiles li > span:first-child,
+.followFiles li > a {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.followFiles button {
+  padding: 1px 8px;
+  font-size: 12px;
+}
