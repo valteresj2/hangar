@@ -146,6 +146,8 @@ export interface MockPlatform {
   mcpCalls: string[]
   /** M2 writes the app made (decide, inbox mark, agent and employee actions), in order. */
   actions: { method: string; path: string; body: Record<string, unknown> }[]
+  /** Employee tasks by id (GET /api/tasks/{id}); assign_task on /mcp creates one. Change them, then emit task.updated. */
+  tasks: Map<number, Record<string, unknown>>
   /** Events published so far (GET /api/app/events replays those after Last-Event-ID). */
   events: MockEvent[]
   /** Publishes an event to every open stream. */
@@ -278,6 +280,7 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
   const events: MockEvent[] = []
   const eventResumes: string[] = []
   const mcpCalls: string[] = []
+  const tasks = new Map<number, Record<string, unknown>>()
   const actions: { method: string; path: string; body: Record<string, unknown> }[] = []
   /** Inbox items read (key → true) or archived. */
   const inboxRead = new Set<string>()
@@ -552,6 +555,13 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
       return json(res, 200, {})
     }
 
+    const taskRoute = /^\/api\/tasks\/(\d+)$/.exec(path)
+    if (req.method === 'GET' && taskRoute) {
+      if (!appGrant(req, res)) return
+      const t = tasks.get(Number(taskRoute[1]))
+      return t ? json(res, 200, t) : json(res, 404, { detail: 'tarefa não encontrada' })
+    }
+
     if (req.method === 'GET' && path === '/api/app/me') {
       if (!appGrant(req, res)) return
       return json(res, 200, {
@@ -767,7 +777,7 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
       const msg = JSON.parse((await readBody(req)) || '{}') as {
         id?: number | string
         method?: string
-        params?: { protocolVersion?: string }
+        params?: { protocolVersion?: string; name?: string; arguments?: Record<string, unknown> }
       }
       mcpCalls.push(msg.method ?? '')
       if (msg.id === undefined) {
@@ -788,10 +798,40 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
                     name: 'list_agents',
                     description: 'Lista os agentes do Agent Hangar',
                     inputSchema: { type: 'object', properties: {} }
+                  },
+                  {
+                    name: 'assign_task',
+                    description: 'Entrega uma tarefa a um Digital employee',
+                    inputSchema: {
+                      type: 'object',
+                      properties: { slug: { type: 'string' }, title: { type: 'string' }, body: { type: 'string' } },
+                      required: ['slug', 'title']
+                    }
                   }
                 ]
               }
-            : {}
+            : msg.method === 'tools/call' && msg.params?.name === 'assign_task'
+              ? (() => {
+                  const id = 900 + tasks.size + 1
+                  const t = {
+                    id,
+                    title: typeof msg.params?.arguments?.title === 'string' ? msg.params.arguments.title : 'Tarefa',
+                    status: 'new',
+                    cost_usd: 0,
+                    tokens: 0,
+                    plan: null,
+                    progress: null,
+                    events: [{ kind: 'created', payload: { source: 'mcp' }, at: new Date().toISOString() }],
+                    requests: [],
+                    children: [],
+                    parent: null,
+                    result: '',
+                    error: ''
+                  }
+                  tasks.set(id, t)
+                  return { content: [{ type: 'text', text: JSON.stringify({ id, title: t.title, status: 'new' }) }] }
+                })()
+              : {}
       return json(res, 200, { jsonrpc: '2.0', id: msg.id, result })
     }
 
@@ -939,6 +979,7 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
     },
     eventResumes,
     mcpCalls,
+    tasks,
     actions,
     count: (path, grantType) =>
       requests.filter((r) => r.path === path && (grantType === undefined || r.grantType === grantType)).length,

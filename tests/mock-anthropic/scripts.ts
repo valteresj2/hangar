@@ -146,7 +146,12 @@ function toolScript(
 ): ScriptResult {
   const results = lastToolResults(ctx.req)
   if (results.length) return text(done(results[0]))
-  if (!hasTool(ctx.req, tool)) return text(`(mock) a ferramenta ${tool} não foi oferecida nesta requisição.`)
+  if (!hasTool(ctx.req, tool)) {
+    const offered = (ctx.req.tools ?? []).map((t) => t.name).filter((n) => /mcp|search/i.test(n))
+    return text(
+      `(mock) a ferramenta ${tool} não foi oferecida nesta requisição. Ferramentas MCP: ${offered.join(', ') || 'nenhuma'}.`
+    )
+  }
   return {
     kind: 'message',
     blocks: [
@@ -155,6 +160,43 @@ function toolScript(
     ],
     stopReason: 'tool_use'
   }
+}
+
+/** The name of the tool the previous assistant message asked for, if any. */
+function lastToolUse(req: MessagesRequest): string | undefined {
+  const msgs = req.messages ?? []
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].role !== 'assistant') continue
+    const c = msgs[i].content
+    const use = Array.isArray(c) ? c.find((b) => b && b.type === 'tool_use') : undefined
+    return use ? String(use.name) : undefined
+  }
+  return undefined
+}
+
+/** An MCP tool through Claude Code's deferred loading: ToolSearch first (select:<name>), then the tool itself. */
+function mcpToolScript(
+  ctx: ScriptContext,
+  tool: string,
+  input: Record<string, unknown>,
+  intro: string,
+  done: (r: { is_error?: boolean; text: string }) => string
+): ScriptResult {
+  const results = lastToolResults(ctx.req)
+  const previous = lastToolUse(ctx.req)
+  if (results.length && previous === tool) return text(done(results[0]))
+  const ask = (name: string, args: Record<string, unknown>): ScriptReply => ({
+    kind: 'message',
+    blocks: [
+      { type: 'text', text: intro },
+      { type: 'tool_use', id: toolId(), name, input: args }
+    ],
+    stopReason: 'tool_use'
+  })
+  if (hasTool(ctx.req, tool)) return ask(tool, input)
+  if (hasTool(ctx.req, 'ToolSearch') && previous !== 'ToolSearch')
+    return ask('ToolSearch', { query: `select:${tool}`, max_results: 1 })
+  return text(`(mock) a ferramenta ${tool} não foi oferecida nesta requisição.`)
 }
 
 /** Blind selector of the Harness Lab: answers with <why> and a ```choice``` block naming the first candidate. */
@@ -273,6 +315,16 @@ export function runScript(ctx: ScriptContext): ScriptResult {
           r.is_error
             ? `O comando não rodou: ${r.text.slice(0, 200)}`
             : `Saída do comando: ${r.text.trim().slice(0, 200)}`
+      )
+
+    case 'assign-task':
+      // A Digital employee task through the platform MCP (the desktop session follows it until the end).
+      return mcpToolScript(
+        ctx,
+        'mcp__agent-hangar__assign_task',
+        { slug: script.params.slug ?? 'analista-dados', title: script.params.title ?? 'Relatório de vendas' },
+        'Vou passar a tarefa para o funcionário.',
+        (r) => (r.is_error ? `Não consegui passar a tarefa: ${r.text.slice(0, 200)}` : 'Tarefa passada ao funcionário.')
       )
 
     case 'error-401':

@@ -367,8 +367,17 @@ export class Runner {
         const drafts = toolResultsFromUserContent(m.message.content)
         this.record(...drafts)
         for (const d of drafts) {
-          if (d.kind !== 'tool_result' || d.isError) continue
+          if (d.kind !== 'tool_result') continue
           const use = this.toolUses.get(d.toolUseId)
+          if (use)
+            bus.emit('session:tool-result', {
+              sessionId: this.sessionId,
+              name: use.name,
+              input: use.input,
+              content: d.content,
+              isError: !!d.isError
+            })
+          if (d.isError) continue
           const path = use && writtenPath(use.name, use.input)
           if (!path) continue
           bus.emit('session:file-written', { sessionId: this.sessionId, path })

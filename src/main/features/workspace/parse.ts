@@ -13,7 +13,13 @@ import type {
   WorkspaceHome,
   WorkspaceTask
 } from '../../../shared/features/workspace'
-import { SLUG_RE } from '../../../shared/features/workspace'
+import {
+  SLUG_RE,
+  type FollowedTask,
+  type TaskLine,
+  type TaskLink,
+  type TaskRequest
+} from '../../../shared/features/workspace'
 
 type Obj = Record<string, unknown>
 
@@ -278,6 +284,7 @@ export type WorkspaceEvent =
   | { type: 'decision.decided'; id: number }
   | { type: 'agent.status'; slug: string; status: string }
   | { type: 'models.changed'; version?: string }
+  | { type: 'task.updated'; id: number; status: string }
 
 /** One SSE event of the platform → a known event, or undefined (unknown types and bad payloads are ignored). */
 export function parseEvent(type: string, data: string): WorkspaceEvent | undefined {
@@ -306,7 +313,116 @@ export function parseEvent(type: string, data: string): WorkspaceEvent | undefin
     }
     case 'models.changed':
       return { type, version: optStr(o.version, 200) }
+    case 'task.updated': {
+      const i = id(o.id)
+      return i ? { type, id: i, status: str(o.status, 40) } : undefined
+    }
     default:
       return undefined
+  }
+}
+
+// ---------------------------------------------------------------- following a task
+
+/** The task id an assign_task (or handoff) call answered with: the platform MCP returns the task as JSON text. */
+export function taskIdFromToolResult(content: string): number | undefined {
+  try {
+    const o = obj(JSON.parse(content))
+    return id(o?.id) ?? id(obj(o?.task)?.id)
+  } catch {
+    const m = /(?:tarefa|task)\s*(?:n[ºo°.]*\s*)?#?\s*(\d{1,9})\b/i.exec(content)
+    return m ? id(Number(m[1])) : undefined
+  }
+}
+
+const short = (v: unknown, max = 160): string => str(v, max).replace(/\s+/g, ' ')
+
+/** One timeline event of the platform → a line in words (checkpoints and internal bookkeeping are left out). */
+export function taskLine(v: unknown): TaskLine | undefined {
+  const o = obj(v)
+  const p = obj(o?.payload) ?? {}
+  const kind = str(o?.kind, 30)
+  const at = when(o?.at) ?? ''
+  const text = (() => {
+    switch (kind) {
+      case 'created':
+        return 'Tarefa criada'
+      case 'run':
+        return `Rodada ${count(p.run)}${p.env ? ` (${short(p.env, 20)})` : ''}`
+      case 'tool':
+        return `Ferramenta ${short(p.tool, 80)}`
+      case 'gate':
+        return `Alçada: ${short(p.tool, 60)} → ${short(p.mode, 20) || short(p.status, 20)}`
+      case 'note':
+        return short(p.worker ?? p.continue ?? p.waiting ?? p.retry_at ?? '', 240) || 'Nota'
+      case 'human_request':
+        return `Pedido #${count(p.id)} (${short(p.kind, 20)})${p.question || p.need ? `: ${short(p.question ?? p.need, 200)}` : ''}`
+      case 'decision':
+        return `Decisão #${count(p.id)}: ${short(p.decision, 30)}`
+      case 'handoff':
+        return p.to ? `Repasse → ${short(p.to, 60)} (tarefa #${count(p.task)})` : 'Repasse'
+      case 'handoff_done':
+        return `Tarefa repassada #${count(p.task)} terminou: ${short(p.status, 20)}`
+      case 'plan':
+        return `Plano: ${count(p.done)} de ${count(p.total)} etapas`
+      case 'nudge':
+        return 'Lembrete: anunciou o próximo passo sem executar'
+      case 'done':
+        return 'Entregue'
+      case 'error':
+        return `Erro: ${short(p.error, 200)}`
+      default:
+        return ''
+    }
+  })()
+  return text ? { at, kind, text } : undefined
+}
+
+function taskLink(v: unknown): TaskLink | undefined {
+  const o = obj(v)
+  const i = id(o?.id)
+  return o && i
+    ? { id: i, title: str(o.title, 200), status: str(o.status, 40), employeeName: str(o.employee_name, 120) }
+    : undefined
+}
+
+function taskRequest(v: unknown): TaskRequest | undefined {
+  const o = obj(v)
+  const i = id(o?.id)
+  if (!o || !i || o.status !== 'open') return undefined
+  const p = obj(o.payload)
+  return { id: i, kind: str(o.kind, 30), text: short(o.question ?? p?.need ?? o.tool ?? o.kind, 400) }
+}
+
+/** GET /api/tasks/{id} → what the session's task card shows (the last lines of the timeline, newest last). */
+export function parseFollowedTask(
+  v: unknown,
+  base: { sessionId: string; employeeName: string; wake: boolean }
+): FollowedTask | undefined {
+  const o = obj(v)
+  const i = id(o?.id)
+  if (!o || !i) return undefined
+  const prog = obj(o.progress)
+  return {
+    id: i,
+    sessionId: base.sessionId,
+    title: str(o.title, 300),
+    employeeName: base.employeeName,
+    status: str(o.status, 40),
+    steps: list(o.plan)
+      .map((x) => obj(x))
+      .filter((x): x is Obj => !!x && !!str(x.title))
+      .map((x) => ({ title: str(x.title, 200), status: str(x.status, 20) || 'todo' })),
+    progress: prog ? { done: count(prog.done), total: count(prog.total), pct: count(prog.pct) } : undefined,
+    lines: defined(list(o.events).map(taskLine)).slice(-8),
+    costUsd: num(o.cost_usd),
+    tokens: count(o.tokens),
+    result: optStr(o.result, 20000),
+    error: optStr(o.error, 2000),
+    requests: defined(list(o.requests).map(taskRequest)),
+    children: defined(list(o.children).map(taskLink)),
+    parent: taskLink(o.parent),
+    wake: base.wake,
+    updatedAt: new Date().toISOString()
   }
 }

@@ -7,15 +7,19 @@ import {
   WORKSPACE,
   type AgentAction,
   type DecideInput,
+  type FollowChange,
   type InboxMark,
   type InboxView,
   type PortalTarget,
   type WorkspaceScope
 } from '../../../shared/features/workspace'
+import { bus } from '../../core/bus'
 import type { Feature } from '../../core/feature'
 import { handle } from '../../core/handle'
+import { followedTasks, onToolResult, setFollow, startFollowing, stopFollowing } from './follow'
 import {
   agentAction,
+  agentName,
   agentDetail,
   decide,
   getState,
@@ -48,9 +52,16 @@ export const workspaceFeature: Feature = {
     handle(WORKSPACE.agent, (_e, slug: string) => agentDetail(String(slug)))
     handle(WORKSPACE.agentAction, (_e, slug: string, action: AgentAction) => agentAction(String(slug), action))
     handle(WORKSPACE.openInVscode, (_e, slug: string) => openInVscode(String(slug)))
+    handle(WORKSPACE.followedTasks, (_e, sessionId: string) => followedTasks(String(sessionId)))
+    handle(WORKSPACE.setFollow, (_e, taskId: number, change: FollowChange) => {
+      if (Number.isInteger(taskId) && change && typeof change === 'object') setFollow(taskId, change)
+    })
+    bus.on('session:tool-result', onToolResult)
     start(ctx)
+    startFollowing(agentName)
   },
   dispose() {
+    stopFollowing()
     stop()
   }
 }

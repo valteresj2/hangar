@@ -334,3 +334,26 @@ fornecedor e os tipos de módulos) abrem o portal.
 
 No Desktop, **Decisões** e **Caixa de entrada** viram telas do app (com os mesmos badges ao vivo), e os deep links
 `hangar://open/decisions[/<id>]` e `hangar://open/inbox` abrem essas telas em vez do portal.
+
+## 6. M3 — acompanhar uma tarefa até o fim na sessão do app
+
+A sessão do app que passa uma tarefa a um Digital employee (`assign_task` pelo MCP da plataforma) passa a acompanhar
+essa tarefa até o fim, e as tarefas que ela repassa a colegas também.
+
+**Plataforma (0.58.2 ou mais nova):**
+
+| Rota ou evento                          | O que é                                                                                                                                                                                                                                                                                          |
+| --------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `GET /api/tasks/{task_id}`              | Aberta ao token `app`, com o acesso da própria pessoa (a mesma regra de leitura do portal). Devolve a tarefa com `events` (a linha do tempo), `plan`, `progress`, `result`, `error`, `cost_usd`, `tokens`, `requests` (os pedidos da tarefa, com `status`), `children` e `parent` (os repasses). |
+| `task.updated` em `GET /api/app/events` | `{id, status}` a cada evento novo na linha do tempo da tarefa e a cada mudança de status, plano ou resultado. Vários no mesmo lote viram um por tarefa. Só vai para quem pediu a tarefa, gerencia o funcionário ou mantém o time dele.                                                           |
+
+**Desktop:**
+
+- O resultado de `assign_task` numa sessão (o número da tarefa) liga a tarefa à sessão.
+- Um cartão acima do campo de mensagem mostra a tarefa ao vivo: status, plano e progresso, as últimas linhas da linha
+  do tempo, custo e tokens, os pedidos que esperam uma pessoa, as tarefas repassadas e, no fim, o resultado.
+- O cartão relê a tarefa a cada `task.updated` e, como reserva, a cada minuto enquanto ela não termina.
+- Quando a tarefa termina (concluída, falhou, cancelada, em revisão) ou para esperando uma pessoa, a sessão recebe uma
+  mensagem com o resultado ou o pedido e responde: confere, resume e sugere o próximo passo. Cada marco acorda a sessão
+  uma vez; "Retomar a conversa…" no cartão desliga isso por tarefa (fica só uma nota na sessão).
+- Plataforma anterior à 0.58.2: o cartão mostra que não conseguiu ler a tarefa.

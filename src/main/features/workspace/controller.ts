@@ -59,6 +59,7 @@ import {
   toDecide,
   type WorkspaceEvent
 } from './parse'
+import { onTaskUpdated } from './follow'
 import { EventStream, type SseMessage } from './sse'
 
 interface Resources {
@@ -520,8 +521,16 @@ export function applyEvent(e: WorkspaceEvent): void {
     case 'models.changed':
       void syncPlatformModels()
       return
+    case 'task.updated':
+      onTaskUpdated(e.id)
+      return
   }
   emit()
+}
+
+/** The name of one of the person's agents or Digital employees (Meus agentes), for the session's task card. */
+export function agentName(slug: string): string | undefined {
+  return slug ? res.home.data?.agents.find((a) => a.slug === slug)?.name : undefined
 }
 
 function onMessage(msg: SseMessage): void {

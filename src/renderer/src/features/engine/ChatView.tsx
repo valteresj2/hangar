@@ -13,7 +13,9 @@ import type { ProviderProfile } from '@shared/providers'
 import { bridge } from '../../core/api'
 import { useUi } from '../../core/ui'
 import { estimateCost, formatUsd, modelOrigin, usePlatformModels } from '../platform'
+import { TaskFollowPanel } from '../workspace'
 import { Composer, type ComposerDraft } from './Composer'
+import { Markdown } from './Markdown'
 import { isCostUnknown } from './cost'
 import { useOutputMode } from './MotionCard'
 import { blobToImage, type ComposerImage } from './pasted'
@@ -317,6 +319,7 @@ export function ChatView({ session }: { session: Session }) {
       )}
       <div className={styles.bottom}>
         {showTodos && <TodoPanel todos={todos} />}
+        <TaskFollowPanel sessionId={session.id} renderText={(text) => <Markdown text={text} />} />
         {error && (
           <div className={styles.error}>
             {error}

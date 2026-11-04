@@ -647,3 +647,105 @@
   padding-left: 18px;
   font-size: 13px;
 }
+
+/* ---- Tasks this session follows (TaskFollowPanel) ---- */
+.follow {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 46vh;
+  overflow-y: auto;
+}
+.followCard {
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent, #f4b400);
+  border-radius: var(--radius);
+  background: var(--bg-elev);
+  font-size: 13px;
+}
+.followHead {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  text-align: left;
+}
+.followTitle {
+  flex: 1;
+  min-width: 0;
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.followProgress {
+  width: 80px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+  overflow: hidden;
+}
+.followProgress span {
+  display: block;
+  height: 100%;
+  background: var(--accent, #f4b400);
+}
+.chevron {
+  color: var(--text-muted, inherit);
+}
+.followBody {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 0 10px 8px;
+}
+.followProblem {
+  color: var(--hold);
+}
+.followSteps,
+.followLines {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.followSteps li {
+  display: flex;
+  gap: 6px;
+}
+.followSteps li span {
+  width: 14px;
+  text-align: center;
+}
+.followSteps li[data-step='done'] {
+  color: var(--text-muted, inherit);
+}
+.followSteps li[data-step='doing'] {
+  font-weight: 600;
+}
+.followLines li {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.followAsk {
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--hold-bg);
+}
+.followResult {
+  max-height: 260px;
+  overflow-y: auto;
+  padding: 6px 8px;
+  border-radius: 6px;
+  background: var(--bg);
+}
+.followActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.followActions label {
+  flex: 1;
+}

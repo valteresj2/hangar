@@ -27,11 +27,17 @@ export const WORKSPACE = {
   agentAction: 'workspace:agentAction',
   /** (slug) → boolean — VS Code (Agent Hangar extension) starts working as this Digital employee. */
   openInVscode: 'workspace:openInVscode',
+  /** (sessionId) → FollowedTask[] — the platform tasks this session follows (started by its assign_task). */
+  followedTasks: 'workspace:followedTasks',
+  /** (taskId, change: FollowChange) → void — stop following a task, or turn the session wake-up on or off. */
+  setFollow: 'workspace:setFollow',
 
   /** main → renderer: WorkspaceState after every change. */
   evState: 'workspace:event:state',
   /** main → renderer: a deep link asks for a screen of the app. */
-  evNavigate: 'workspace:event:navigate'
+  evNavigate: 'workspace:event:navigate',
+  /** main → renderer: { sessionId, tasks } whenever a followed task of that session changes. */
+  evTasks: 'workspace:event:tasks'
 } as const
 
 /** What a refresh fetches: `home` (Início), `agents` (Meus agentes), `badges` or everything. */
@@ -391,10 +397,76 @@ declare module '../ipc' {
     [WORKSPACE.agent]: (slug: string) => AgentDetail
     [WORKSPACE.agentAction]: (slug: string, action: AgentAction) => AgentActionResult
     [WORKSPACE.openInVscode]: (slug: string) => boolean
+    [WORKSPACE.followedTasks]: (sessionId: string) => FollowedTask[]
+    [WORKSPACE.setFollow]: (taskId: number, change: FollowChange) => void
   }
 
   interface IpcEventContract {
     [WORKSPACE.evState]: WorkspaceState
     [WORKSPACE.evNavigate]: WorkspaceNavigation
+    [WORKSPACE.evTasks]: { sessionId: string; tasks: FollowedTask[] }
   }
 }
+
+// ---------------------------------------------------------------- following a task from the session that started it
+
+/** One step of the employee's plan (update_plan). status: todo | doing | done | skipped. */
+export interface TaskStep {
+  title: string
+  status: string
+}
+
+/** One line of the task's timeline, already in words. */
+export interface TaskLine {
+  at: string
+  kind: string
+  text: string
+}
+
+/** A task linked to this one (a handoff to a colleague, or the task that handed this one off). */
+export interface TaskLink {
+  id: number
+  title: string
+  status: string
+  employeeName: string
+}
+
+/** An open request of the task (a decision, a question, a missing capability) waiting for a person. */
+export interface TaskRequest {
+  id: number
+  kind: string
+  text: string
+}
+
+/**
+ * A platform task this session follows until the end: started by the session's assign_task, or handed off from one it
+ * follows. `problem` explains why the details are missing (an older platform, no access, offline).
+ */
+export interface FollowedTask {
+  id: number
+  sessionId: string
+  title: string
+  employeeName: string
+  status: string
+  steps: TaskStep[]
+  progress?: { done: number; total: number; pct: number }
+  lines: TaskLine[]
+  costUsd: number
+  tokens: number
+  result?: string
+  error?: string
+  requests: TaskRequest[]
+  children: TaskLink[]
+  parent?: TaskLink
+  /** The session gets a message (and answers) when the task ends or stops for a person. */
+  wake: boolean
+  updatedAt: string
+  problem?: string
+}
+
+export type FollowChange = { unfollow: true } | { wake: boolean }
+
+/** Statuses after which the task does not move any more. */
+export const TASK_DONE = ['done', 'failed', 'cancelled', 'expired'] as const
+/** Statuses where the task waits for a person. */
+export const TASK_WAITING = ['waiting_human', 'in_review'] as const

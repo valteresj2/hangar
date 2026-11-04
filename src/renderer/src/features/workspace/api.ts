@@ -5,6 +5,8 @@ import {
   WORKSPACE,
   type AgentAction,
   type DecideInput,
+  type FollowChange,
+  type FollowedTask,
   type InboxMark,
   type InboxView,
   type PortalTarget,
@@ -25,7 +27,23 @@ export const workspaceApi = {
   decide: (input: DecideInput) => bridge.invoke(WORKSPACE.decide, input),
   agent: (slug: string) => bridge.invoke(WORKSPACE.agent, slug),
   agentAction: (slug: string, action: AgentAction) => bridge.invoke(WORKSPACE.agentAction, slug, action),
-  openInVscode: (slug: string) => bridge.invoke(WORKSPACE.openInVscode, slug)
+  openInVscode: (slug: string) => bridge.invoke(WORKSPACE.openInVscode, slug),
+  followedTasks: (sessionId: string) => bridge.invoke(WORKSPACE.followedTasks, sessionId),
+  setFollow: (taskId: number, change: FollowChange) => bridge.invoke(WORKSPACE.setFollow, taskId, change)
+}
+
+/** The platform tasks this session follows, live (main pushes each change). */
+export const useFollowedTasks = create<{ bySession: Record<string, FollowedTask[]> }>(() => ({ bySession: {} }))
+
+bridge.on(WORKSPACE.evTasks, ({ sessionId, tasks }) =>
+  useFollowedTasks.setState((s) => ({ bySession: { ...s.bySession, [sessionId]: tasks } }))
+)
+
+export function loadFollowedTasks(sessionId: string): void {
+  void workspaceApi
+    .followedTasks(sessionId)
+    .then((tasks) => useFollowedTasks.setState((s) => ({ bySession: { ...s.bySession, [sessionId]: tasks } })))
+    .catch(() => undefined)
 }
 
 export const useWorkspaceStore = create<{ state?: WorkspaceState }>(() => ({}))

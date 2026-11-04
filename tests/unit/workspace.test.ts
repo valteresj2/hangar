@@ -7,9 +7,11 @@ import {
   parseChart,
   parseDecisions,
   parseEvent,
+  parseFollowedTask,
   parseHome,
   parseInbox,
   parseInboxItems,
+  taskIdFromToolResult,
   toDecide
 } from '../../src/main/features/workspace/parse'
 import {
@@ -490,5 +492,65 @@ describe('deep links', () => {
     expect(validPortalTarget({ screen: 'inbox', url: 'https://evil.example' })).toBe(false)
     expect(validPortalTarget({ screen: 'admin' })).toBe(false)
     expect(validPortalTarget('#/inbox')).toBe(false)
+  })
+})
+
+describe('acompanhar uma tarefa na sessão', () => {
+  it('pega o número da tarefa da resposta do assign_task (JSON ou texto)', () => {
+    expect(taskIdFromToolResult('{"id": 1488, "title": "x", "status": "new"}')).toBe(1488)
+    expect(taskIdFromToolResult('{"task": {"id": 77}}')).toBe(77)
+    expect(taskIdFromToolResult('Tarefa nº 1486 criada para o engenheiro')).toBe(1486)
+    expect(taskIdFromToolResult('nada aqui')).toBeUndefined()
+  })
+
+  it('transforma a tarefa da plataforma no cartão, com a linha do tempo em palavras', () => {
+    const t = parseFollowedTask(
+      {
+        id: 1486,
+        title: 'CNPJ: base',
+        status: 'waiting_human',
+        cost_usd: 6.44,
+        tokens: 1200,
+        plan: [{ title: 'Ingestão', status: 'done' }, { title: 'Features', status: 'doing' }, { title: '' }],
+        progress: { done: 1, total: 2, pct: 50 },
+        events: [
+          { kind: 'created', payload: {}, at: '2026-11-02T13:00:00Z' },
+          { kind: 'checkpoint', payload: { messages: 2 }, at: '2026-11-02T13:01:00Z' },
+          {
+            kind: 'human_request',
+            payload: { id: 618, kind: 'question', question: 'Como seguir?' },
+            at: '2026-11-02T13:02:00Z'
+          },
+          { kind: 'handoff', payload: { to: 'cientista-de-dados', task: 1487 }, at: '2026-11-02T13:03:00Z' }
+        ],
+        requests: [
+          { id: 618, kind: 'question', status: 'open', question: 'O retrato 2024-10 tem defeito. Como seguir?' },
+          { id: 581, kind: 'capability', status: 'decided', payload: { need: 'terminal' } }
+        ],
+        children: [{ id: 1487, title: 'Modelo', status: 'in_progress', employee_name: 'Cientista de Dados' }],
+        parent: null
+      },
+      { sessionId: 's1', employeeName: 'Engenheiro de Dados', wake: true }
+    )!
+    expect(t.steps.map((s) => s.title)).toEqual(['Ingestão', 'Features'])
+    expect(t.lines.map((l) => l.text)).toEqual([
+      'Tarefa criada',
+      'Pedido #618 (question): Como seguir?',
+      'Repasse → cientista-de-dados (tarefa #1487)'
+    ])
+    expect(t.requests).toEqual([{ id: 618, kind: 'question', text: 'O retrato 2024-10 tem defeito. Como seguir?' }])
+    expect(t.children).toEqual([
+      { id: 1487, title: 'Modelo', status: 'in_progress', employeeName: 'Cientista de Dados' }
+    ])
+    expect(t.costUsd).toBe(6.44)
+  })
+
+  it('reconhece o evento task.updated', () => {
+    expect(parseEvent('task.updated', '{"id": 12, "status": "done"}')).toEqual({
+      type: 'task.updated',
+      id: 12,
+      status: 'done'
+    })
+    expect(parseEvent('task.updated', '{"status": "done"}')).toBeUndefined()
   })
 })

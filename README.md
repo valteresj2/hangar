@@ -199,6 +199,22 @@ o próprio funcionário por AG-UI e lê e escreve arquivos, roda comandos num te
 GitHub. Tudo passa pela alçada dele. O que pede aprovação aparece em **Decisões**, com o comando exato à vista.
 Precisa da plataforma 0.57 ou mais nova.
 
+### Acompanhar a tarefa até o fim na própria sessão
+
+Quando a sessão passa uma tarefa a um digital employee, ela passa a acompanhar essa tarefa até o fim. Um cartão acima
+do campo de mensagem mostra, ao vivo:
+
+- o status e o plano do funcionário, com o progresso;
+- os últimos passos da linha do tempo;
+- o custo e os tokens;
+- o que espera uma decisão sua;
+- as tarefas que ele repassou a colegas, que a sessão também acompanha;
+- no fim, o resultado completo.
+
+Quando a tarefa termina ou para esperando você, a sessão recebe o resultado (ou o pedido) e responde: confere com o que
+foi pedido, resume e sugere o próximo passo. Para não ser chamado, desmarque **Retomar a conversa…** no cartão. Precisa
+da plataforma 0.58.2 ou mais nova.
+
 ### Para o admin da plataforma
 
 - **Dispositivos:** cada app conectado aparece no console, com o último contato, e o admin pode revogar o acesso.
