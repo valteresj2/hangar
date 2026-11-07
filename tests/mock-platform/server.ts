@@ -182,6 +182,15 @@ export interface MockPlatformOptions {
   /** Keepalive comment interval of the event stream (default 25 s, like the platform). */
   keepaliveMs?: number
   log?: (line: string) => void
+  /**
+   * More routes (e.g. tests/mock-platform/workstation.ts: employees, runtime and the worker hooks). Returns true when it
+   * answered. appAuth() checks the app token like the member routes (false: a 401/403 was already sent).
+   */
+  extraRoutes?: (
+    req: IncomingMessage,
+    res: ServerResponse,
+    ctx: { path: string; appAuth(): boolean }
+  ) => Promise<boolean>
 }
 
 export const MOCK_USER = {
@@ -892,6 +901,8 @@ export async function startMockPlatform(opts: MockPlatformOptions = {}): Promise
       d.heartbeats++
       return json(res, 200, { status: d.status })
     }
+
+    if (opts.extraRoutes && (await opts.extraRoutes(req, res, { path, appAuth: () => !!appGrant(req, res) }))) return
 
     json(res, 404, { detail: 'Not Found' })
   }

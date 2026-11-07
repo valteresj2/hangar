@@ -38,11 +38,12 @@ export function platformGet<T>(path: string): Promise<T> {
 }
 
 /**
- * POST or DELETE on a member route the app token may use (decide, mark the inbox, act on the person's own agents:
+ * POST, PUT or DELETE on a member route the app token may use (decide, mark the inbox, act on the person's own agents,
+ * turn this computer into an employee's workstation:
  * docs/platform/m1-contract.md §1). The platform checks the person's access as on the portal.
  */
 export function platformSend<T>(
-  method: 'POST' | 'DELETE',
+  method: 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
   body?: unknown,
   opts?: { timeoutMs?: number }

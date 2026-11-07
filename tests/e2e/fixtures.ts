@@ -69,10 +69,13 @@ interface Fixtures {
    * protects them (Local State) are copied; the app decrypts them itself, and the test never reads a secret.
    */
   seedProvidersFrom: string | undefined
+  /** Extra environment for the app (e.g. HANGAR_COMPUTER_DRIVER=fake: the computer workstation on a pretend computer). */
+  appEnv: Record<string, string>
 }
 
 export const test = base.extend<Fixtures>({
   seedProvidersFrom: [undefined, { option: true }],
+  appEnv: [{}, { option: true }],
 
   // eslint-disable-next-line no-empty-pattern
   mock: async ({}, use) => {
@@ -83,7 +86,7 @@ export const test = base.extend<Fixtures>({
     await mock.close()
   },
 
-  hangar: async ({ mock, seedProvidersFrom }, use, testInfo) => {
+  hangar: async ({ mock, seedProvidersFrom, appEnv }, use, testInfo) => {
     const root = mkdtempSync(join(tmpdir(), 'hangar-e2e-'))
     const userData = join(root, 'userData')
     const claudeConfig = join(root, 'claude')
@@ -117,7 +120,7 @@ export const test = base.extend<Fixtures>({
     const app = await electron.launch({
       args: [REPO_ROOT, `--user-data-dir=${userData}`],
       cwd: REPO_ROOT,
-      env: cleanEnv({ CLAUDE_CONFIG_DIR: claudeConfig, HANGAR_E2E: '1' }),
+      env: cleanEnv({ CLAUDE_CONFIG_DIR: claudeConfig, HANGAR_E2E: '1', ...appEnv }),
       timeout: 60_000
     })
     await app.context().tracing.start({ screenshots: true, snapshots: true })

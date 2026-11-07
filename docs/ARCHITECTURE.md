@@ -19,7 +19,7 @@ tipados.
 ## Features
 
 Cada feature do main é um `Feature` (`src/main/core/feature.ts`) com `register(ctx)` e `dispose()`, listado em
-`src/main/features/index.ts`: sessions, engine, terminal, git, preview, settings, harness, lab, onboarding, updater, platform, workspace.
+`src/main/features/index.ts`: sessions, engine, terminal, git, preview, settings, harness, lab, onboarding, updater, platform, workspace, bench, computer.
 Um feature só importa de outro o seu `api.ts` (ex.: `engine/api.ts` → `sendPrompt`, `readTranscript`;
 `git/api.ts` → `createWorktree`; `harness/api.ts` → `readHarness`, `createSnapshot`, `reflect`;
 `platform/api.ts` → `canCreateSessions`, `assertCanCreateSessions` — todo ponto que cria sessão passa por eles).
@@ -82,6 +82,25 @@ proxy da plataforma — a chave da conexão nunca chega ao PC. O seletor único 
 `features/platform`) agrupa Assinatura, Modelos de token por conexão e Outros perfis, e grava `providerId` + `model`
 na sessão. Para trocar provedor/modelo de uma sessão, `engine/api.ts` expõe `switchSessionProvider`,
 `setSessionModel`, `sessionState` e `noteSession`.
+
+## Posto no computador (`features/computer`)
+
+O computador da pessoa como posto de trabalho de um digital employee (desenho:
+`docs/platform/computer-workstation-plan.md`). Mesmo formato do posto do VS Code: o `worker.ts` faz heartbeat, rodadas
+AG-UI com o cérebro do funcionário (as ferramentas `desktop_*` como ferramentas do app, com os mesmos nomes do desktop
+governado da plataforma) e, antes de cada ação, a guarda local (`guard.ts`: app liberado, janela, teclas), a presença
+(`presence.ts`: pausa quando a pessoa usa o computador) e a alçada da plataforma (`/gate` com `desktop:<ação>` e a
+captura). `driver/index.ts` escolhe o driver do sistema: no Windows, `driver/windows.ts` fala com um ajudante em C#
+(`driver/helper/HangarDesktopHelper.cs`, compilado no primeiro uso pelo `csc.exe` do .NET Framework que vem no Windows)
+que usa SendInput, a captura da janela e a UI Automation; no macOS, `driver/macos.ts` fala com um ajudante em Swift
+(`HangarDesktopHelper.swift`: CGEvent, ScreenCaptureKit, Acessibilidade) pelo mesmo protocolo (`driver/helper.ts`); no
+Linux, `driver/linux.ts` usa as ferramentas do X11 (`xdotool`, `xprop`, `import`, `xprintidle`) e o AT-SPI.
+`driver/fake.ts` é o computador de mentira dos testes e do e2e (`HANGAR_COMPUTER_DRIVER=fake`). Dois modos usam a mesma
+lógica de tela (`screen.ts`: janela-alvo, captura, mira, pausa): o posto de um funcionário (`worker.ts`) e o computador
+compartilhado (`shared.ts`), em que os funcionários da plataforma pegam o computador emprestado e os passos de tela, já
+liberados pela alçada na plataforma, chegam pelo long-poll de `/hooks/workstation/*` (desenho:
+`docs/platform/computer-shared-workstations-plan.md`). O aviso e a
+borda (`overlay.ts`) ficam fora das capturas (`setContentProtection`).
 
 ## Workspace (vitrine do membro)
 

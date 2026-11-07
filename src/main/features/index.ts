@@ -13,6 +13,7 @@ import { updaterFeature } from './updater'
 import { platformFeature } from './platform'
 import { workspaceFeature } from './workspace'
 import { benchFeature } from './bench'
+import { computerFeature } from './computer'
 
 export const features: Feature[] = [
   sessionsFeature,
@@ -27,5 +28,6 @@ export const features: Feature[] = [
   updaterFeature,
   platformFeature,
   workspaceFeature,
-  benchFeature
+  benchFeature,
+  computerFeature
 ]

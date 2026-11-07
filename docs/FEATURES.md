@@ -89,6 +89,8 @@ Prioridade: **P0** = MVP, **P1** = segunda onda, **P2** = depois / fora de escop
 | Acompanhar a tarefa até o fim na sessão: cartão ao vivo e a sessão retomada com o resultado (plataforma 0.58.2)                        | M3   | workspace |
 | No cartão da tarefa: decidir ali mesmo, repasses aninhados, entregáveis que abrem com um clique e aviso do sistema (plataforma 0.58.3) | M3   | workspace |
 | No cartão da tarefa: cada ferramenta do posto como um passo e os trabalhos longos com barra e hora prevista do fim (plataforma 0.58.3) | M3   | workspace |
+| Posto no computador: o funcionário opera a tela nos apps liberados, com aviso, Parar e alçada (plat. 0.59)                             | M4   | computer  |
+| Computador compartilhado: os funcionários da plataforma pegam este computador emprestado, com pedido de uso e fila                     | M5   | computer  |
 | Skills e MCP geridos pelo admin, MCP agent-hangar nas sessões                                                                          | 2    | —         |
 | Políticas, auditoria, uso e orçamento, versão mínima                                                                                   | 3    | —         |
 | Compartilhar projetos e artefatos                                                                                                      | 4    | —         |

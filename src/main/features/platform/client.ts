@@ -179,7 +179,7 @@ export class ApiClient {
 
   /** JSON request to the app API; a 401 triggers one refresh and one retry. */
   async request<T>(
-    method: 'GET' | 'POST' | 'DELETE',
+    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
     path: string,
     body?: unknown,
     opts?: { timeoutMs?: number }

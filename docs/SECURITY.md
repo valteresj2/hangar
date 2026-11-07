@@ -86,6 +86,55 @@ controla a conta do Windows lê o que o Hangar lê).
 - Segredos nunca voltam ao renderer (só `hasSecret`) e são mascarados em erros, cartões e transcrições.
 - Sem criptografia disponível, o Hangar se recusa a salvar chaves.
 
+### 7. Posto no computador (`features/computer`)
+
+O digital employee opera a tela deste computador. Ameaças: o modelo (ou um conteúdo que ele leu) tentar sair dos apps
+liberados, ver o que não devia, agir como a pessoa no navegador dela, aprovar a própria ação, vazar uma senha ou agir
+por cima da pessoa.
+
+- **Opt-in explícito**, por funcionário (só quem a pessoa gerencia) e por computador; desligado por padrão. O token do
+  worker (`ewk_…`) fica cifrado com `safeStorage` em `computer/token.json`.
+- **Só os apps liberados**: antes de cada clique, tecla ou texto, a janela da frente tem de ser de um processo liberado
+  (por nome do processo), o ponto tem de cair dentro dela e a janela sob o ponto também tem de ser de um app liberado.
+  Nunca liberáveis: o próprio Hangar (é onde se aprova), Gerenciador de Tarefas, Configurações, Painel de Controle,
+  Registro, MMC, UAC,
+  credenciais do Windows, Segurança do Windows, gerenciadores de senha e o shell (barra de tarefas, Iniciar). Navegador,
+  terminal e Explorador pedem aviso no seletor. Janelas de administrador ficam fora de alcance (UIPI).
+- **Teclas bloqueadas**: Win+qualquer, Alt+Tab, Ctrl+Esc, Alt+Esc, Ctrl+Shift+Esc, Ctrl+Alt+Del e o próprio
+  Ctrl+Alt+End. Trocar de app só por `desktop_open`, para um app liberado.
+- **O modelo só vê a janela**: a captura é do retângulo da janela do app; janelas de outros processos por cima saem em
+  preto. O aviso e a borda são `setContentProtection` e ficam fora das capturas.
+- **Alçada da plataforma**: toda ação, menos olhar e rolar, pergunta no `/gate` (`desktop:<ação>`). As regras de
+  "confirma algo" são as do desktop governado (`services/desktop.py` → `desktop_local.py`), com a captura no pedido; o
+  clique acontece onde a pessoa aprovou.
+- **Segredos**: `secret://nome` é resolvido pela plataforma e volta só na resposta do `/gate` ao worker autenticado;
+  o app só digita num campo que a UI Automation diz ser de senha, e o valor não vai para a conversa, o estado salvo, o
+  log local nem a linha do tempo (`[segredo]`).
+- **A pessoa manda**: aviso sempre visível com **Parar**; **Ctrl+Alt+End** global; Parar corta a ação em curso (mata o
+  ajudante), solta teclas e botões e devolve a tarefa. Entrada da pessoa (comparando `GetLastInputInfo` com a última
+  entrada injetada e o cursor com onde o app o deixou) pausa o funcionário; ao voltar, uma ação pensada sobre uma tela
+  anterior ao uso não é executada — o modelo recebe a tela de agora. Tela bloqueada pausa.
+- **Auditoria**: cada ação é um evento `desktop` na linha do tempo da tarefa (escrito pela plataforma no `/gate`) e um
+  passo `tool`; `computer/audit.jsonl` guarda o mesmo localmente, sem capturas nem segredos.
+- Risco conhecido: o ajudante é compilado no primeiro uso (`csc.exe` do .NET Framework, ou `Add-Type` do PowerShell);
+  um antivírus pode estranhar um programa local que usa `SendInput`.
+- **Computador compartilhado**: ninguém pega o computador emprestado sem a dona ligar o compartilhamento, escolher os
+  apps e quem pode usar (os funcionários que ela gerencia e/ou de times dela); por padrão cada empréstimo pergunta antes
+  (a plataforma pode proibir o pré-autorizado com `WORKSTATION_PREAUTHORIZED=0`). Só a dona (ou um admin) decide o
+  empréstimo; as ações continuam com a alçada do funcionário. Os passos chegam já liberados pela plataforma e o app
+  repete as checagens locais (apps, janela, teclas, pausa, segredo só em campo de senha). Os argumentos de um passo ficam
+  cifrados no banco só até o resultado voltar. O token `wst_…` é por computador, cifrado com `safeStorage`.
+- **macOS**: o ajudante em Swift só age com as permissões de Acessibilidade e Gravação de Tela dadas pela pessoa ao Agent
+  Hangar Desktop; a captura é feita pelo ScreenCaptureKit só com os apps liberados (os outros nem entram na imagem, e o
+  aviso fica de fora). Bloqueados: Ajustes, Acesso às Chaves, Monitor de Atividade, pedidos de senha do sistema, Dock e
+  barra de menus; Cmd+Tab, Cmd+Espaço, Forçar Encerrar, bloquear a tela e encerrar a sessão. Parar: Ctrl+Option+Esc.
+- **Linux (X11)**: as ferramentas do sistema (`xdotool`, `xprop`, `import`, `xprintidle`, AT-SPI). O texto vai pelo
+  stdin do `xdotool type --file -`, então um segredo nunca aparece na lista de processos. Janelas de painel e área de
+  trabalho nunca são clicáveis; Super, troca de console (Ctrl+Alt+F*), Ctrl+Alt+T, Ctrl+Alt+L e Alt+F2 são recusados.
+  No X11 qualquer programa da sessão pode ler a tela e injetar teclas: o posto não tira esse poder de ninguém, só o usa
+  dentro das regras acima. `setContentProtection` não existe no X11: o aviso e a borda ficam fora da área capturada
+  (a borda é desenhada por fora da janela), e o aviso pode aparecer se cobrir a janela.
+
 ## Fuses do Electron (para o agente release)
 
 Aplicar no pacote com `@electron/fuses` (`FuseV1Options`), com `strictlyRequireAllFuses: true`:

@@ -199,6 +199,46 @@ o próprio funcionário por AG-UI e lê e escreve arquivos, roda comandos num te
 GitHub. Tudo passa pela alçada dele. O que pede aprovação aparece em **Decisões**, com o comando exato à vista.
 Precisa da plataforma 0.57 ou mais nova.
 
+### Um digital employee trabalhando na tela deste computador
+
+Em **Configurações → Posto no computador**, você escolhe um digital employee que gerencia e os apps deste computador que
+ele pode usar (um ERP, uma planilha, o Bloco de Notas…). Daí em diante ele trabalha na tela: olha a janela do app,
+clica, digita e aperta atalhos — só nos apps liberados, e só neste computador. Desligado por padrão.
+
+- Enquanto ele trabalha, um aviso fica no alto da tela (_"… está usando este computador"_) e uma borda marca a janela
+  em uso. **Parar** no aviso, no painel ou **Ctrl+Alt+End** de qualquer lugar para na hora e devolve a tarefa à
+  plataforma.
+- Mexeu no mouse ou no teclado, ele pausa; volta depois de alguns segundos sem uso (15 por padrão) e olha a tela de novo
+  antes de agir.
+- O que salva, confirma, envia ou paga espera a aprovação em **Decisões**, com a captura da tela. Senhas vêm do cofre da
+  plataforma (`secret://nome`) e só são digitadas num campo de senha; o modelo nunca vê o valor.
+- O modelo só vê a janela do app liberado: outros apps que estiverem por cima aparecem em preto. O próprio Agent Hangar,
+  o Gerenciador de Tarefas, as Configurações do Windows e os gerenciadores de senha nunca podem ser liberados; navegador
+  e terminal pedem um aviso.
+- Cada ação fica na linha do tempo da tarefa. O mesmo funcionário não trabalha no VS Code e neste computador ao mesmo
+  tempo. Precisa da plataforma 0.59 ou mais nova.
+- **Windows**: funciona direto (o app compila um ajudante com o compilador que já vem no Windows).
+- **macOS** 14 ou mais novo (**experimental**: ainda não testado num Mac): na primeira vez, permita o Agent Hangar Desktop em Ajustes do Sistema → Privacidade e
+  Segurança → **Acessibilidade** e **Gravação de Tela**. Sem o ajudante pronto no app, ele é compilado com as Command Line
+  Tools do Xcode (`xcode-select --install`). O botão de parar é **Ctrl+Option+Esc**.
+- **Linux** com X11 (no Wayland, só os apps que rodam no XWayland): instale
+  `sudo apt install xdotool x11-utils imagemagick xprintidle python3-gi gir1.2-atspi-2.0` (os dois últimos dão os
+  elementos numerados e o "é campo de senha?"; sem eles, segredos não são digitados).
+
+### Compartilhar este computador com os funcionários
+
+Na mesma tela (**Configurações → Posto no computador**), em vez de dedicar o computador a um funcionário, você pode
+**compartilhá-lo**: os digital employees que você liberar pegam o computador emprestado quando uma tarefa precisa de um
+app que só existe aqui. Eles continuam rodando na plataforma; só os passos de tela acontecem neste computador.
+
+- Você escolhe os apps e **quem pode usar**: os funcionários que você gerencia e/ou os dos times que você escolher.
+- Por padrão, **cada empréstimo pergunta antes**: aparece um aviso "… quer usar este computador — Permitir / Recusar",
+  com a tarefa e o motivo (o pedido também fica em **Decisões**). Pré-autorizado é opcional, e a empresa pode proibir.
+- Um funcionário por vez: se o computador estiver em uso, o próximo pedido espera na fila e a tarefa continua sozinha
+  quando ele ficar livre.
+- O que salva, confirma, envia ou paga continua passando pela alçada do funcionário, com a captura da tela. O aviso no
+  alto da tela, o Parar, a pausa quando você usa o computador e os segredos só em campo de senha valem do mesmo jeito.
+
 ### Acompanhar a tarefa até o fim na própria sessão
 
 Quando a sessão passa uma tarefa a um digital employee, ela passa a acompanhar essa tarefa até o fim. Um cartão acima

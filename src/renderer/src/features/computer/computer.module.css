@@ -1,0 +1,155 @@
+.body {
+  padding: 10px 16px 14px;
+}
+.body p {
+  margin-top: 0;
+}
+.lead {
+  margin: 0 0 12px;
+  line-height: 1.5;
+  color: var(--text-muted);
+}
+.sub {
+  margin: 14px 0 6px;
+  font-weight: 600;
+}
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.apps {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.apps li {
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--border);
+}
+.apps li:last-child {
+  border-bottom: 0;
+}
+.apps label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+.blocked label {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.appName {
+  flex: 1;
+}
+.process {
+  font-family: var(--mono);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+.why,
+.warn {
+  margin: 2px 0 0 24px;
+  font-size: 12px;
+}
+.why {
+  color: var(--text-muted);
+}
+.warn {
+  color: var(--warning, #b7791f);
+}
+.actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 12px;
+}
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.errorText {
+  color: var(--danger);
+  font-size: 12px;
+}
+.status {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+.statusText {
+  font-weight: 600;
+}
+.dot {
+  width: 10px;
+  height: 10px;
+  margin-top: 5px;
+  border-radius: 50%;
+  flex: none;
+  background: var(--text-muted);
+}
+.working {
+  background: #e8590c;
+}
+.paused {
+  background: #f2c94c;
+}
+.idle {
+  background: var(--success);
+}
+.stopped,
+.error {
+  background: var(--danger);
+}
+.chosen {
+  margin: 0;
+  padding-left: 18px;
+  line-height: 1.7;
+}
+.recent {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  font-size: 12px;
+}
+.recent li {
+  display: grid;
+  grid-template-columns: 70px 60px 1fr auto;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.failed {
+  color: var(--danger);
+}
+.time {
+  color: var(--text-muted);
+  font-family: var(--mono);
+}
+.tool {
+  font-weight: 600;
+}
+.who {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+}
+.requests {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.requests li {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+}
