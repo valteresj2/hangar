@@ -1,7 +1,16 @@
 // A pretend computer for the tests and the e2e (HANGAR_COMPUTER_DRIVER=fake): a few windows, a focused field, the
 // input it received and a tiny PNG as every capture. Nothing real moves. `human()` simulates the person touching the
 // mouse; `script` lets a test change the screen after an action (a dialog opens, the title changes).
-import type { Capture, ComputerDriver, FocusedInfo, IdleReading, UiElement, WindowInfo } from './types'
+import type {
+  Capture,
+  ComputerDriver,
+  FocusedInfo,
+  IdleReading,
+  UiElement,
+  WatchEvent,
+  WatchOptions,
+  WindowInfo
+} from './types'
 
 // 1×1 transparent PNG
 export const FAKE_PNG = 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNkYAAAAAYAAjCB0C8AAAAASUVORK5CYII='
@@ -43,6 +52,10 @@ export class FakeDriver implements ComputerDriver {
   private cursor = { x: 0, y: 0 }
   locked = false
   started = 0
+  /** Recording: what the watch was asked to follow, and what the "person" did (tests push with did()). */
+  watching?: WatchOptions
+  private watched: WatchEvent[] = []
+  private watchT0 = 0
 
   constructor(init?: { windows?: WindowInfo[]; foreground?: number }) {
     this.wins = init?.windows ?? []
@@ -148,6 +161,29 @@ export class FakeDriver implements ComputerDriver {
       cursor: { ...this.cursor },
       locked: this.locked
     }
+  }
+  /** The person does something while a task is recorded (ignored when nothing is being recorded). */
+  did(e: Omit<WatchEvent, 't'>): void {
+    if (!this.watching) return
+    const outside = e.process !== undefined && !this.watching.processes.includes(e.process)
+    this.watched.push(
+      outside ? { t: Date.now() - this.watchT0, kind: e.kind, outside: true } : { ...e, t: Date.now() - this.watchT0 }
+    )
+  }
+  async watchStart(opts: WatchOptions): Promise<void> {
+    if (!opts.processes.length) throw new Error('diga quais apps observar')
+    this.watching = opts
+    this.watched = []
+    this.watchT0 = Date.now()
+  }
+  async watchPoll(): Promise<WatchEvent[]> {
+    const out = this.watched
+    this.watched = []
+    return out
+  }
+  async watchStop(): Promise<WatchEvent[]> {
+    this.watching = undefined
+    return this.watchPoll()
   }
   async launch(target: string): Promise<void> {
     this.inputs.push({ kind: 'launch', detail: target })

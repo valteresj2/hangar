@@ -40,6 +40,7 @@ namespace Hangar
 
         [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindowsProc cb, IntPtr lParam);
         [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr hwnd);
+        [DllImport("user32.dll")] static extern bool IsWindow(IntPtr hwnd);
         [DllImport("user32.dll")] static extern bool IsIconic(IntPtr hwnd);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetWindowText(IntPtr hwnd, StringBuilder sb, int max);
         [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr hwnd, StringBuilder sb, int max);
@@ -142,6 +143,9 @@ namespace Hangar
                 case "scroll": return Scroll(Int(r, "x", 0), Int(r, "y", 0), Str(r, "direction"), Int(r, "amount", 3));
                 case "release": return Release();
                 case "idle": return Idle();
+                case "watch_start": return WatchStart(Strs(r, "processes"), Int(r, "maxWidth", 1366), Ints(r, "ignoreHwnds"), Bool(r, "acceptInjected"));
+                case "watch_poll": return WatchPoll();
+                case "watch_stop": return WatchStop();
                 default: throw new Exception("comando desconhecido: " + cmd);
             }
         }
@@ -516,6 +520,357 @@ namespace Hangar
             l.Add(Mouse(MOUSEEVENTF_MIDDLEUP, 0));
             try { Send(l); } catch { }
             return Obj();
+        }
+
+        // ------------------------------------------------------------------ watch (recording a task the person shows)
+        // While the person records a task, what she does in the WATCHED apps (by process name) is registered:
+        //  - each click: the point, the element under it (UI Automation) and a capture of the window at that moment;
+        //  - each field she typed in: its final value, read from the field when it loses focus (never keystroke by
+        //    keystroke); a password field (IsPassword) only says that a password was typed, never the value;
+        //  - shortcuts with Ctrl/Alt/Win and Enter/Tab/Esc/F-keys (plain letters are never recorded);
+        //  - the window in front when it changes.
+        // Outside the watched apps only "another app" is noted, without title or content.
+        delegate IntPtr HookProc(int code, IntPtr wParam, IntPtr lParam);
+        [StructLayout(LayoutKind.Sequential)] struct MSLLHOOKSTRUCT { public POINT pt; public uint mouseData, flags, time; public IntPtr extra; }
+        [StructLayout(LayoutKind.Sequential)] struct KBDLLHOOKSTRUCT { public uint vkCode, scanCode, flags, time; public IntPtr extra; }
+        [StructLayout(LayoutKind.Sequential)] struct MSG { public IntPtr hwnd; public uint message; public IntPtr wParam, lParam; public uint time; public POINT pt; }
+        [DllImport("user32.dll")] static extern IntPtr SetWindowsHookEx(int id, HookProc fn, IntPtr mod, uint thread);
+        [DllImport("user32.dll")] static extern bool UnhookWindowsHookEx(IntPtr h);
+        [DllImport("user32.dll")] static extern IntPtr CallNextHookEx(IntPtr h, int code, IntPtr w, IntPtr l);
+        [DllImport("user32.dll")] static extern int GetMessage(out MSG m, IntPtr hwnd, uint min, uint max);
+        [DllImport("user32.dll")] static extern bool PostThreadMessage(uint thread, uint msg, IntPtr w, IntPtr l);
+        [DllImport("user32.dll")] static extern short GetAsyncKeyState(int vk);
+        [DllImport("kernel32.dll")] static extern IntPtr GetModuleHandle(string name);
+
+        static readonly object WatchLock = new object();
+        static List<Dictionary<string, object>> watchEvents = new List<Dictionary<string, object>>();
+        static HashSet<string> watchProcs;
+        static HashSet<long> watchIgnore;
+        static int watchMaxWidth = 1366;
+        static Thread watchThread, watchWorker;
+        static uint watchThreadId;
+        static volatile bool watching, watchInjected;
+        static HookProc mouseProc, keyProc;  // kept alive while hooked
+        static IntPtr mouseHook, keyHook;
+        static System.Collections.Concurrent.BlockingCollection<Dictionary<string, object>> watchClicks;
+        static long watchStartTick;
+        // the field in focus and its value when it got the focus (to emit what was typed when it loses it)
+        static AutomationElement focusEl;
+        static string focusName = "", focusValue = "", focusType = "", focusWindow = "";
+        static bool focusPassword;
+        static int keyCount, focusKeys; // keystrokes counted (never which keys) to know a password field was typed in
+        static IntPtr lastFg = IntPtr.Zero;
+        // a dialog often closes on the very click that answers it, before the click is resolved: its elements and
+        // description are read when it comes to the front, and the click falls back to them
+        static readonly Dictionary<long, List<object>> elCache = new Dictionary<long, List<object>>();
+        static readonly Dictionary<long, Dictionary<string, object>> winCache = new Dictionary<long, Dictionary<string, object>>();
+
+        static long Ms() { return Environment.TickCount - watchStartTick; }
+
+        static void Emit(Dictionary<string, object> e)
+        {
+            e["t"] = Ms();
+            lock (WatchLock) { if (watchEvents.Count < 5000) watchEvents.Add(e); }
+        }
+
+        static bool Watched(IntPtr hwnd, out Dictionary<string, object> info)
+        {
+            info = Describe(hwnd);
+            if (info == null) return false;
+            string proc = Convert.ToString(info["process"]).ToLowerInvariant();
+            return proc.Length > 0 && watchProcs.Contains(proc);
+        }
+
+        static Dictionary<string, object> WatchStart(List<string> processes, int maxWidth, HashSet<long> ignore, bool acceptInjected)
+        {
+            watchInjected = acceptInjected; // only the automated tests ask for this: they click with SendInput
+            if (watching) WatchStop();
+            watchProcs = new HashSet<string>();
+            foreach (var p in processes) watchProcs.Add(p.ToLowerInvariant().Replace(".exe", ""));
+            if (watchProcs.Count == 0) throw new Exception("diga quais apps observar");
+            watchIgnore = ignore ?? new HashSet<long>();
+            watchMaxWidth = maxWidth;
+            lock (WatchLock) { watchEvents = new List<Dictionary<string, object>>(); }
+            watchStartTick = Environment.TickCount;
+            focusEl = null; lastFg = IntPtr.Zero;
+            watching = true;
+            watchClicks = new System.Collections.Concurrent.BlockingCollection<Dictionary<string, object>>();
+            watchWorker = new Thread(WatchWorker) { IsBackground = true };
+            watchWorker.Start();
+            var ready = new ManualResetEvent(false);
+            watchThread = new Thread(delegate ()
+            {
+                watchThreadId = GetCurrentThreadId();
+                mouseProc = MouseHook;
+                keyProc = KeyHook;
+                IntPtr mod = GetModuleHandle(null);
+                mouseHook = SetWindowsHookEx(14 /* WH_MOUSE_LL */, mouseProc, mod, 0);
+                keyHook = SetWindowsHookEx(13 /* WH_KEYBOARD_LL */, keyProc, mod, 0);
+                ready.Set();
+                MSG m;
+                while (GetMessage(out m, IntPtr.Zero, 0, 0) > 0) { }
+                if (mouseHook != IntPtr.Zero) UnhookWindowsHookEx(mouseHook);
+                if (keyHook != IntPtr.Zero) UnhookWindowsHookEx(keyHook);
+                mouseHook = keyHook = IntPtr.Zero;
+            }) { IsBackground = true };
+            watchThread.Start();
+            ready.WaitOne(3000);
+            if (mouseHook == IntPtr.Zero) throw new Exception("o Windows não deixou observar o mouse");
+            return Obj("watching", true);
+        }
+
+        static IntPtr MouseHook(int code, IntPtr w, IntPtr l)
+        {
+            if (code >= 0 && watching)
+            {
+                int msg = w.ToInt32();
+                if (msg == 0x201 || msg == 0x204) // left / right button down
+                {
+                    var s = (MSLLHOOKSTRUCT)Marshal.PtrToStructure(l, typeof(MSLLHOOKSTRUCT));
+                    if ((s.flags & 1) == 0 || watchInjected) // a person, not SendInput (ours or anyone's)
+                    {
+                        // the window under the pointer NOW (cheap Win32): when the click is resolved a dialog may be gone
+                        IntPtr under = WindowFromPoint(s.pt);
+                        IntPtr top0 = under == IntPtr.Zero ? IntPtr.Zero : GetAncestor(under, GA_ROOT);
+                        watchClicks.Add(Obj("x", s.pt.X, "y", s.pt.Y, "button", msg == 0x201 ? "left" : "right", "t0", Ms(),
+                                            "top", top0.ToInt64()));
+                    }
+                }
+            }
+            return CallNextHookEx(IntPtr.Zero, code, w, l);
+        }
+
+        static readonly Dictionary<uint, string> KeyNames = new Dictionary<uint, string> {
+            {0x0D, "Return"}, {0x09, "Tab"}, {0x1B, "Escape"}, {0x2E, "Delete"}, {0x70, "F1"}, {0x71, "F2"}, {0x72, "F3"},
+            {0x73, "F4"}, {0x74, "F5"}, {0x75, "F6"}, {0x76, "F7"}, {0x77, "F8"}, {0x78, "F9"}, {0x79, "F10"}, {0x7A, "F11"},
+            {0x7B, "F12"} };
+
+        static IntPtr KeyHook(int code, IntPtr w, IntPtr l)
+        {
+            if (code >= 0 && watching)
+            {
+                int msg = w.ToInt32();
+                if (msg == 0x100 || msg == 0x104) // key down / system key down
+                {
+                    var k = (KBDLLHOOKSTRUCT)Marshal.PtrToStructure(l, typeof(KBDLLHOOKSTRUCT));
+                    uint vk = k.vkCode;
+                    if ((k.flags & 0x10) == 0 || watchInjected) keyCount++;
+                    bool modifier = vk == 0x10 || vk == 0x11 || vk == 0x12 || vk == 0xA0 || vk == 0xA1 || vk == 0xA2 ||
+                                    vk == 0xA3 || vk == 0xA4 || vk == 0xA5 || vk == 0x5B || vk == 0x5C;
+                    bool ctrl = GetAsyncKeyState(0x11) < 0, alt = GetAsyncKeyState(0x12) < 0,
+                         win = GetAsyncKeyState(0x5B) < 0 || GetAsyncKeyState(0x5C) < 0, shift = GetAsyncKeyState(0x10) < 0;
+                    string name;
+                    bool named = KeyNames.TryGetValue(vk, out name);
+                    if (!modifier && ((k.flags & 0x10) == 0 || watchInjected) && (named || ctrl || alt || win))
+                    {
+                        if (!named)
+                            name = (vk >= 0x30 && vk <= 0x5A) ? ((char)vk).ToString().ToLowerInvariant() : "vk" + vk;
+                        var mods = new List<string>();
+                        if (ctrl) mods.Add("ctrl");
+                        if (alt) mods.Add("alt");
+                        if (shift && (ctrl || alt || win)) mods.Add("shift");
+                        if (win) mods.Add("win");
+                        watchClicks.Add(Obj("kind", "key", "key", name, "modifiers", mods, "t0", Ms()));
+                    }
+                }
+            }
+            return CallNextHookEx(IntPtr.Zero, code, w, l);
+        }
+
+        // Off the hook thread (hooks must return fast): resolves clicks and keys, follows focus and the window in front.
+        static void WatchWorker()
+        {
+            while (watching)
+            {
+                Dictionary<string, object> item;
+                if (watchClicks.TryTake(out item, 300))
+                {
+                    try { Resolve(item); } catch { }
+                }
+                try { FollowFocus(); } catch { }
+            }
+        }
+
+        static void Resolve(Dictionary<string, object> item)
+        {
+            IntPtr fg = GetForegroundWindow();
+            if (item.ContainsKey("kind") && Convert.ToString(item["kind"]) == "key")
+            {
+                FlushField(); // Enter or a shortcut usually confirms what was typed
+                Dictionary<string, object> fw;
+                if (!Watched(fg, out fw)) return; // shortcuts in other apps are not recorded at all
+                Emit(Obj("kind", "key", "key", item["key"], "modifiers", item["modifiers"], "window", fw["title"],
+                         "process", fw["process"]));
+                return;
+            }
+            var p = new POINT { X = Convert.ToInt32(item["x"]), Y = Convert.ToInt32(item["y"]) };
+            IntPtr top = new IntPtr(Convert.ToInt64(item["top"]));
+            if (top != IntPtr.Zero && watchIgnore.Contains(top.ToInt64())) return; // Agent Hangar's own windows
+            Dictionary<string, object> info;
+            bool gone = top != IntPtr.Zero && !IsWindow(top);
+            if (gone && winCache.ContainsKey(top.ToInt64()))
+            {
+                info = winCache[top.ToInt64()]; // closed by this very click (a dialog's "Sim")
+            }
+            else if (!Watched(top, out info))
+            {
+                Emit(Obj("kind", "click", "outside", true));
+                return;
+            }
+            FlushField();
+            var ev = Obj("kind", "click", "button", item["button"], "x", p.X, "y", p.Y, "window", info["title"],
+                         "process", info["process"], "hwnd", info["hwnd"]);
+            if (!gone)
+                try
+                {
+                    var el = AutomationElement.FromPoint(new System.Windows.Point(p.X, p.Y));
+                    if (el != null)
+                    {
+                        var c = el.Current;
+                        uint wpid;
+                        GetWindowThreadProcessId(top, out wpid);
+                        if ((uint)c.ProcessId == wpid) // not whatever window took its place
+                            ev["element"] = Obj("name", (c.Name ?? "").Trim(), "type", MapType(c.ControlType != null ?
+                                c.ControlType.ProgrammaticName.Replace("ControlType.", "").ToLowerInvariant() : ""), "password", c.IsPassword);
+                    }
+                }
+                catch { }
+            if (!ev.ContainsKey("element") || Convert.ToString(((Dictionary<string, object>)ev["element"])["name"]).Length == 0)
+            {
+                var hitEl = CachedAt(top.ToInt64(), p.X, p.Y);
+                if (hitEl != null) ev["element"] = hitEl;
+            }
+            if (gone)
+            {
+                Emit(ev); // no capture of a window that no longer exists
+                return;
+            }
+            try
+            {
+                var allowed = new HashSet<long>();
+                uint pid;
+                GetWindowThreadProcessId(top, out pid);
+                allowed.Add(pid);
+                var cap = Capture(top, watchMaxWidth, allowed, watchIgnore);
+                ev["frame"] = cap["png"];
+                ev["rect"] = cap["rect"];
+                ev["scale"] = cap["scale"];
+            }
+            catch { }
+            Emit(ev);
+        }
+
+        static void FlushField()
+        {
+            if (focusEl == null) return;
+            try
+            {
+                if (focusPassword)
+                {
+                    // the value of a password field is never read: only that keys were pressed in it
+                    if (keyCount != focusKeys)
+                        Emit(Obj("kind", "type", "field", focusName, "fieldType", focusType, "password", true, "window", focusWindow));
+                    focusKeys = keyCount;
+                    return;
+                }
+                string now = ValueOf(focusEl, false);
+                if (now != focusValue)
+                {
+                    Emit(Obj("kind", "type", "field", focusName, "fieldType", focusType, "value", now, "window", focusWindow));
+                    focusValue = now;
+                }
+            }
+            catch { }
+        }
+
+        static void FollowFocus()
+        {
+            IntPtr fg = GetForegroundWindow();
+            if (fg != lastFg)
+            {
+                lastFg = fg;
+                Dictionary<string, object> info;
+                if (fg != IntPtr.Zero && !watchIgnore.Contains(fg.ToInt64()))
+                {
+                    if (Watched(fg, out info))
+                    {
+                        Emit(Obj("kind", "window", "window", info["title"], "process", info["process"]));
+                        if (elCache.Count > 20) { elCache.Clear(); winCache.Clear(); }
+                        winCache[fg.ToInt64()] = info;
+                        try { elCache[fg.ToInt64()] = Elements(fg, 80, 800); } catch { }
+                    }
+                    else Emit(Obj("kind", "window", "outside", true));
+                }
+            }
+            Dictionary<string, object> fw;
+            if (!Watched(fg, out fw)) return;
+            AutomationElement el;
+            try { el = AutomationElement.FocusedElement; } catch { return; }
+            if (el == null) return;
+            bool same = false;
+            try { same = focusEl != null && Automation.Compare(el, focusEl); } catch { }
+            if (same) return;
+            FlushField();
+            try
+            {
+                var c = el.Current;
+                string type = c.ControlType != null ? c.ControlType.ProgrammaticName.Replace("ControlType.", "").ToLowerInvariant() : "";
+                if (type != "edit" && type != "document" && type != "combobox")
+                {
+                    focusEl = null;
+                    return;
+                }
+                focusEl = el;
+                focusName = (c.Name ?? "").Trim();
+                focusType = MapType(type);
+                focusPassword = c.IsPassword;
+                focusWindow = Convert.ToString(fw["title"]);
+                focusValue = ValueOf(el, focusPassword);
+                focusKeys = keyCount;
+            }
+            catch { focusEl = null; }
+        }
+
+        // The smallest cached element of a window that contains the point (the window may be closed by now).
+        static Dictionary<string, object> CachedAt(long hwnd, int x, int y)
+        {
+            List<object> els;
+            if (!elCache.TryGetValue(hwnd, out els)) return null;
+            Dictionary<string, object> best = null;
+            long bestArea = long.MaxValue;
+            foreach (Dictionary<string, object> e in els)
+            {
+                int ex = Convert.ToInt32(e["x"]), ey = Convert.ToInt32(e["y"]);
+                int ew = Convert.ToInt32(e["width"]), eh = Convert.ToInt32(e["height"]);
+                if (x < ex || y < ey || x >= ex + ew || y >= ey + eh) continue;
+                long area = (long)ew * eh;
+                if (area < bestArea) { bestArea = area; best = e; }
+            }
+            return best == null ? null : Obj("name", best["name"], "type", best["type"], "password", best["password"]);
+        }
+
+        static Dictionary<string, object> WatchPoll()
+        {
+            List<Dictionary<string, object>> out1;
+            lock (WatchLock)
+            {
+                out1 = watchEvents;
+                watchEvents = new List<Dictionary<string, object>>();
+            }
+            return Obj("events", out1, "watching", watching);
+        }
+
+        static Dictionary<string, object> WatchStop()
+        {
+            if (watching)
+            {
+                try { FlushField(); } catch { }
+                watching = false;
+                if (watchThreadId != 0) PostThreadMessage(watchThreadId, 0x12 /* WM_QUIT */, IntPtr.Zero, IntPtr.Zero);
+                if (watchThread != null) watchThread.Join(2000);
+                if (watchWorker != null) watchWorker.Join(2000);
+            }
+            return WatchPoll();
         }
 
         // ------------------------------------------------------------------ presence

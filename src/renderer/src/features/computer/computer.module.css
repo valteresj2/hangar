@@ -153,3 +153,107 @@
   padding: 10px 16px;
   border-top: 1px solid var(--border);
 }
+.recording {
+  background: #e03131;
+  animation: rec-blink 1s infinite;
+}
+@keyframes rec-blink {
+  50% {
+    opacity: 0.35;
+  }
+}
+.timeline,
+.draftSteps {
+  margin: 0;
+  padding-left: 22px;
+  font-size: 12px;
+}
+.timeline li,
+.draftSteps li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+  border-bottom: 1px solid var(--border);
+}
+.timeline li > span:nth-child(2) {
+  flex: 1;
+}
+.draftSteps li > input {
+  flex: 1;
+}
+.outside {
+  color: var(--text-muted);
+  font-style: italic;
+}
+.thumb {
+  height: 40px;
+  max-width: 90px;
+  object-fit: cover;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+}
+.transcript {
+  margin: 8px 0;
+  padding: 8px 12px;
+  border-left: 3px solid var(--border);
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+.schedule {
+  display: flex;
+  gap: 8px;
+}
+.recWrap {
+  position: relative;
+}
+.recBtn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+}
+.recOn {
+  border-color: #e03131;
+  color: #e03131;
+  font-variant-numeric: tabular-nums;
+}
+.recDot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: #e03131;
+  flex: none;
+}
+.recOn .recSquare,
+.recSquare {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  background: #e03131;
+  animation: rec-blink 1s infinite;
+}
+.recPanel {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  z-index: 30;
+  width: 380px;
+  max-width: calc(100vw - 48px);
+  padding: 12px;
+  background: var(--bg-elevated, var(--bg));
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+}
+.recPanel .apps {
+  max-height: 180px;
+}
+.recStart {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #e03131;
+  border-color: #e03131;
+  color: #fff;
+}

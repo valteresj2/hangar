@@ -188,8 +188,13 @@ export class SharedMachine {
         // the first beat answers at once (the panel leaves "Conectando…"); the next ones long-poll
         const wait = first ? 0 : (this.d.waitS ?? 20)
         first = false
+        // locked: the session is locked (the platform keeps a loan waiting instead of failing, and warns)
+        const locked = await this.d.driver
+          .idle()
+          .then((r) => r.locked)
+          .catch(() => false)
         beat = await this.d.client.heartbeat(
-          { ...this.d.info(), seen_requests: this.pending },
+          { ...this.d.info(), seen_requests: this.pending, locked },
           wait,
           this.cancel.signal
         )

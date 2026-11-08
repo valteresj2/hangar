@@ -10,16 +10,18 @@ import { SchedulesSection } from './sections/Schedules'
 import { SkillsSection } from './sections/Skills'
 import { PlatformSection } from '../platform'
 import { ComputerSection } from '../computer/ComputerSection'
+import { RecordSection } from '../computer/RecordSection'
 import styles from './settings.module.css'
 
 export type SettingsSectionId =
-  'general' | 'providers' | 'platform' | 'computer' | 'mcp' | 'skills' | 'schedules' | 'shortcuts' | 'about'
+  'general' | 'providers' | 'platform' | 'computer' | 'record' | 'mcp' | 'skills' | 'schedules' | 'shortcuts' | 'about'
 
 const SECTIONS: { id: SettingsSectionId; label: string; render: () => ReactNode }[] = [
   { id: 'general', label: 'Geral', render: () => <GeneralSection /> },
   { id: 'providers', label: 'Provedores', render: () => <ProvidersSection /> },
   { id: 'platform', label: 'Plataforma', render: () => <PlatformSection /> },
   { id: 'computer', label: 'Posto no computador', render: () => <ComputerSection /> },
+  { id: 'record', label: 'Gravar uma tarefa', render: () => <RecordSection /> },
   { id: 'mcp', label: 'Servidores MCP', render: () => <McpSection /> },
   { id: 'skills', label: 'Skills e plugins', render: () => <SkillsSection /> },
   { id: 'schedules', label: 'Tarefas agendadas', render: () => <SchedulesSection /> },

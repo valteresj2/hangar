@@ -3,7 +3,16 @@
 // protocol, so the same class drives both. The helper only does what the main process asks after its own checks.
 import { spawn, type ChildProcessWithoutNullStreams } from 'node:child_process'
 import { str } from '../agui'
-import type { Capture, ComputerDriver, FocusedInfo, IdleReading, UiElement, WindowInfo } from './types'
+import type {
+  Capture,
+  ComputerDriver,
+  FocusedInfo,
+  IdleReading,
+  UiElement,
+  WatchEvent,
+  WatchOptions,
+  WindowInfo
+} from './types'
 
 const TIMEOUT_MS = 20_000
 
@@ -147,6 +156,15 @@ export class HelperDriver implements ComputerDriver {
   }
   async scroll(x: number, y: number, direction: string, amount: number): Promise<void> {
     await this.call('scroll', { x, y, direction, amount })
+  }
+  async watchStart(opts: WatchOptions): Promise<void> {
+    await this.call('watch_start', { ...opts })
+  }
+  async watchPoll(): Promise<WatchEvent[]> {
+    return ((await this.call('watch_poll')).events as WatchEvent[]) ?? []
+  }
+  async watchStop(): Promise<WatchEvent[]> {
+    return ((await this.call('watch_stop')).events as WatchEvent[]) ?? []
   }
   async release(): Promise<void> {
     if (this.child && this.child.exitCode === null) await this.call('release').catch(() => undefined)

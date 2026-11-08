@@ -11,6 +11,7 @@ import { SESSIONS, type CreateSessionInput } from '@shared/features/sessions'
 import { api, bridge } from '../../core/api'
 import { useCollection, useSettings } from '../../core/data'
 import { useUi } from '../../core/ui'
+import { RecordButton } from '../computer/RecordButton'
 import { ModelPicker, PlatformRequiredNotice, platformApi, useCanCreateSessions } from '../platform'
 import { anchorBelow, ContextMenu, type MenuAnchor, type MenuItem } from './ContextMenu'
 import { SessionsOverlay } from './Dialogs'
@@ -291,6 +292,7 @@ export function NewSessionView() {
                 </option>
               ))}
             </select>
+            <RecordButton title={title || prompt.split('\n')[0]?.slice(0, 80)} />
             <div className={styles.spacer} />
             <button
               className="btn btn-primary"

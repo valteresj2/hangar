@@ -27,7 +27,7 @@ async function run<T>(fn: () => Promise<T>, setError: (e?: string) => void): Pro
   }
 }
 
-function AppPicker({ value, onChange }: { value: AllowedApp[]; onChange(apps: AllowedApp[]): void }) {
+export function AppPicker({ value, onChange }: { value: AllowedApp[]; onChange(apps: AllowedApp[]): void }) {
   const [found, setFound] = useState<InstalledApp[]>()
   const [q, setQ] = useState('')
   useEffect(() => {

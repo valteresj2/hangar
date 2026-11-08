@@ -50,8 +50,9 @@ controla a conta do Windows lê o que o Hangar lê).
   `webSecurity` e a partição `persist:hangar-browser`; recusa `src` que não seja `http(s)`/`about:blank`. O feature
   preview aplica as mesmas regras, mais as dele: popups viram abas internas, downloads sempre com "salvar como" e
   permissões negadas na partição do navegador.
-- Handler de permissões padrão-negar na sessão principal: só `clipboard-sanitized-write` (botões copiar) e
-  `fullscreen` (player Motion), e só para o próprio renderer. Iframes de origem opaca não recebem nada.
+- Handler de permissões padrão-negar na sessão principal: só `clipboard-sanitized-write` (botões copiar),
+  `fullscreen` (player Motion) e `media` **só de áudio** (o microfone de "Gravar uma tarefa"; a câmera e a tela nunca),
+  e só para o próprio renderer. Iframes de origem opaca não recebem nada.
 - Artifacts HTML/Mermaid rodam em `<iframe sandbox="allow-scripts">`, com origem opaca, sem acesso ao `window.hangar`
   da página e recusados pela guarda de IPC.
 
@@ -124,6 +125,18 @@ por cima da pessoa.
   empréstimo; as ações continuam com a alçada do funcionário. Os passos chegam já liberados pela plataforma e o app
   repete as checagens locais (apps, janela, teclas, pausa, segredo só em campo de senha). Os argumentos de um passo ficam
   cifrados no banco só até o resultado voltar. O token `wst_…` é por computador, cifrado com `safeStorage`.
+- **Gravar uma tarefa** (`computer/recorder.ts`, `recording.ts`): só a pessoa começa, só com os apps que ela escolhe
+  (os bloqueados do posto nunca entram), com o aviso vermelho (Pausar, Parar) sempre visível e fora das capturas. O
+  ajudante observa com ganchos de baixo nível do Windows, mas **nunca registra tecla por tecla**: dos campos guarda o
+  valor final lido pela UI Automation quando o foco sai; de um campo de senha, nem lê o valor — só conta que houve
+  teclas e registra "digitou a senha". Atalhos só com Ctrl/Alt/Win ou Enter/Tab/Esc/F-teclas, e só nos apps
+  escolhidos. Em qualquer outro app fica só "outro app", sem título nem conteúdo, e as capturas pintam de preto as
+  janelas dos outros apps. Tudo fica no computador, cifrado (AES-256-GCM, chave guardada pelo `safeStorage`), por 30
+  dias, e "Apagar" apaga de verdade. Nada sai antes de "Enviar": aí vão os passos, a explicação e até 12 capturas (o
+  áudio só vai para a transcrição, se a pessoa pedir; a plataforma não guarda nem o áudio nem as capturas). O
+  funcionário que nasce da gravação começa em modo sombra e experiência, e senhas viram `secret://nome` no cofre.
+- **Computador bloqueado**: o app diz no heartbeat se a sessão está bloqueada; a plataforma faz o empréstimo esperar
+  (até 2 h, avisando a dona) em vez de falhar, e continua quando o computador volta. Nada é feito na tela de bloqueio.
 - **macOS**: o ajudante em Swift só age com as permissões de Acessibilidade e Gravação de Tela dadas pela pessoa ao Agent
   Hangar Desktop; a captura é feita pelo ScreenCaptureKit só com os apps liberados (os outros nem entram na imagem, e o
   aviso fica de fora). Bloqueados: Ajustes, Acesso às Chaves, Monitor de Atividade, pedidos de senha do sistema, Dock e

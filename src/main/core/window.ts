@@ -127,12 +127,20 @@ export function installWebContentsHardening(): void {
   const ses = session.defaultSession
   ses.setPermissionRequestHandler((contents, permission, callback, details) => {
     const url = details.requestingUrl || contents?.getURL() || ''
-    const allowed = RENDERER_PERMISSIONS.has(permission) && isRendererUrl(url)
+    // The microphone (audio only, never the camera) for the narration of "Gravar uma tarefa".
+    const audioOnly =
+      permission === 'media' &&
+      !!details &&
+      'mediaTypes' in details &&
+      (details.mediaTypes ?? []).length > 0 &&
+      (details.mediaTypes ?? []).every((t) => t === 'audio')
+    const allowed = (RENDERER_PERMISSIONS.has(permission) || audioOnly) && isRendererUrl(url)
     if (!allowed) console.warn(`[hangar] permissão negada: ${permission} (${url.slice(0, 120)})`)
     callback(allowed)
   })
-  ses.setPermissionCheckHandler((_contents, permission, requestingOrigin) => {
-    if (!RENDERER_PERMISSIONS.has(permission)) return false
+  ses.setPermissionCheckHandler((_contents, permission, requestingOrigin, details) => {
+    const audio = permission === 'media' && (details as { mediaType?: string } | undefined)?.mediaType === 'audio'
+    if (!RENDERER_PERMISSIONS.has(permission) && !audio) return false
     // Checks carry an origin; our file:// page reports "file://". Opaque-origin iframes ("null") get nothing.
     const devUrl = process.env['ELECTRON_RENDERER_URL']
     if (devUrl) return requestingOrigin === new URL(devUrl).origin

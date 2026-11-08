@@ -239,6 +239,23 @@ app que só existe aqui. Eles continuam rodando na plataforma; só os passos de 
 - O que salva, confirma, envia ou paga continua passando pela alçada do funcionário, com a captura da tela. O aviso no
   alto da tela, o Parar, a pausa quando você usa o computador e os segredos só em campo de senha valem do mesmo jeito.
 
+### Gravar uma tarefa e transformar em funcionário
+
+Em **Configurações → Gravar uma tarefa**, você mostra uma vez e o funcionário faz sempre:
+
+1. Escolha os apps da tarefa e comece a gravar. Faça a tarefa como sempre e **explique em voz alta** o que faz e
+   **quando** (ex.: "toda segunda às 9h…"). Um aviso vermelho fica no alto da tela com Pausar e Parar (até 30 min).
+2. O app registra onde você clica, o que fica escrito em cada campo (senha nunca: só que foi digitada), os atalhos e a
+   janela em cada clique — só nos apps escolhidos. Fica tudo neste computador, cifrado, por 30 dias.
+3. Na revisão você apaga o que não quiser, transcreve a narração (pelo modelo de fala da sua empresa) ou escreve a
+   explicação, e envia. A plataforma monta o rascunho: procedimento, o que muda a cada vez, o que confirma algo, a
+   agenda e as perguntas que a gravação não respondeu.
+4. Você corrige o rascunho, responde as perguntas e contrata: o funcionário nasce em **modo sombra** e **período de
+   experiência**, ensaia neste computador (compartilhado, perguntando a cada uso) e depois roda na agenda.
+
+Por enquanto no Windows. O computador precisa estar ligado e desbloqueado no horário: bloqueado, a tarefa espera até 2 h
+e avisa você.
+
 ### Acompanhar a tarefa até o fim na própria sessão
 
 Quando a sessão passa uma tarefa a um digital employee, ela passa a acompanhar essa tarefa até o fim. Um cartão acima

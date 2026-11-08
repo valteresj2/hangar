@@ -66,6 +66,42 @@ export interface IdleReading {
   locked: boolean
 }
 
+/** What the person did while a task was being recorded (the helper's watch mode). */
+export interface WatchEvent {
+  /** ms since the watch started. */
+  t: number
+  kind: 'click' | 'type' | 'key' | 'window'
+  /** In an app that is not being recorded: nothing else is reported. */
+  outside?: boolean
+  button?: 'left' | 'right'
+  x?: number
+  y?: number
+  window?: string
+  process?: string
+  element?: { name: string; type: string; password?: boolean }
+  /** click: PNG (base64) of the window at that moment, other apps blacked out. */
+  frame?: string
+  rect?: Rect
+  scale?: number
+  field?: string
+  fieldType?: string
+  /** type: the field's final value (never for a password field). */
+  value?: string
+  password?: boolean
+  key?: string
+  modifiers?: string[]
+}
+
+export interface WatchOptions {
+  /** Process names (without extension) of the apps being recorded. */
+  processes: string[]
+  maxWidth: number
+  /** Our own windows (the recording indicator): clicks on them are not recorded. */
+  ignoreHwnds: number[]
+  /** Tests only (they click with SendInput): also record injected input. The app never sets it. */
+  acceptInjected?: boolean
+}
+
 export interface ComputerDriver {
   readonly name: string
   start(): Promise<void>
@@ -89,4 +125,8 @@ export interface ComputerDriver {
   idle(): Promise<IdleReading>
   /** Starts an allowed app (the executable or shortcut the person picked). */
   launch(target: string): Promise<void>
+  /** Recording a task (only drivers that support it; Windows for now). */
+  watchStart?(opts: WatchOptions): Promise<void>
+  watchPoll?(): Promise<WatchEvent[]>
+  watchStop?(): Promise<WatchEvent[]>
 }

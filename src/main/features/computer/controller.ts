@@ -692,3 +692,44 @@ export async function dispose(): Promise<void> {
   driver?.dispose()
   driver = undefined
 }
+
+// ------------------------------------------------------------------ for "gravar uma tarefa" (recorder.ts)
+
+/** This computer's driver, started (the recorder watches the screen through the same helper). */
+export async function screenDriver(): Promise<ComputerDriver> {
+  const d = getDriver()
+  await d.start()
+  return d
+}
+
+/** Why the screen cannot be recorded now (an employee is using it), if so. */
+export function screenInUse(): string | undefined {
+  if (mode() === 'worker' && status.status === 'working')
+    return `${config.name ?? 'O funcionário'} está usando este computador agora. Pare ou espere terminar para gravar.`
+  if (mode() === 'shared' && shared.active)
+    return `${shared.active.employee} está usando este computador agora. Espere terminar para gravar.`
+  return undefined
+}
+
+/**
+ * Makes sure this computer is shared with the apps of a recording, asking at each loan (the employee hired from it
+ * rehearses and works here). Returns the platform's id of this computer.
+ */
+export async function shareForRecording(apps: AllowedApp[]): Promise<number> {
+  if (config.slug)
+    throw new Error(
+      'Este computador é o posto de um único funcionário: desligue o posto para compartilhar com o funcionário da gravação.'
+    )
+  if (config.share) {
+    const have = new Set(config.apps.map((a) => a.process.toLowerCase()))
+    const missing = apps.filter((a) => !have.has(a.process.toLowerCase()))
+    if (missing.length) await updateShare({ apps: [...config.apps, ...missing] })
+    return config.share.id
+  }
+  await share({ apps, authMode: 'ask', allowManaged: true, teamIds: [] })
+  const id = shareId()
+  if (id === undefined) throw new Error('Não consegui compartilhar este computador.')
+  return id
+}
+
+const shareId = (): number | undefined => config.share?.id
