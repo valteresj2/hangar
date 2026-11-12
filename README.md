@@ -135,6 +135,23 @@ Modelos abertos, como Qwen, DeepSeek e Llama, e de outros provedores, como GPT e
 compatibilidade** do app. Ela ajusta as requisições do agente para que esses modelos consigam usar as ferramentas. Como funciona e as medições
 estão em [docs/COMPAT.md](docs/COMPAT.md).
 
+### Motor Hangar Harness
+
+Além do Claude Code, o app roda sessões no **[Hangar Harness](https://github.com/valteresj2/HangarHarness)**, o nosso
+harness de agentes. Num perfil de gateway (OpenRouter, LiteLLM, o gateway da empresa), troque o campo **Motor** para
+**Hangar Harness** em **Configurações → Provedores**: o agente passa a falar a API de chat da OpenAI direto com o
+gateway, e modelos abertos e de outros provedores usam as ferramentas sem a camada de adaptação.
+
+- Tudo o que você vê numa sessão continua igual: streaming, cartões de ferramenta com diff, lista de tarefas, pedidos
+  de permissão, perguntas, custo e tokens, interromper e retomar depois de fechar o app.
+- As ferramentas do Agent Hangar (plataforma), as instruções do projeto, as lições, os Artifacts e os vídeos Hangar
+  Motion funcionam nos dois motores.
+- Precisa do **Python 3.11 ou mais novo** neste computador e de um **modelo padrão** no perfil.
+- Voltar/bifurcar a conversa, slash commands e o modo Rápido ficam só no Claude Code. O Lab e a bancada de modelos
+  continuam usando o Claude Code.
+
+Detalhes, requisitos e a tabela completa em [docs/HANGAR-ENGINE.md](docs/HANGAR-ENGINE.md).
+
 ### Recursos do dia a dia
 
 - **Paleta de comandos** (Ctrl+K) para chegar a qualquer sessão, painel ou configuração.
@@ -340,7 +357,8 @@ As conversas das sessões ficam em `~/.claude/projects`, no mesmo formato do CLI
 
 ## Desenvolvimento
 
-Requisitos: Node 24+ e o `claude` CLI instalado e logado. Testado principalmente no Windows 11.
+Requisitos: Node 24+ e o `claude` CLI instalado e logado; para o motor Hangar, Python 3.11+. Testado principalmente
+no Windows 11.
 
 ```bash
 npm install
@@ -369,20 +387,23 @@ partes:
 - `src/renderer/src/features/<feature>`: as telas;
 - `src/shared/features/<feature>.ts`: o contrato de IPC tipado entre os dois.
 
+O motor Hangar Harness vai embutido em `resources/harness` (atualize com `npm run harness:sync`).
+
 Os módulos são `sessions`, `engine`, `terminal`, `git`, `preview`, `settings`, `harness`, `lab`, `bench`,
 `onboarding`, `updater`, `platform` e `workspace`. Detalhes em [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 ## Documentação
 
-| Documento                                                        | Assunto                                                       |
-| ---------------------------------------------------------------- | ------------------------------------------------------------- |
-| [ARCHITECTURE.md](docs/ARCHITECTURE.md)                          | Pastas, features, IPC, provedores, plataforma e workspace     |
-| [FEATURES.md](docs/FEATURES.md)                                  | Levantamento de funcionalidades e prioridades                 |
-| [COMPAT.md](docs/COMPAT.md)                                      | Camada de compatibilidade e bancada de modelos                |
-| [SECURITY.md](docs/SECURITY.md)                                  | Modelo de ameaças e proteções                                 |
-| [RELEASE.md](docs/RELEASE.md)                                    | Instaladores, atualização automática, assinatura e publicação |
-| [docs/platform/](docs/platform)                                  | Contratos com a plataforma Agent Hangar                       |
-| [real-test-desktop.md](docs/agents/reports/real-test-desktop.md) | Teste real de ponta a ponta pelo app, conectado à plataforma  |
+| Documento                                                        | Assunto                                                        |
+| ---------------------------------------------------------------- | -------------------------------------------------------------- |
+| [ARCHITECTURE.md](docs/ARCHITECTURE.md)                          | Pastas, features, IPC, provedores, plataforma e workspace      |
+| [FEATURES.md](docs/FEATURES.md)                                  | Levantamento de funcionalidades e prioridades                  |
+| [COMPAT.md](docs/COMPAT.md)                                      | Camada de compatibilidade e bancada de modelos                 |
+| [HANGAR-ENGINE.md](docs/HANGAR-ENGINE.md)                        | O motor Hangar Harness: requisitos, o que muda e como funciona |
+| [SECURITY.md](docs/SECURITY.md)                                  | Modelo de ameaças e proteções                                  |
+| [RELEASE.md](docs/RELEASE.md)                                    | Instaladores, atualização automática, assinatura e publicação  |
+| [docs/platform/](docs/platform)                                  | Contratos com a plataforma Agent Hangar                        |
+| [real-test-desktop.md](docs/agents/reports/real-test-desktop.md) | Teste real de ponta a ponta pelo app, conectado à plataforma   |
 
 ## Licença e avisos
 

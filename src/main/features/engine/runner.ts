@@ -71,6 +71,8 @@ export interface RunnerHost {
 type UserContent = SDKUserMessage['message']['content']
 
 export class Runner {
+  /** Which agent drives the session (the other one is HangarRunner, engine/hangar/runner.ts). */
+  readonly engine = 'claude' as const
   private q: Query | undefined
   private input: MessageQueue | undefined
   private starting: Promise<void> | undefined

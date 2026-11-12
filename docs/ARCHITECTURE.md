@@ -67,6 +67,17 @@ está no comentário do arquivo. Use o bus para reagir a sessões; use o `api.ts
   traduzidos em variáveis de ambiente do Claude Code. O segredo de cada perfil fica cifrado no main e nunca volta ao
   renderer.
 
+## Dois motores de sessão
+
+`engine/registry.ts` entrega um runner por sessão, e o perfil de provedor da sessão decide qual
+(`ProviderProfile.engine`): `Runner` (Claude Code pelo Agent SDK, o padrão) ou `HangarRunner`
+(`engine/hangar/runner.ts`), que conduz o [Hangar Harness](https://github.com/valteresj2/HangarHarness) — Python puro,
+embutido em `resources/harness` — por um processo `python -m hangar bridge` e JSON em linhas (`hangar/bridge.ts`). Os
+dois têm a mesma superfície (`send`, `interrupt`, `respond`, `setOptions`, `state`, `note`, `close`) e produzem as
+mesmas entradas de transcrição e os mesmos eventos no `bus`, então IPC, renderer e os outros features não distinguem
+o motor. As traduções (nomes de ferramenta, modos de permissão, tokens) estão em `hangar/map.ts`. O que é de um motor
+só e os requisitos estão em [HANGAR-ENGINE.md](HANGAR-ENGINE.md).
+
 ## Plataforma Agent Hangar
 
 O feature `platform` conecta o app à plataforma (contrato em `docs/platform/app-api-phase1.md`): login OAuth com

@@ -28,6 +28,11 @@ jobs:
           node-version: 24
           cache: npm
 
+      # The Hangar engine (resources/harness) runs on Python 3.11+; its unit and E2E tests are skipped without it.
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       # Installs Electron, the Agent SDK's bundled claude.exe (used by the E2E tests) and node-pty's prebuilds.
       - name: Install dependencies
         run: npm ci

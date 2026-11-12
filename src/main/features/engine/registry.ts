@@ -3,26 +3,44 @@ import { db } from '../../core/store'
 import type { EngineState, SlashCommandInfo, TranscriptEntry } from '../../../shared/features/engine'
 import { fromAssistantContent, promptTextFromUserContent, toolResultsFromUserContent, type EntryDraft } from './convert'
 import { Runner } from './runner'
-import { effectiveProviderId, providerInfo } from './providers'
+import { HangarRunner } from './hangar/runner'
+import { effectiveProviderId, profiles, providerInfo } from './providers'
+import type { SessionEngine } from '../../../shared/providers'
 import { loadSdk, probeCommands } from './sdk'
 import { appendEntries, makeEntry, readEntries, transcriptExists } from './transcript'
 
-const runners = new Map<string, Runner>()
+/** A session is driven by Claude Code (Runner) or by the Hangar Harness (HangarRunner); both have the same surface. */
+export type SessionRunner = Runner | HangarRunner
+
+const runners = new Map<string, SessionRunner>()
 let activeSessionId: string | undefined
 
 const host = { isActive: (id: string) => id === activeSessionId }
 
-export function runnerFor(sessionId: string): Runner {
+/** The engine of the profile a session runs under (the profile decides; see ProviderProfile.engine). */
+export function engineOf(sessionId: string): SessionEngine {
+  const id = effectiveProviderId(db('sessions').get(sessionId))
+  return profiles().find((p) => p.id === id)?.engine === 'hangar' ? 'hangar' : 'claude'
+}
+
+export function runnerFor(sessionId: string): SessionRunner {
   let r = runners.get(sessionId)
+  if (!db('sessions').get(sessionId)) throw new Error(`Sessão ${sessionId} não encontrada`)
+  const engine = engineOf(sessionId)
+  // The profile's engine changed since this runner was made (edited in Settings): replace it between turns.
+  if (r && r.engine !== engine && !r.state().busy) {
+    r.close()
+    runners.delete(sessionId)
+    r = undefined
+  }
   if (!r) {
-    if (!db('sessions').get(sessionId)) throw new Error(`Sessão ${sessionId} não encontrada`)
-    r = new Runner(sessionId, host)
+    r = engine === 'hangar' ? new HangarRunner(sessionId, host) : new Runner(sessionId, host)
     runners.set(sessionId, r)
   }
   return r
 }
 
-export function existingRunner(sessionId: string): Runner | undefined {
+export function existingRunner(sessionId: string): SessionRunner | undefined {
   return runners.get(sessionId)
 }
 
@@ -53,6 +71,8 @@ export async function slashCommandsFor(sessionId: string): Promise<SlashCommandI
   if (r?.commands.length) return r.commands
   const s = db('sessions').get(sessionId)
   if (!s) return []
+  // Slash commands belong to Claude Code; a Hangar-engine session has none (and must not start a CLI to ask).
+  if (engineOf(sessionId) === 'hangar') return []
   try {
     return await probeCommands(s.worktree?.path ?? s.cwd, effectiveProviderId(s))
   } catch {

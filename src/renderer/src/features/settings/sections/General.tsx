@@ -146,6 +146,16 @@ function CliCard({ settings }: { settings: Settings }) {
           </button>
         )}
       </Row>
+      <Row
+        label="Python do motor Hangar"
+        hint="Perfis de gateway com o motor Hangar Harness rodam em Python 3.11+. Deixe vazio para usar o do PATH."
+      >
+        <LazyInput
+          value={settings.hangarPythonPath ?? ''}
+          placeholder="python"
+          onCommit={(path) => void api.patchSettings({ hangarPythonPath: path?.trim() || undefined })}
+        />
+      </Row>
       <Row label="Versão">
         {info?.version ? (
           <span>{info.version}</span>

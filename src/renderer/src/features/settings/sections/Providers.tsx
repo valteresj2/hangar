@@ -397,6 +397,25 @@ function ProviderForm({
         {kind === 'gateway' && (
           <>
             <div className={`${styles.formFull} ${styles.cardTitle}`} style={{ padding: '6px 0 0' }}>
+              Motor das sessões
+            </div>
+            <label>Motor</label>
+            <div>
+              <Segmented
+                value={draft.engine ?? 'claude'}
+                onChange={(engine) => set({ engine: engine === 'claude' ? undefined : engine })}
+                options={[
+                  { value: 'claude', label: 'Claude Code' },
+                  { value: 'hangar', label: 'Hangar Harness' }
+                ]}
+              />
+            </div>
+            <div className={`${styles.formFull} ${styles.hint}`}>
+              {draft.engine === 'hangar'
+                ? 'O Hangar Harness fala a API de chat da OpenAI direto com o gateway (em <URL base>/v1): modelos abertos e de outros provedores usam as ferramentas sem a camada de adaptação. Precisa do Python 3.11+ neste computador. Defina o modelo padrão acima com o id que o gateway usa (ex.: openai/gpt-4o). Voltar/bifurcar e os slash commands ficam só no Claude Code.'
+                : 'O Claude Code conduz as sessões; modelos que não são Claude passam pela camada de adaptação abaixo.'}
+            </div>
+            <div className={`${styles.formFull} ${styles.cardTitle}`} style={{ padding: '6px 0 0' }}>
               Modelos que não são Claude
             </div>
             <div className={`${styles.formFull} ${styles.hint}`}>

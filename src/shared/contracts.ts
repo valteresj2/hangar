@@ -33,6 +33,8 @@ export interface Session {
   providerId?: string
   /** Claude Code session id, used to resume the conversation. */
   sdkSessionId?: string
+  /** Hangar Harness session id, used to resume the conversation of a session on the Hangar engine. */
+  hangarSessionId?: string
   worktree?: Worktree
   /** Set when the session was imported from another app (its conversation is shown, not resumed). */
   imported?: ImportedConversation
@@ -68,6 +70,8 @@ export interface Settings {
   defaultPermissionMode: PermissionMode
   /** Optional override for the claude executable; defaults to the one on PATH. */
   claudeExecutablePath?: string
+  /** Optional override for the Python that runs the Hangar engine; defaults to the one on PATH (3.11+). */
+  hangarPythonPath?: string
   notifications: boolean
   recentFolders: string[]
   pinnedFolders: string[]

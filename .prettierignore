@@ -13,3 +13,6 @@ playwright-report
 docs/agents/**
 graphify-out
 resources/third-party-notices.json
+
+# The Hangar Harness (Python), vendored from its own repository by build/sync-harness.cjs
+resources/harness

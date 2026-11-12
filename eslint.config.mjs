@@ -82,7 +82,15 @@ const effectCleanupOnly = {
 
 export default tseslint.config(
   {
-    ignores: ['out/**', 'release/**', 'dist/**', 'node_modules/**', 'test-results/**', 'playwright-report/**']
+    ignores: [
+      'out/**',
+      'release/**',
+      'dist/**',
+      'node_modules/**',
+      'test-results/**',
+      'playwright-report/**',
+      'resources/harness/**'
+    ]
   },
 
   js.configs.recommended,

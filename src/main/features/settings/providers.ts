@@ -319,6 +319,7 @@ function validate(input: ProviderInput, existing?: StoredProfile): StoredProfile
     awsProfile: input.kind === 'bedrock' ? awsProfile : undefined,
     models: normalizeModels(input.models),
     compat: input.kind === 'gateway' ? normalizeCompat(input.compat) : undefined,
+    engine: input.kind === 'gateway' && input.engine === 'hangar' ? 'hangar' : undefined,
     extraEnv: normalizeExtraEnv(input.extraEnv),
     createdAt: existing?.createdAt ?? Date.now(),
     updatedAt: Date.now()

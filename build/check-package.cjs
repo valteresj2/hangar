@@ -87,6 +87,19 @@ const sdkWanted = `claude-agent-sdk-${platform}-${arch}`
 for (const d of sdkPackages) if (d !== sdkWanted) fail(`extra Agent SDK package @anthropic-ai/${d}`)
 checkBinary(join(sdkScope, sdkWanted, os === 'win' ? 'claude.exe' : 'claude'), { executable: true })
 
+// Hangar engine: the Python harness must sit unpacked next to app.asar (Python cannot read inside the archive).
+const harness = join(resources, 'app.asar.unpacked', 'resources', 'harness')
+for (const f of [
+  'hangar/bridge.py',
+  'hangar/agent.py',
+  'hangar/__main__.py',
+  'hangar/skills/dashboard/SKILL.md',
+  'VERSION'
+]) {
+  if (existsSync(join(harness, f))) ok.push(`resources/harness/${f}`)
+  else fail(`missing resources/harness/${f} (Hangar engine; run npm run harness:sync)`)
+}
+
 // node-pty
 const pty = join(unpacked, 'node-pty')
 const prebuilds = join(pty, 'prebuilds')

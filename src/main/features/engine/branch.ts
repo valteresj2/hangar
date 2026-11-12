@@ -22,7 +22,7 @@ import {
 import { promptTextFromUserContent, toolResultsFromUserContent } from './convert'
 import { loadImage } from './images'
 import { setRewindPoint } from './points'
-import { closeRunner, existingRunner, history, runnerFor } from './registry'
+import { closeRunner, engineOf, existingRunner, history, runnerFor } from './registry'
 import { loadSdk } from './sdk'
 import { writeEntries } from './transcript'
 import { assertCanCreateSessions } from '../platform/api'
@@ -85,12 +85,17 @@ function assertIdle(sessionId: string): void {
   if (existingRunner(sessionId)?.state().busy) throw new Error('Pare a geração antes de voltar ou bifurcar.')
 }
 
+/** Rewind and fork work on the Claude Code session file; the Hangar engine keeps its conversation elsewhere. */
+const HANGAR_UNSUPPORTED = 'Voltar e bifurcar ainda não estão disponíveis em sessões do motor Hangar.'
+
 function errorText(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
 export async function rewindPreview(sessionId: string, entryId: string): Promise<RewindPreview> {
   const s = sessionOf(sessionId)
+  if (engineOf(sessionId) === 'hangar')
+    return { canRewindConversation: false, canRewindFiles: false, filesChanged: [], filesError: HANGAR_UNSUPPORTED }
   const { entries, idx } = await findUserEntry(sessionId, entryId)
   const none = { canRewindFiles: false, filesChanged: [] }
   if (!s.sdkSessionId) return { canRewindConversation: true, ...none, filesError: 'Ainda não há sessão do agente.' }
@@ -115,6 +120,7 @@ export async function rewindPreview(sessionId: string, entryId: string): Promise
 }
 
 export async function rewind(sessionId: string, entryId: string, opts: RewindOptions = {}): Promise<RewindResult> {
+  if (engineOf(sessionId) === 'hangar') throw new Error(HANGAR_UNSUPPORTED)
   assertIdle(sessionId)
   const s = sessionOf(sessionId)
   const { entries, idx, entry } = await findUserEntry(sessionId, entryId)
@@ -161,6 +167,7 @@ export async function rewind(sessionId: string, entryId: string, opts: RewindOpt
 }
 
 export async function fork(sessionId: string, entryId: string): Promise<ForkResult> {
+  if (engineOf(sessionId) === 'hangar') throw new Error(HANGAR_UNSUPPORTED)
   assertIdle(sessionId)
   const s = sessionOf(sessionId)
   const { entries, idx } = await findUserEntry(sessionId, entryId)

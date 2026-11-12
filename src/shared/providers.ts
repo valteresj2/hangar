@@ -50,10 +50,20 @@ export interface ProviderCompat {
   reasoning?: boolean
 }
 
+/**
+ * Which agent drives the sessions of a profile.
+ * - `claude` (default): Claude Code through the Agent SDK. Non-Claude models go through the compat layer.
+ * - `hangar`: the Hangar Harness (resources/harness, engine/hangar/). It speaks the OpenAI chat API natively, so a
+ *   gateway's open and third-party models are reached without translation. Gateway profiles only.
+ */
+export type SessionEngine = 'claude' | 'hangar'
+
 export interface ProviderProfile {
   id: string
   name: string
   kind: ProviderKind
+  /** gateway: the agent that runs this profile's sessions (default: claude). */
+  engine?: SessionEngine
   /** gateway / anthropic (optional override) / foundry. */
   baseUrl?: string
   /** gateway: how the secret is sent. */
