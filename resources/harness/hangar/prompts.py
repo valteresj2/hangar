@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 from pathlib import Path
 
-from . import machine, skills as skills_mod
+from . import machine, project, skills as skills_mod
 from .toolcall import text_protocol_prompt
 
 CORE = """You are Hangar, an autonomous agent that solves the user's task end to end on this machine using tools.
@@ -42,14 +42,7 @@ ROLE = {
 
 
 def project_instructions(cwd: Path) -> str:
-    for name in ("HANGAR.md", "AGENTS.md", "CLAUDE.md"):
-        p = cwd / name
-        if p.is_file():
-            try:
-                return f"\n\n# Project instructions ({name})\n" + p.read_text(encoding="utf-8", errors="replace")[:4000]
-            except OSError:
-                pass
-    return ""
+    return "".join(f"\n\n# Project instructions ({name})\n{text}" for name, text in project.instructions(cwd))
 
 
 def build(session, agent) -> str:
@@ -59,9 +52,15 @@ def build(session, agent) -> str:
     elif agent.role == "main":
         parts.append(LONG)
     parts.append(ROLE.get(agent.role, ""))
+    if getattr(agent, "extra_system", ""):
+        parts.append("\n\n# Your role in this project (sub-agent definition)\n" + agent.extra_system)
     parts.append(f"\n\n# Environment\n- Working directory: {session.cwd}\n- Date: {datetime.date.today().isoformat()}\n"
                  + machine.describe(session.machine, session.shell_name))
     parts.append(project_instructions(session.cwd))
+    defs = project.agents(session.cwd) if agent.role == "main" and "task" in agent.toolmap else {}
+    if defs:
+        parts.append("\n\n# Project sub-agents (delegate with the task tool: task(prompt, agent=\"name\"))\n"
+                     + "\n".join(f"- {n}: {d['description']}" for n, d in defs.items()))
     if session.cfg.get("system_append") and agent.role == "main":
         parts.append("\n\n" + str(session.cfg["system_append"]).strip())
     if session.skills and agent.role != "verifier":

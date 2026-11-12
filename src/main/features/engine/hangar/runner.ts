@@ -67,7 +67,7 @@ function record(v: unknown): Record<string, unknown> {
 
 export class HangarRunner {
   readonly engine = 'hangar' as const
-  /** The harness has no slash commands; skills are loaded by the model on demand. */
+  /** The project's slash commands (.claude/commands), as the harness reported them when it started. */
   commands: SlashCommandInfo[] = []
   private bridge: HangarBridge | undefined
   private starting: Promise<void> | undefined
@@ -244,6 +244,8 @@ export class HangarRunner {
             ...(platformMcp ? { mcp_servers: { [PLATFORM_MCP_NAME]: { url: platformMcp.url } } } : {}),
             ...(session.hangarSessionId ? { resume: session.hangarSessionId } : {}),
             ...(launch.compat?.contextWindow ? { context_window: launch.compat.contextWindow } : {}),
+            // The folder is the user's project (or a Lab variant of it): its .claude/ hooks apply, as in Claude Code.
+            trust_project: true,
             title: session.title
           },
           onEvent: (ev) => this.handle(ev),
@@ -291,6 +293,18 @@ export class HangarRunner {
       case 'ready': {
         const id = text(ev.session)
         if (id && this.session().hangarSessionId !== id) db('sessions').patch(this.sessionId, { hangarSessionId: id })
+        if (Array.isArray(ev.commands))
+          this.commands = ev.commands.map(record).flatMap((c) =>
+            text(c.name)
+              ? [
+                  {
+                    name: text(c.name),
+                    description: text(c.description),
+                    argumentHint: text(c.argumentHint) || undefined
+                  }
+                ]
+              : []
+          )
         this.ready?.resolve()
         this.ready = undefined
         return

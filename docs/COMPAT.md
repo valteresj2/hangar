@@ -87,11 +87,13 @@ verificação automática pelos arquivos entregues, nunca pelo que o modelo diz:
 | rename-symbol    | edições coordenadas em três arquivos e verificação final            |
 | implement-module | implementar a partir de especificação, com casos de borda           |
 
-Cada tarefa roda em duas variantes:
+Cada tarefa roda em até três variantes:
 
 - **hangar**: a camada de compatibilidade, como as sessões rodam;
 - **baseline**: como o Hangar fazia antes, com conexão direta ao gateway, pensamento adaptativo, `effort` e todas as
-  ferramentas.
+  ferramentas;
+- **harness**: o motor Hangar Harness no lugar do Claude Code, falando a API de chat da OpenAI direto com o gateway
+  ([HANGAR-ENGINE.md](HANGAR-ENGINE.md)). Precisa de Python 3.11+ e de um perfil de gateway.
 
 A bancada mede:
 

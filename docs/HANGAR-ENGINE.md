@@ -41,13 +41,16 @@ próxima mensagem de sessões existentes passam a usar o motor do perfil.
 | Artifacts, Alterações (git), notificações         | Sim: os mesmos eventos de arquivo escrito, fim de rodada e pedido de entrada.                                                                                                                                                           |
 | Vídeos Hangar Motion                              | Sim (o guia vai junto da mensagem, e o cartão aparece ao escrever o `*.motion.json`).                                                                                                                                                   |
 | Tarefas agendadas, Quick Entry, acompanhar tarefa | Sim: usam o mesmo `sendPrompt`.                                                                                                                                                                                                         |
+| Harness do projeto (`.claude/`)                   | Sim: `.claude/CLAUDE.md`, subagentes de `.claude/agents`, slash commands de `.claude/commands` (o menu `/` lista e o harness expande) e os hooks `PreToolUse`/`PostToolUse`/`Stop` de `.claude/settings.json`.                          |
+| Lab                                               | Sim: as variantes rodam como sessões neste motor, com o harness de cada uma; o proponente, o seletor às cegas e o refletor de lições usam o motor do perfil padrão.                                                                     |
+| Bancada de modelos                                | Sim: a variante `harness` roda as mesmas tarefas neste motor, ao lado de `hangar` e `baseline` (Claude Code).                                                                                                                           |
 
 ## O que fica só no Claude Code
 
 - **Voltar e bifurcar** a conversa (dependem do arquivo de sessão e dos checkpoints do Claude Code).
-- **Slash commands** e as skills/subagentes de `.claude/` (o harness tem as próprias skills e sub-agentes).
+- **Slash commands embutidos do Claude Code** (`/compact`, `/review`…): no motor Hangar valem os do projeto.
 - **Modo Rápido**.
-- **Lab, bancada de modelos, refletor de lições e diagnóstico**: continuam chamando o Claude Code diretamente.
+- **Diagnóstico do onboarding**: continua chamando o Claude Code diretamente.
 - **Servidores MCP cadastrados pelo `claude mcp`** (o harness lê `.mcp.json` do projeto e `mcp.json` próprio).
 
 ## Como funciona
@@ -64,12 +67,29 @@ renderer ── IPC (engine:*) ──▶ registry.runnerFor(sessão)
   mensagem; a saída de erro é mascarada antes de aparecer.
 - `hangar/map.ts` — traduções puras (ferramentas, modos, URL, tokens), cobertas por testes.
 - `hangar/locate.ts` — acha o Python e a pasta do harness.
+- `hangar/headless.ts` — `hangarQuery`: uma consulta avulsa, sem sessão nem transcrição (o equivalente de chamar o
+  `query()` do Agent SDK). É o que a bancada, o proponente e o seletor do Lab e o refletor usam.
+- `hangar/commands.ts` — os slash commands do projeto, lidos dos arquivos (para o menu `/` antes de o processo existir).
 - O protocolo está descrito em `resources/harness/hangar/bridge.py`.
+
+## Lab e bancada neste motor
+
+- **Variantes do Lab**: cada variante é uma sessão num worktree com o harness dela escrito em `.claude/`. No motor
+  Hangar a sessão começa com `trust_project`, então instruções, subagentes, comandos e hooks da variante valem como
+  valeriam no Claude Code.
+- **Proponente**: roda com `allowed_tools` de arquivo apenas (`read`, `glob`, `grep`, `write`, `edit`), `confine` (as
+  ferramentas não saem da pasta de evidências) e modo `ask`; cada escrita passa pela mesma regra do Claude Code
+  (`stageToolRule`): só arquivos da superfície do harness, dentro de `harness/`.
+- **Seletor às cegas e refletor**: `allowed_tools: []`, uma única resposta de texto, numa pasta vazia.
+- **Bancada**: a variante `harness` usa a mesma pasta temporária, o mesmo prompt, a mesma verificação e a mesma
+  estimativa de custo das outras; "turnos" são os passos do harness. Só existe em perfis de gateway.
+
+O motor do Lab e do refletor é o do **perfil padrão**; o da bancada é escolhido pela variante.
 
 ## Atualizar o harness embutido
 
 ```bash
-npm run harness:sync -- --tag v0.2.0            # de uma versão publicada
+npm run harness:sync -- --tag v0.3.0            # de uma versão publicada
 npm run harness:sync -- ../HangarHarness        # de um checkout local
 ```
 
@@ -78,8 +98,9 @@ O script copia o pacote `hangar` para `resources/harness` e grava `resources/har
 ## Testes
 
 - `tests/unit/hangar-engine.test.ts` — mapeamentos, e um `HangarRunner` de verdade com o bridge em Python contra um
-  servidor OpenAI falso (`tests/mock-openai`): permissão, modos, interrupção, retomada.
-- `tests/e2e/hangar-engine.spec.ts` — o app aberto, com o mesmo servidor falso.
+  servidor OpenAI falso (`tests/mock-openai`): permissão, modos, interrupção, retomada, slash commands, consulta
+  avulsa, a bancada na variante `harness`, e o proponente, o seletor e o refletor do Lab.
+- `tests/e2e/hangar-engine.spec.ts` — o app aberto, com o mesmo servidor falso (sessão, bancada e comandos).
 - `tests/e2e/hangar-engine-real.spec.ts` — opcional, contra um modelo real pelo OpenRouter
   (`HANGAR_REAL_OPENROUTER_KEY`).
 

@@ -28,6 +28,7 @@ import subprocess
 from pathlib import Path
 from types import SimpleNamespace
 
+from . import project
 from .config import HOME
 
 EVENTS = ("pre_tool", "post_tool", "pre_finish", "session_end")
@@ -68,7 +69,10 @@ class Hooks:
             session.bus.emit("notice", level="info", text="project hooks that execute code were skipped: this folder is not trusted "
                                                          "(use --trust-project or trusted_projects in ~/.hangar/config.toml)")
         self.finish_pushes = 0
-        self.active = bool(self.rules or self.plugins)
+        # Hooks the project already has for Claude Code (.claude/settings.json) run here too: they execute project
+        # code, so they follow the same trust rule as `run` rules and plugins.
+        self.claude = project.claude_hooks(session.cwd) if self.trusted else {}
+        self.active = bool(self.rules or self.plugins or self.claude)
         self.ctx = SimpleNamespace(cwd=session.cwd, session_id=session.id, model=session.model, session=session,
                                    note=lambda text: session.bus.emit("notice", level="info", text=str(text)))
 
@@ -103,6 +107,39 @@ class Hooks:
             if isinstance(out, str) and out.strip():
                 yield out.strip()
 
+    def _claude(self, event: str, name: str, args: dict, extra: dict | None = None) -> list[str]:
+        """Runs the matching Claude Code hooks. Returns the messages of those that block (exit code 2 or a block decision)."""
+        hooks = self.claude.get(event) or []
+        if not hooks:
+            return []
+        tool, tool_input = project.claude_tool(name, args, self.s.cwd) if name else ("", {})
+        payload = json.dumps({"hook_event_name": event, "session_id": self.s.id, "cwd": str(self.s.cwd), "tool_name": tool,
+                              "tool_input": tool_input, **(extra or {})}, ensure_ascii=False, default=str).encode("utf-8")
+        blocked = []
+        for h in hooks:
+            if name and not project.matches(h["matcher"], tool):
+                continue
+            try:
+                p = subprocess.run([*self.s.shell_argv, h["command"]], cwd=str(self.s.cwd), input=payload, capture_output=True,
+                                   timeout=h["timeout"], env={**os.environ, "CLAUDE_PROJECT_DIR": str(self.s.cwd), "PYTHONIOENCODING": "utf-8"})
+            except (subprocess.TimeoutExpired, OSError):
+                continue
+            out, err = p.stdout.decode("utf-8", "replace").strip(), p.stderr.decode("utf-8", "replace").strip()
+            reason = ""
+            if p.returncode == 2:
+                reason = err or out or "blocked"
+            elif out.startswith("{"):
+                try:
+                    d = json.loads(out)
+                    spec = d.get("hookSpecificOutput") or {}
+                    if d.get("decision") in ("block", "deny") or spec.get("permissionDecision") == "deny":
+                        reason = str(d.get("reason") or spec.get("permissionDecisionReason") or "blocked")
+                except ValueError:
+                    pass
+            if reason:
+                blocked.append(reason[-1500:])
+        return blocked
+
     def _log(self, event: str, action: str, name: str, message: str) -> None:
         self.s.bus.emit("hook", event=event, action=action, tool=name, message=message[:400])
 
@@ -125,6 +162,9 @@ class Hooks:
                 if code != 0:
                     self._log("pre_tool", "deny", name, out)
                     return f"blocked by project check `{r['command']}` (exit {code}): {out}"
+        for msg in self._claude("PreToolUse", name, args):
+            self._log("pre_tool", "deny", name, msg)
+            return f"blocked by a project hook: {msg}"
         for msg in self._plugins("pre_tool", name, args):
             self._log("pre_tool", "deny", name, msg)
             return f"blocked by plugin: {msg}"
@@ -144,6 +184,7 @@ class Hooks:
             elif r.get("message"):
                 extra.append(f"[project rule] {r['message']}")
                 self._log("post_tool", "warn", name, r["message"])
+        extra += [f"[project hook] {m}" for m in self._claude("PostToolUse", name, args, {"tool_response": output[:4000]})]
         extra += [f"[plugin] {m}" for m in self._plugins("post_tool", name, args, ok, output)]
         return ("\n" + "\n".join(extra)) if extra else ""
 
@@ -160,6 +201,7 @@ class Hooks:
             elif r.get("message") and not r.get("_said"):
                 r["_said"] = True                         # advisory rules speak once
                 problems.append(r["message"])
+        problems += self._claude("Stop", "", {})
         problems += list(self._plugins("pre_finish", text))
         if not problems:
             return ""

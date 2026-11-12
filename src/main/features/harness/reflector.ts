@@ -6,6 +6,8 @@
 import { structuredPatch } from 'diff'
 import type { EditRow, EditVerdict, HarnessTree, LessonConfidence, ReflectInput } from '../../../shared/harness'
 import { settings } from '../../core/store'
+import { engineOfProfile, hangarQuery } from '../engine/hangar/headless'
+import { maskSecrets } from '../engine/providers'
 import { claudeLaunchOptions, loadSdk } from '../engine/sdk'
 import { scratchDir } from './data'
 
@@ -276,6 +278,23 @@ export function parseReflection(text: string): ParsedReflection {
 
 /** One headless, tool-less query; returns the final text. */
 export async function runReflector(prompt: string, model?: string): Promise<string> {
+  if (engineOfProfile() === 'hangar') {
+    const r = await hangarQuery({
+      cwd: scratchDir(),
+      prompt,
+      model: model || settings().get().defaultModel,
+      permission: 'readonly',
+      allowedTools: [],
+      system: SYSTEM,
+      maxSteps: 3,
+      timeoutMs: TIMEOUT_MS
+    })
+    if (r.text) return r.text
+    if (r.status === 'interrupted') throw new Error('O refletor demorou demais e foi interrompido.')
+    throw new Error(
+      r.error ? `O refletor terminou com erro: ${maskSecrets(r.error, r.secrets)}` : 'O refletor não devolveu texto.'
+    )
+  }
   const sdk = await loadSdk()
   const abort = new AbortController()
   const timer = setTimeout(() => abort.abort(), TIMEOUT_MS)

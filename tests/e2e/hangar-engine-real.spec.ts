@@ -84,3 +84,42 @@ test('motor Hangar com modelo real: cria um script, pede permissão para rodar e
   expect(result?.costUsd).toBeGreaterThan(0)
   console.log(`[hangar real] ${MODEL}: ${tools.length} tool calls, custo US$ ${result?.costUsd?.toFixed(5)}`)
 })
+
+test('bancada com modelo real: a variante "harness" entrega as tarefas no motor Hangar', async ({ hangar }) => {
+  const { invoke } = hangar
+  const profile = await invoke<{ id: string }>('settings:providerSave', {
+    name: 'OpenRouter (bancada Hangar)',
+    kind: 'gateway',
+    baseUrl: 'https://openrouter.ai/api',
+    authStyle: 'bearer',
+    engine: 'hangar',
+    models: { default: MODEL }
+  })
+  await invoke('settings:providerSetSecret', profile.id, KEY)
+
+  const runId = await invoke<string>('bench:run', {
+    providerId: profile.id,
+    models: [MODEL],
+    variants: ['harness'],
+    taskIds: ['write-exact', 'edit-config'],
+    maxCostUsd: 0.5
+  })
+  interface Run {
+    status: string
+    costUsd: number
+    results: { taskId: string; ok: boolean; reason?: string; toolCalls: number; turns: number; inputTokens: number }[]
+  }
+  await expect
+    .poll(async () => (await invoke<Run>('bench:get', runId))?.status, { timeout: 280_000, intervals: [2000] })
+    .toBe('done')
+  const run = await invoke<Run>('bench:get', runId)
+  expect(run.results).toHaveLength(2)
+  for (const r of run.results) {
+    expect(r.ok, `${r.taskId}: ${r.reason}`).toBe(true)
+    expect(r.toolCalls).toBeGreaterThan(0)
+    expect(r.inputTokens).toBeGreaterThan(0)
+  }
+  console.log(
+    `[bancada real] ${MODEL}: ${run.results.map((r) => `${r.taskId} ${r.turns} passos`).join(', ')}, estimativa US$ ${run.costUsd.toFixed(4)}`
+  )
+})

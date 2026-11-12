@@ -1,12 +1,15 @@
-// One proposer/composer stage: build its context directory, run a headless Claude Code query that
-// may only edit `harness/`, harvest and validate the result, retry an invalid proposal once and
-// otherwise inherit the harness the stage started from (as harness2's recursion._run_stage does).
+// One proposer/composer stage: build its context directory, run a headless query (Claude Code, or the Hangar
+// Harness when the default profile runs on that engine) that may only edit `harness/`, harvest and validate the
+// result, retry an invalid proposal once and otherwise inherit the harness the stage started from (as harness2's
+// recursion._run_stage does).
 import type { CanUseTool } from '@anthropic-ai/claude-agent-sdk'
-import { existsSync } from 'node:fs'
+import { existsSync, realpathSync } from 'node:fs'
 import { mkdir, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
 import { isHarnessPath, type HarnessSnapshot, type HarnessTree, type Lesson } from '../../../shared/harness'
 import { settings } from '../../core/store'
+import { engineOfProfile, hangarQuery } from '../engine/hangar/headless'
+import { maskSecrets } from '../engine/providers'
 import { claudeLaunchOptions, loadSdk } from '../engine/sdk'
 import { mission, retryNote } from './prompts'
 import { labDir } from './store'
@@ -167,33 +170,82 @@ interface CallResult {
   error?: string
 }
 
-async function callProposer(dir: string, prompt: string, model: string, signal: AbortSignal): Promise<CallResult> {
-  const sdk = await loadSdk()
+/**
+ * What a stage may do with a tool (by its Claude Code name): read inside its directory, write only harness files
+ * under `harness/`. The same rule guards both engines.
+ */
+export function stageToolRule(
+  dir: string,
+  toolName: string,
+  input: Record<string, unknown>
+): { allow: true } | { allow: false; message: string } {
   const inside = (p: unknown): string | undefined => {
     if (typeof p !== 'string' || !p) return undefined
     const rel = relative(dir, resolve(dir, p))
     return rel.startsWith('..') || isAbsolute(rel) ? undefined : rel.replace(/\\/g, '/')
   }
-  const canUseTool: CanUseTool = async (toolName, input) => {
-    if (READ_TOOLS.has(toolName)) {
-      const target = input.file_path ?? input.path
-      if (target === undefined || inside(target) !== undefined) return { behavior: 'allow', updatedInput: input }
-      return { behavior: 'deny', message: 'Only files inside your working directory can be read.' }
-    }
-    if (WRITE_TOOLS.has(toolName)) {
-      const rel = inside(input.file_path)
-      if (!rel?.startsWith('harness/'))
-        return { behavior: 'deny', message: 'Only files under harness/ can be changed.' }
-      const harnessRel = rel.slice('harness/'.length)
-      if (!isHarnessPath(harnessRel)) {
-        return {
-          behavior: 'deny',
-          message: `${harnessRel} is not on the harness surface (CLAUDE.md, .claude/CLAUDE.md, .claude/skills/<name>/…, .claude/agents/<name>.md, .claude/commands/….md, .claude/settings.json, .claude/scripts/…).`
-        }
+  if (READ_TOOLS.has(toolName)) {
+    const target = input.file_path ?? input.path
+    if (target === undefined || inside(target) !== undefined) return { allow: true }
+    return { allow: false, message: 'Only files inside your working directory can be read.' }
+  }
+  if (WRITE_TOOLS.has(toolName)) {
+    const rel = inside(input.file_path)
+    if (!rel?.startsWith('harness/')) return { allow: false, message: 'Only files under harness/ can be changed.' }
+    const harnessRel = rel.slice('harness/'.length)
+    if (!isHarnessPath(harnessRel)) {
+      return {
+        allow: false,
+        message: `${harnessRel} is not on the harness surface (CLAUDE.md, .claude/CLAUDE.md, .claude/skills/<name>/…, .claude/agents/<name>.md, .claude/commands/….md, .claude/settings.json, .claude/scripts/…).`
       }
-      return { behavior: 'allow', updatedInput: input }
     }
-    return { behavior: 'deny', message: `${toolName} is not available here: only Read, Glob, Grep, Write and Edit.` }
+    return { allow: true }
+  }
+  return { allow: false, message: `${toolName} is not available here: only Read, Glob, Grep, Write and Edit.` }
+}
+
+/** The stage on the Hangar Harness: file tools only, confined to the stage directory, every write decided here. */
+async function callHangarProposer(
+  dir: string,
+  prompt: string,
+  model: string,
+  signal: AbortSignal
+): Promise<CallResult> {
+  try {
+    // The harness reports resolved paths; on Windows the folder may have reached us in 8.3 form.
+    const real = realpathSync.native(dir)
+    const r = await hangarQuery({
+      cwd: real,
+      prompt,
+      model,
+      permission: 'ask',
+      allowedTools: ['read', 'glob', 'grep', 'write', 'edit'],
+      confine: true,
+      maxSteps: 80,
+      signal,
+      onPermission: (tool) => {
+        const rule = stageToolRule(real, tool.name, tool.input)
+        return rule.allow ? { allow: true } : { allow: false, message: rule.message }
+      }
+    })
+    // Out of steps still leaves the edits on disk: harvest them like a normal reply.
+    const failed = r.status === 'error' || r.status === 'interrupted'
+    return {
+      text: r.text,
+      costUsd: r.costUsd,
+      ...(failed ? { error: maskSecrets(r.error || r.status, r.secrets) } : {})
+    }
+  } catch (err) {
+    return { text: '', costUsd: 0, error: err instanceof Error ? err.message : String(err) }
+  }
+}
+
+async function callProposer(dir: string, prompt: string, model: string, signal: AbortSignal): Promise<CallResult> {
+  if (engineOfProfile() === 'hangar') return callHangarProposer(dir, prompt, model, signal)
+  const sdk = await loadSdk()
+  const canUseTool: CanUseTool = async (toolName, input) => {
+    const rule = stageToolRule(dir, toolName, input)
+    return rule.allow ? { behavior: 'allow', updatedInput: input } : { behavior: 'deny', message: rule.message }
   }
 
   const abortController = new AbortController()

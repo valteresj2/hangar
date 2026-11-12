@@ -1,5 +1,6 @@
 // IPC channels and payload types for the "bench" feature (model bench): runs a fixed suite of coding tasks against
-// provider models, with Hangar's compat layer ("hangar") and without it ("baseline"), and scores the deliveries.
+// provider models, with Hangar's compat layer ("hangar"), without it ("baseline") and on the Hangar Harness engine
+// ("harness"), and scores the deliveries.
 export const BENCH = {
   /** () → BenchTaskInfo[] */
   tasks: 'bench:tasks',
@@ -18,8 +19,13 @@ export const BENCH = {
   evProgress: 'bench:event:progress'
 } as const
 
-/** "hangar": the compat layer on (as sessions run). "baseline": Claude Code's requests and options unchanged. */
-export type BenchVariant = 'hangar' | 'baseline'
+/**
+ * "hangar": Claude Code with the compat layer on (as sessions run). "baseline": Claude Code's requests and options
+ * unchanged. "harness": the Hangar Harness engine, talking to the gateway's OpenAI API directly (no Claude Code).
+ */
+export type BenchVariant = 'hangar' | 'baseline' | 'harness'
+
+export const BENCH_VARIANTS: readonly BenchVariant[] = ['hangar', 'baseline', 'harness']
 
 export interface BenchTaskInfo {
   id: string
@@ -76,7 +82,7 @@ export interface BenchResult {
   toolCalls: number
   /** tool_result blocks marked as errors. */
   toolErrors: number
-  /** Tool calls Claude Code rejected for their arguments (InputValidationError). */
+  /** Tool calls the engine rejected for their shape (unknown tool, missing or malformed arguments). */
   invalidToolCalls: number
   /** The first tool errors, "Tool: message" (cut short), to see what went wrong without a transcript. */
   toolErrorSamples?: string[]

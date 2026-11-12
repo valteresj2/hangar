@@ -25,7 +25,7 @@ import threading
 import time
 from pathlib import Path
 
-from . import config
+from . import config, project
 from .agent import Agent
 from .llm import LLMError
 from .runner import build_input
@@ -66,6 +66,12 @@ def _configure(start: dict) -> dict:
     cfg["helper_model"] = str(start.get("model"))        # compaction runs on the profile's own model: no other is guaranteed
     cfg["system_append"] = str(start.get("system_append") or "")
     cfg["model_info"] = start.get("model_info") or {}
+    if start.get("trust_project"):                       # the host vouches for the folder (it is the user's own project)
+        cfg["trust_project"] = True
+    if isinstance(start.get("allowed_tools"), list):     # restrict this conversation's tools ([] = none, a pure judge)
+        cfg["allowed_tools"] = [str(t) for t in start["allowed_tools"]]
+    if start.get("confine"):                             # file tools may not leave the working directory (a sandboxed helper)
+        cfg["confine"] = True
     base = str(start.get("base_url") or "").rstrip("/")
     if base:
         name = "openrouter" if "openrouter.ai" in base else "bridge"
@@ -124,7 +130,8 @@ def main(argv: list[str] | None = None) -> int:
         s.finish("error")
         return 2
     write({"type": "ready", "session": s.id, "resumed": resumed, "model": agent.model, "tier": agent.tier,
-           "context_window": agent.info["context"], "tools": [t.name for t in agent.tools], "log": str(s.dir / "events.jsonl")})
+           "context_window": agent.info["context"], "tools": [t.name for t in agent.tools], "log": str(s.dir / "events.jsonl"),
+           "commands": [{"name": n, "description": c["description"], "argumentHint": c["hint"]} for n, c in project.commands(s.cwd).items()]})
 
     queue: list[dict] = []
     state = {"busy": False, "pending_model": None}
@@ -145,7 +152,10 @@ def main(argv: list[str] | None = None) -> int:
                 agent.messages[0]["content"] = prompts.build(s, agent)
             agent.steps = 0
             agent.max_steps = cfg["max_steps"]
-            content = build_input(s, str(msg.get("text") or ""), [str(a) for a in msg.get("attachments") or []])
+            text, command = project.expand_command(s.cwd, str(msg.get("text") or ""))     # "/name args" -> the command's prompt
+            if command:
+                s.bus.emit("command", name=command)
+            content = build_input(s, text, [str(a) for a in msg.get("attachments") or []])
             parts = content if isinstance(content, list) else [{"type": "text", "text": content}]
             images = [i for i in msg.get("images") or [] if isinstance(i, dict) and i.get("data")]
             if images and "image" in (agent.info.get("modalities") or []):

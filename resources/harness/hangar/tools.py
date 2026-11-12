@@ -14,7 +14,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import media, skills as skills_mod
+from . import media, project, skills as skills_mod
 from .config import PKG_ROOT
 
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".hangar", "dist", "build", ".mypy_cache", ".next", "target"}
@@ -73,7 +73,11 @@ def _resolve(ctx: Ctx, p: str) -> Path:
     path = Path(str(p)).expanduser()
     if not path.is_absolute():
         path = ctx.session.cwd / path
-    return path.resolve()
+    path = path.resolve()
+    s = ctx.session
+    if s.cfg.get("confine") and not any(path == r or r in path.parents for r in (Path(s.cwd).resolve(), Path(s.dir).resolve())):
+        raise ToolError(f"{p} is outside the working directory: this session can only touch files inside {s.cwd}.")
+    return path
 
 
 def _guard_write(ctx: Ctx, path: Path) -> None:
@@ -383,8 +387,14 @@ def t_plan(ctx: Ctx, a: dict) -> str:
 def t_task(ctx: Ctx, a: dict) -> str:
     from .agent import Agent
     s = ctx.session
+    extra, wanted = "", str(a.get("agent") or "").strip()
+    if wanted:                                       # a sub-agent the project defines (.claude/agents/<name>.md)
+        defs = project.agents(s.cwd)
+        if wanted not in defs:
+            raise ToolError(f"unknown agent '{wanted}'. Project sub-agents: {', '.join(defs) or '(none)'}. Omit `agent` for a generic one.")
+        extra = defs[wanted]["prompt"]
     s.sub_count += 1
-    sub = Agent(s, model=ctx.agent.model, role="sub", toolset="all", name=f"sub{s.sub_count}", max_steps=20)
+    sub = Agent(s, model=ctx.agent.model, role="sub", toolset="all", name=f"sub{s.sub_count}", max_steps=20, extra_system=extra)
     out = sub.run(a["prompt"] + "\n\nReturn a concise report (under 400 words) with exact paths/values the caller needs.")
     return out[:8000]
 
@@ -430,7 +440,7 @@ def builtin() -> dict[str, Tool]:
         Tool("plan", "Create/update the task plan. Statuses: pending, in_progress, done.",
              S({"items": {"type": "array", "items": S({"step": STR, "status": STR}, ["step", "status"])}}, ["items"]), t_plan),
         Tool("task", "Delegate a self-contained sub-task to a fresh sub-agent; returns only its report.",
-             S({"prompt": STR}, ["prompt"]), t_task, True),
+             S({"prompt": STR, "agent": STR}, ["prompt"]), t_task, True),
     ]
     return {t.name: t for t in T}
 
@@ -473,4 +483,7 @@ def select(session, toolset: str, tier: str, role: str) -> list[Tool]:
                               S({"query": STR}, ["query"]), t_tool_search, True))
             tools.append(Tool("mcp_call", "Call an MCP tool by the exact name returned by tool_search.",
                               S({"name": STR, "arguments": {"type": "object"}}, ["name"]), t_mcp_call))
+    allow = session.cfg.get("allowed_tools")
+    if allow is not None and role == "main":             # a host restricted this run (e.g. a tool-less judge)
+        tools = [t for t in tools if t.name in allow]
     return tools

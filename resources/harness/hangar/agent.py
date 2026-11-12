@@ -28,8 +28,9 @@ _TRAILING_MARK =re.compile(r"(\s*<\|?[A-Za-z_]{2,24}\|?>)+\s*$")
 
 class Agent:
     def __init__(self, session, model: str | None = None, role: str = "main", toolset: str = "all",
-                 name: str | None = None, max_steps: int | None = None):
+                 name: str | None = None, max_steps: int | None = None, extra_system: str = ""):
         self.s = session
+        self.extra_system = extra_system           # a project sub-agent definition (.claude/agents/<name>.md)
         self.model = model or session.model
         self.role, self.toolset = role, toolset
         self.name = name or role

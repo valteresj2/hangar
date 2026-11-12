@@ -22,6 +22,13 @@ export interface BridgeStart {
   resume?: string
   title?: string
   context_window?: number
+  /** The folder is the user's own project: its .claude/settings.json hooks may run. */
+  trust_project?: boolean
+  /** Harness tool names this conversation may use ([] = none). */
+  allowed_tools?: string[]
+  /** File tools may not leave `cwd`. */
+  confine?: boolean
+  max_steps?: number
 }
 
 export interface BridgeOptions {

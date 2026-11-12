@@ -147,8 +147,10 @@ gateway, e modelos abertos e de outros provedores usam as ferramentas sem a cama
 - As ferramentas do Agent Hangar (plataforma), as instruções do projeto, as lições, os Artifacts e os vídeos Hangar
   Motion funcionam nos dois motores.
 - Precisa do **Python 3.11 ou mais novo** neste computador e de um **modelo padrão** no perfil.
-- Voltar/bifurcar a conversa, slash commands e o modo Rápido ficam só no Claude Code. O Lab e a bancada de modelos
-  continuam usando o Claude Code.
+- O harness do projeto em `.claude/` (instruções, subagentes, slash commands e hooks) vale nos dois motores.
+- O **Lab** roda neste motor quando o perfil padrão o usa (variantes, proponente, seletor e refletor), e a **bancada
+  de modelos** tem a variante `harness`, que compara o motor Hangar com o Claude Code nas mesmas tarefas.
+- Voltar/bifurcar a conversa, os slash commands embutidos do Claude Code e o modo Rápido ficam só no Claude Code.
 
 Detalhes, requisitos e a tabela completa em [docs/HANGAR-ENGINE.md](docs/HANGAR-ENGINE.md).
 

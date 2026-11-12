@@ -2,7 +2,7 @@
 // against a scripted OpenAI-compatible server. No network and no API key; the second part is skipped when the
 // machine has no Python 3.11+.
 import { spawnSync } from 'node:child_process'
-import { existsSync, mkdtempSync, readFileSync, realpathSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -286,11 +286,176 @@ describe.skipIf(!hasPython())('hangar engine: a session on the real bridge', asy
     expect(JSON.stringify(messages)).toContain('crie nota.txt')
   })
 
-  it('rewind and fork are refused clearly; there are no slash commands', async () => {
+  it('rewind and fork are refused clearly', async () => {
     const { rewind, rewindPreview } = await import('../../src/main/features/engine/branch')
     const user = byKind(await entries(), 'user')[0]
     expect((await rewindPreview('s1', user.id)).canRewindConversation).toBe(false)
     await expect(rewind('s1', user.id)).rejects.toThrow(/motor Hangar/)
     expect(await registry.slashCommandsFor('s1')).toEqual([])
   })
+
+  it("the project's slash commands are offered and expanded by the harness", { timeout: 90_000 }, async () => {
+    mkdirSync(join(work, '.claude', 'commands', 'git'), { recursive: true })
+    writeFileSync(
+      join(work, '.claude', 'commands', 'resumo.md'),
+      '---\ndescription: Resume um arquivo\nargument-hint: <arquivo>\n---\nResuma $ARGUMENTS em 3 linhas.'
+    )
+    writeFileSync(join(work, '.claude', 'commands', 'git', 'commit.md'), 'Escreva a mensagem de commit.')
+    expect(await registry.slashCommandsFor('s1')).toEqual([
+      { name: 'git:commit', description: '', argumentHint: undefined },
+      { name: 'resumo', description: 'Resume um arquivo', argumentHint: '<arquivo>' }
+    ])
+    const before = (await results()).length
+    fake.script = [{ text: 'resumido' }]
+    await registry.runnerFor('s1').send('/resumo nota.txt')
+    await until('the command turn', async () => (await results())[before])
+    const messages = fake.requests[fake.requests.length - 1].body.messages
+    expect(messages[messages.length - 1].content).toBe('Resuma nota.txt em 3 linhas.')
+    // What the user typed is what the transcript shows.
+    expect(byKind(await entries(), 'user').at(-1)?.text).toBe('/resumo nota.txt')
+    // A process started after the files exist reports them itself.
+    registry.closeRunner('s1')
+    await new Promise((r) => setTimeout(r, 1500))
+    const runner = registry.runnerFor('s1')
+    await runner.ensureStarted()
+    expect(runner.commands.map((c) => c.name).sort()).toEqual(['git:commit', 'resumo'])
+    rmSync(join(work, '.claude'), { recursive: true, force: true })
+  })
+
+  // ── Headless queries: what the bench, the Lab and the reflector run on this engine ──
+
+  it('a headless query without tools is a single plain completion', { timeout: 60_000 }, async () => {
+    const { hangarQuery, engineOfProfile } = await import('../../src/main/features/engine/hangar/headless')
+    expect(engineOfProfile(profile.id)).toBe('hangar')
+    expect(engineOfProfile('anthropic')).toBe('claude')
+    const from = fake.requests.length
+    fake.script = [{ text: 'resposta direta' }]
+    const r = await hangarQuery({
+      cwd: work,
+      prompt: 'responda',
+      providerId: profile.id,
+      permission: 'readonly',
+      allowedTools: [],
+      system: 'REGRA DO JUIZ'
+    })
+    expect(r.status).toBe('success')
+    expect(r.text.trim()).toBe('resposta direta')
+    expect(r.costUsd).toBeGreaterThan(0)
+    expect(r.outputTokens).toBeGreaterThan(0)
+    expect(r.toolCalls).toBe(0)
+    expect(r.secrets).toEqual([SECRET])
+    const sent = fake.requests.slice(from)
+    expect(sent).toHaveLength(1)
+    expect((sent[0].body as { tools?: unknown }).tools).toBeUndefined()
+    expect(String(sent[0].body.messages[0].content)).toContain('REGRA DO JUIZ')
+    expect(sent[0].auth).toBe(`Bearer ${SECRET}`)
+  })
+
+  it('the bench runs a task on the "harness" variant and scores it', { timeout: 120_000 }, async () => {
+    const bench = await import('../../src/main/features/bench/run')
+    const { loadRun } = await import('../../src/main/features/bench/store')
+    const expected = 'Olá, "Hangar"! Caminho: C:\\temp\\saída\\log.txt — 100% {ok}'
+    fake.script = [
+      { tool: 'read', args: { path: 'nao-existe.txt' } },
+      { tool: 'write', args: { path: 'greeting.txt', content: expected } },
+      { text: 'Criado.' }
+    ]
+    const id = bench.startRun({
+      providerId: profile.id,
+      models: ['fake/model'],
+      variants: ['harness'],
+      taskIds: ['write-exact'],
+      maxTurns: 8
+    })
+    const run = await until(
+      'the bench run',
+      () => {
+        const r = loadRun(id)
+        return r && r.status !== 'running' ? r : undefined
+      },
+      100_000
+    )
+    expect(run.status).toBe('done')
+    const [result] = run.results
+    expect(result.ok, result.reason).toBe(true)
+    expect(result.variant).toBe('harness')
+    expect(result.toolCalls).toBe(2)
+    expect(result.toolErrors).toBe(1)
+    expect(result.toolErrorSamples?.[0]).toMatch(/^read: /)
+    expect(result.turns).toBeGreaterThanOrEqual(3)
+    expect(result.inputTokens).toBeGreaterThan(0)
+    expect(result.costUsd).toBeGreaterThan(0)
+    expect(result.compat).toBeUndefined()
+    expect(run.scores).toMatchObject([{ model: 'fake/model', variant: 'harness', passed: 1, successRate: 1 }])
+  })
+
+  it(
+    'Lab on the Hangar engine: the proposer edits only harness/, the selector and the reflector answer',
+    {
+      timeout: 180_000
+    },
+    async () => {
+      providers.setDefaultProvider(profile.id)
+      const { runStage, stageDir } = await import('../../src/main/features/lab/propose')
+      const { askClaude } = await import('../../src/main/features/lab/select')
+      const { runReflector } = await import('../../src/main/features/harness/reflector')
+
+      const base = { 'CLAUDE.md': '# Regras\n' }
+      fake.script = [
+        { tool: 'read', args: { path: 'task.md' } },
+        {
+          tool: 'write',
+          args: { path: 'harness/CLAUDE.md', content: '# Regras\nRode os testes antes de terminar.\n' }
+        },
+        { tool: 'write', args: { path: 'task.md', content: 'tarefa trocada' } },
+        { tool: 'write', args: { path: 'harness/src/app.js', content: 'x' } },
+        { tool: 'read', args: { path: join(work, 'nota.txt') } },
+        { text: '<notes>Adicionei a regra de testes.</notes>' }
+      ]
+      const out = await runStage({
+        roundId: 'r1',
+        stageId: 'p1',
+        job: 'Improve the harness for this task.',
+        task: 'Corrija o bug do carrinho.',
+        baseTree: base,
+        currentTree: base,
+        runs: [],
+        candidates: [],
+        lessons: [],
+        examples: [],
+        signal: new AbortController().signal
+      })
+      expect(out.error).toBeUndefined()
+      expect(out.fellBack).toBe(false)
+      expect(out.keptBase).toBe(false)
+      expect(out.tree).toEqual({ 'CLAUDE.md': '# Regras\nRode os testes antes de terminar.\n' })
+      expect(out.notes).toBe('Adicionei a regra de testes.')
+      expect(out.costUsd).toBeGreaterThan(0)
+      const dir = stageDir('r1', 'p1')
+      expect(readFileSync(join(dir, 'task.md'), 'utf8').trim()).toBe('Corrija o bug do carrinho.')
+      expect(existsSync(join(dir, 'harness', 'src', 'app.js'))).toBe(false)
+      const told = JSON.stringify(fake.requests[fake.requests.length - 1].body.messages)
+      expect(told).toContain('Only files under harness/ can be changed.')
+      expect(told).toContain('is not on the harness surface')
+      expect(told).toContain('outside the working directory')
+      const offered = (fake.requests[fake.requests.length - 1].body as { tools?: { function: { name: string } }[] })
+        .tools
+      expect(offered?.map((t) => t.function.name).sort()).toEqual(['edit', 'glob', 'grep', 'read', 'write'])
+
+      const candidate = { finalAnswer: 'feito', diffStat: '', diffExcerpt: '', diffTruncated: false, errors: [] }
+      fake.script = [{ text: '<why>B entrega o que foi pedido.</why>\n\n```choice\nB\n```' }]
+      const choice = await askClaude('Corrija o bug.', [
+        { ...candidate, anonId: 'A' },
+        { ...candidate, anonId: 'B' }
+      ])
+      expect(choice).toMatchObject({ anonId: 'B', why: 'B entrega o que foi pedido.' })
+      expect(choice.costUsd).toBeGreaterThan(0)
+      expect((fake.requests[fake.requests.length - 1].body as { tools?: unknown }).tools).toBeUndefined()
+
+      fake.script = [{ text: '<edits>\nnone\n</edits>\n\nNO_ENTRY' }]
+      expect(await runReflector('reflita sobre a rodada')).toContain('NO_ENTRY')
+      const system = String(fake.requests[fake.requests.length - 1].body.messages[0].content)
+      expect(system).toContain('You are the reflector of a harness-improvement loop')
+    }
+  )
 })

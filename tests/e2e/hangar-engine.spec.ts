@@ -1,7 +1,7 @@
 // The Hangar engine end to end: the built app, a gateway profile set to "Hangar Harness", the real Python bridge
 // (resources/harness) and a scripted OpenAI-compatible server. Skipped when the machine has no Python 3.11+.
 import { spawnSync } from 'node:child_process'
-import { existsSync, readFileSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { startMockOpenAI } from '../mock-openai/server.ts'
 import { expect, test } from './fixtures'
@@ -110,6 +110,67 @@ test('motor Hangar: permissão → Permitir → arquivo escrito → resultado �
     expect(
       openai.requests.every((r) => r.path === '/v1/chat/completions' && r.auth === 'Bearer mock-openai-token')
     ).toBe(true)
+  } finally {
+    await openai.close()
+  }
+})
+
+test('bancada: a variante "harness" roda a tarefa no motor Hangar; comandos de barra do projeto aparecem', async ({
+  hangar
+}) => {
+  const openai = await startMockOpenAI()
+  try {
+    const { invoke } = hangar
+    const profile = await invoke<{ id: string }>('settings:providerSave', {
+      name: 'Gateway (bancada Hangar)',
+      kind: 'gateway',
+      baseUrl: openai.url,
+      authStyle: 'bearer',
+      engine: 'hangar',
+      models: { default: 'fake/model' }
+    })
+    await invoke('settings:providerSetSecret', profile.id, 'mock-openai-token')
+    await invoke('settings:providerSetDefault', profile.id)
+
+    openai.script = [
+      {
+        tool: 'write',
+        args: { path: 'greeting.txt', content: 'Olá, "Hangar"! Caminho: C:\\temp\\saída\\log.txt — 100% {ok}' }
+      },
+      { text: 'Criado.' }
+    ]
+    const runId = await invoke<string>('bench:run', {
+      providerId: profile.id,
+      models: ['fake/model'],
+      variants: ['harness'],
+      taskIds: ['write-exact'],
+      maxTurns: 6
+    })
+    interface Run {
+      status: string
+      results: { variant: string; ok: boolean; reason?: string; toolCalls: number; turns: number }[]
+      scores: { variant: string; successRate: number }[]
+    }
+    await expect
+      .poll(async () => (await invoke<Run>('bench:get', runId))?.status, { timeout: 100_000, intervals: [1000] })
+      .toBe('done')
+    const run = await invoke<Run>('bench:get', runId)
+    expect(run.results).toHaveLength(1)
+    expect(run.results[0].ok, run.results[0].reason).toBe(true)
+    expect(run.results[0].variant).toBe('harness')
+    expect(run.results[0].toolCalls).toBe(1)
+    expect(run.scores[0]).toMatchObject({ variant: 'harness', successRate: 1 })
+    expect(openai.requests.every((r) => r.path === '/v1/chat/completions')).toBe(true)
+
+    // Slash commands of the session's folder, without starting any process.
+    const session = await hangar.openNewSession({ title: 'E2E comandos Hangar' })
+    mkdirSync(join(session.cwd, '.claude', 'commands'), { recursive: true })
+    writeFileSync(
+      join(session.cwd, '.claude', 'commands', 'revisar.md'),
+      '---\ndescription: Revisa o diff\n---\nRevise o diff atual. $ARGUMENTS'
+    )
+    const commands = await invoke<{ name: string; description: string }[]>('engine:slashCommands', session.id)
+    expect(commands).toContainEqual(expect.objectContaining({ name: 'revisar', description: 'Revisa o diff' }))
   } finally {
     await openai.close()
   }

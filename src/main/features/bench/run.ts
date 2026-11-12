@@ -3,6 +3,8 @@
 // "hangar" launches exactly like a session (compat proxy route of its own, compatSession options); "baseline"
 // launches like Hangar did before the compat layer (direct to the gateway, adaptive thinking, effort, Claude Code's
 // full toolset). Metrics come from the SDK messages and, for "hangar", from the proxy route's counters.
+// "harness" runs the same task on the Hangar Harness engine instead of Claude Code (engine/hangar/headless.ts):
+// the three variants answer "which engine and layer gets the most out of this model?".
 import { randomUUID } from 'node:crypto'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -21,6 +23,8 @@ import {
 import { broadcast } from '../../core/broadcast'
 import { settings } from '../../core/store'
 import { compatSession, releaseRoute, routeStats } from '../engine/compat'
+import { hangarQuery } from '../engine/hangar/headless'
+import { effortFor, isProviderErrorKind } from '../engine/hangar/map'
 import { claudeLaunch, loadSdk, withEnv } from '../engine/sdk'
 import { resolveProviderLaunch } from '../settings/providers-api'
 import { maskSecrets, providerInfo } from '../engine/providers'
@@ -111,6 +115,8 @@ export function startRun(request: BenchRequest): string {
   if (!tasks.length) throw new Error('Nenhuma tarefa encontrada.')
   // Fails early (and in the caller) when the profile cannot be resolved, e.g. no key saved.
   claudeLaunch(request.providerId)
+  if (variants.includes('harness') && !resolveProviderLaunch(request.providerId).env.ANTHROPIC_BASE_URL)
+    throw new Error('A variante "harness" precisa de um perfil de gateway (com URL base).')
   const repeats = Math.max(1, Math.min(5, Math.round(request.repeats ?? 1)))
 
   const id = `bench_${Date.now().toString(36)}_${randomUUID().slice(0, 4)}`
@@ -185,17 +191,8 @@ function toolResults(msg: SDKMessage): ToolResultBlock[] {
   return msg.message.content.filter((b) => (b as { type?: string }).type === 'tool_result') as ToolResultBlock[]
 }
 
-async function runTask(
-  task: BenchTask,
-  model: string,
-  variant: BenchVariant,
-  repeat: number,
-  request: BenchRequest,
-  state: { stop: boolean; abort?: AbortController }
-): Promise<BenchResult> {
-  const dir = mkdtempSync(join(tmpdir(), `hangar-bench-${task.id}-`))
-  const started = Date.now()
-  const result: BenchResult = {
+function emptyResult(task: BenchTask, model: string, variant: BenchVariant, repeat: number): BenchResult {
+  return {
     taskId: task.id,
     model,
     variant,
@@ -212,6 +209,98 @@ async function runTask(
     cacheReadTokens: 0,
     costUsd: 0
   }
+}
+
+async function removeDir(dir: string): Promise<void> {
+  for (let i = 0; i < 3; i++) {
+    try {
+      rmSync(dir, { recursive: true, force: true })
+      return
+    } catch {
+      await new Promise((r) => setTimeout(r, 300))
+    }
+  }
+}
+
+/** Token-price estimate, the same for every variant so their costs compare. */
+function estimateCost(result: BenchResult, request: BenchRequest): number {
+  const price = priceFor(result.model, request.prices)
+  return ((result.inputTokens + result.cacheReadTokens) * price.input + result.outputTokens * price.output) / 1_000_000
+}
+
+/** One task on the Hangar Harness engine: same folder, prompt, check and metrics as the Claude Code variants. */
+async function runHarnessTask(
+  task: BenchTask,
+  model: string,
+  repeat: number,
+  request: BenchRequest,
+  state: { stop: boolean; abort?: AbortController }
+): Promise<BenchResult> {
+  const dir = mkdtempSync(join(tmpdir(), `hangar-bench-${task.id}-`))
+  const started = Date.now()
+  const result = emptyResult(task, model, 'harness', repeat)
+  const abort = new AbortController()
+  state.abort = abort
+  let secrets: string[] = []
+  let providerFailed = false
+  try {
+    const ctx = task.setup(dir, seeded(hash(`${task.id}:${repeat}`)))
+    const r = await hangarQuery({
+      cwd: dir,
+      prompt: task.prompt(ctx),
+      providerId: request.providerId,
+      model,
+      permission: 'auto',
+      effort: effortFor(settings().get().defaultEffort),
+      maxSteps: request.maxTurns ?? 30,
+      signal: abort.signal,
+      timeoutMs: TASK_TIMEOUT_MS
+    })
+    secrets = r.secrets
+    result.turns = r.steps
+    result.toolCalls = r.toolCalls
+    result.toolErrors = r.toolErrors
+    result.invalidToolCalls = r.invalidToolCalls
+    if (r.toolErrorSamples.length) result.toolErrorSamples = r.toolErrorSamples
+    result.inputTokens = r.inputTokens
+    result.outputTokens = r.outputTokens
+    result.cacheReadTokens = r.cacheReadTokens
+    if (r.status === 'interrupted')
+      result.reason = state.stop ? 'Interrompido.' : `Tempo esgotado (${TASK_TIMEOUT_MS / 60_000} min).`
+    else if (r.status === 'incomplete') result.reason = r.error || 'Limite de passos atingido.'
+    else if (r.status !== 'success') {
+      result.reason = r.error || r.status
+      providerFailed = isProviderErrorKind(r.errorKind)
+    }
+    const check = task.check(dir, ctx)
+    result.ok = check.ok
+    if (!check.ok) result.reason = [check.reason, result.reason].filter(Boolean).join(' · ')
+    else if (r.status === 'success') result.reason = undefined
+  } catch (err) {
+    result.reason = err instanceof Error ? err.message : String(err)
+  } finally {
+    state.abort = undefined
+    await removeDir(dir)
+  }
+  if (!result.ok && providerFailed && !result.toolCalls) result.apiError = true
+  if (result.reason) result.reason = maskSecrets(result.reason, secrets).slice(0, 600)
+  result.durationMs = Date.now() - started
+  result.costUsd = estimateCost(result, request)
+  return result
+}
+
+async function runTask(
+  task: BenchTask,
+  model: string,
+  variant: BenchVariant,
+  repeat: number,
+  request: BenchRequest,
+  state: { stop: boolean; abort?: AbortController }
+): Promise<BenchResult> {
+  if (variant === 'harness') return runHarnessTask(task, model, repeat, request, state)
+  const dir = mkdtempSync(join(tmpdir(), `hangar-bench-${task.id}-`))
+  const started = Date.now()
+  const result = emptyResult(task, model, variant, repeat)
   const launch = claudeLaunch(request.providerId, { ownCompatRoute: true, noCompat: variant === 'baseline' })
   const abort = new AbortController()
   state.abort = abort
@@ -314,22 +403,13 @@ async function runTask(
       }
       releaseRoute(launch.compatRoute)
     }
-    for (let i = 0; i < 3; i++) {
-      try {
-        rmSync(dir, { recursive: true, force: true })
-        break
-      } catch {
-        await new Promise((r) => setTimeout(r, 300))
-      }
-    }
+    await removeDir(dir)
   }
   if (!result.ok && apiError && !result.toolCalls) result.apiError = true
   if (!result.ok && apiError) result.reason = [result.reason, `API: ${apiError}`].filter(Boolean).join(' · ')
   if (result.reason) result.reason = maskSecrets(result.reason, launch.secrets).slice(0, 600)
   result.durationMs = Date.now() - started
-  const price = priceFor(model, request.prices)
-  result.costUsd =
-    ((result.inputTokens + result.cacheReadTokens) * price.input + result.outputTokens * price.output) / 1_000_000
+  result.costUsd = estimateCost(result, request)
   return result
 }
 

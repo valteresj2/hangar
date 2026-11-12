@@ -4,6 +4,7 @@ import type { EngineState, SlashCommandInfo, TranscriptEntry } from '../../../sh
 import { fromAssistantContent, promptTextFromUserContent, toolResultsFromUserContent, type EntryDraft } from './convert'
 import { Runner } from './runner'
 import { HangarRunner } from './hangar/runner'
+import { projectCommands } from './hangar/commands'
 import { effectiveProviderId, profiles, providerInfo } from './providers'
 import type { SessionEngine } from '../../../shared/providers'
 import { loadSdk, probeCommands } from './sdk'
@@ -71,8 +72,8 @@ export async function slashCommandsFor(sessionId: string): Promise<SlashCommandI
   if (r?.commands.length) return r.commands
   const s = db('sessions').get(sessionId)
   if (!s) return []
-  // Slash commands belong to Claude Code; a Hangar-engine session has none (and must not start a CLI to ask).
-  if (engineOf(sessionId) === 'hangar') return []
+  // A Hangar-engine session expands the project's own command files; no CLI is started to ask.
+  if (engineOf(sessionId) === 'hangar') return projectCommands(s.worktree?.path ?? s.cwd)
   try {
     return await probeCommands(s.worktree?.path ?? s.cwd, effectiveProviderId(s))
   } catch {

@@ -1,4 +1,5 @@
-// Blind selection: shuffled anonymous ids and the headless Claude selector.
+// Blind selection: shuffled anonymous ids and the headless selector (Claude Code, or the Hangar Harness when the
+// default profile runs on that engine).
 // The selector prompt is adapted from google-research/harness2 (Apache-2.0), core/prompts.py:
 // select(), POOL_MIXED_SELECT, ANSWER_FREE_SELECT, EVIDENCE_BOUNDARY_SELECT.
 import { randomInt } from 'node:crypto'
@@ -6,6 +7,8 @@ import { mkdirSync } from 'node:fs'
 import { join } from 'node:path'
 import { anonId, type BlindCandidate } from '../../../shared/features/lab'
 import { settings } from '../../core/store'
+import { engineOfProfile, hangarQuery } from '../engine/hangar/headless'
+import { maskSecrets } from '../engine/providers'
 import { claudeLaunchOptions, loadSdk } from '../engine/sdk'
 import { labDir } from './store'
 
@@ -91,10 +94,23 @@ export interface ClaudeChoice {
 
 /** Runs the selector as a headless, tool-less query and parses ```choice X``` + <why>. */
 export async function askClaude(task: string, candidates: BlindCandidate[]): Promise<ClaudeChoice> {
-  const sdk = await loadSdk()
   // An empty working directory: the selector must not pick up any project's CLAUDE.md.
   const cwd = join(labDir(), 'selector')
   mkdirSync(cwd, { recursive: true })
+  if (engineOfProfile() === 'hangar') {
+    const r = await hangarQuery({
+      cwd,
+      prompt: selectorPrompt(task, candidates),
+      model: settings().get().defaultModel,
+      permission: 'readonly',
+      allowedTools: [],
+      maxSteps: 3,
+      timeoutMs: 6 * 60_000
+    })
+    const failure = r.status === 'success' ? undefined : maskSecrets(r.error || r.status, r.secrets)
+    return parseChoice(r.text, candidates, r.costUsd, failure)
+  }
+  const sdk = await loadSdk()
   const q = sdk.query({
     prompt: selectorPrompt(task, candidates),
     options: {
@@ -121,11 +137,21 @@ export async function askClaude(task: string, candidates: BlindCandidate[]): Pro
       else failure = m.errors.join('\n') || m.subtype
     }
   }
+  return parseChoice(text, candidates, costUsd, failure)
+}
+
+/** Reads ```choice X``` + <why> out of the selector's answer. */
+export function parseChoice(
+  text: string,
+  candidates: BlindCandidate[],
+  costUsd?: number,
+  failure?: string
+): ClaudeChoice {
   const match = CHOICE.exec(text)
-  if (!match) throw new Error(failure ?? 'O Claude não respondeu com um bloco ```choice```.')
+  if (!match) throw new Error(failure ?? 'O modelo não respondeu com um bloco ```choice```.')
   const chosen = match[1].trim().toUpperCase()
   if (!candidates.some((c) => c.anonId === chosen)) {
-    throw new Error(`O Claude escolheu "${chosen}", que não é um dos candidatos.`)
+    throw new Error(`O modelo escolheu "${chosen}", que não é um dos candidatos.`)
   }
   return { anonId: chosen, why: (WHY.exec(text)?.[1] ?? '').trim().slice(0, 2000), costUsd }
 }
