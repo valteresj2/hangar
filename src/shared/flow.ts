@@ -188,7 +188,11 @@ export class FlowGraph {
     const model = (st && this.models.get(st.node)) || (isMain ? this.model : '')
     const head = this.addNode(
       L,
-      { kind: 'head', title, sub: isSub ? (this.subs.get(agent) ?? 'contexto próprio') : (model.split('/').pop() ?? '') },
+      {
+        kind: 'head',
+        title,
+        sub: isSub ? (this.subs.get(agent) ?? 'contexto próprio') : (model.split('/').pop() ?? '')
+      },
       true
     )
     if (isSub) {
