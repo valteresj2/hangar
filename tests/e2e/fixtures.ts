@@ -7,6 +7,7 @@
 // The default provider is a gateway profile pointing at the mock with a fake token, so no test can reach the
 // real Anthropic API or use the user's subscription.
 import { _electron as electron, test as base, expect, type ElectronApplication, type Page } from '@playwright/test'
+import { execFileSync } from 'node:child_process'
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
@@ -187,7 +188,7 @@ export const test = base.extend<Fixtures>({
         .tracing.stop()
         .catch(() => {})
     }
-    await app.close().catch(() => {})
+    await closeApp(app)
     // Claude Code children may hold files for a moment after the app quits.
     for (let i = 0; i < 5; i++) {
       try {
@@ -201,3 +202,30 @@ export const test = base.extend<Fixtures>({
 })
 
 export { expect }
+
+/**
+ * Quits the app without letting a stuck shutdown eat the test's timeout. Under CPU load (a busy CI runner) Electron
+ * sometimes never finishes its native shutdown: the app's own quit has already run (will-quit, quit and the process
+ * 'exit' event), but the process stays alive and `app.close()` waits forever. After a grace period, end it.
+ */
+async function closeApp(app: ElectronApplication): Promise<void> {
+  const child = app.process()
+  const closed = await Promise.race([
+    app.close().then(
+      () => true,
+      () => true
+    ),
+    new Promise<boolean>((done) => setTimeout(() => done(false), 15_000))
+  ])
+  if (closed) return
+  // On Windows the launched process is a wrapper: killing only it would leave the real Electron behind.
+  if (process.platform === 'win32' && child.pid) {
+    try {
+      execFileSync('taskkill', ['/pid', String(child.pid), '/T', '/F'], { stdio: 'ignore', timeout: 15_000 })
+      return
+    } catch {
+      // Fall through to a plain kill.
+    }
+  }
+  child.kill('SIGKILL')
+}
