@@ -97,7 +97,7 @@ class _WS:
 
 
 class Browser:
-    def __init__(self, width: int = 1440, height: int = 900, scale: float = 1.0):
+    def __init__(self, width: int = 1440, height: int = 900, scale: float = 1.0, extra_args: list[str] | None = None):
         exe = find_browser()
         if not exe:
             raise BrowserError("no Chrome/Edge/Chromium found (set HANGAR_BROWSER to the executable)")
@@ -111,7 +111,7 @@ class Browser:
              "--no-first-run", "--no-default-browser-check", "--hide-scrollbars", "--mute-audio", f"--window-size={width},{height}",
              "--force-device-scale-factor=1", "--allow-file-access-from-files", "--autoplay-policy=no-user-gesture-required",
              "--ignore-gpu-blocklist", "--enable-unsafe-swiftshader", "--disable-background-timer-throttling",
-             "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows", "about:blank"],
+             "--disable-renderer-backgrounding", "--disable-backgrounding-occluded-windows", *(extra_args or []), "about:blank"],
             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, stdin=subprocess.DEVNULL)
         target = None
         for _ in range(100):

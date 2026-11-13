@@ -394,7 +394,13 @@ def t_task(ctx: Ctx, a: dict) -> str:
             raise ToolError(f"unknown agent '{wanted}'. Project sub-agents: {', '.join(defs) or '(none)'}. Omit `agent` for a generic one.")
         extra = defs[wanted]["prompt"]
     s.sub_count += 1
-    sub = Agent(s, model=ctx.agent.model, role="sub", toolset="all", name=f"sub{s.sub_count}", max_steps=20, extra_system=extra)
+    level = str(a.get("level") or "standard").strip().lower()
+    model = ctx.agent.model
+    if s.team and level in ("light", "deep"):        # a routed team: cheap model for legwork, strong one for hard thinking
+        model = s.team[level]
+    name = f"sub{s.sub_count}"
+    s.bus.emit("subagent", agent=name, model=model, level=level if s.team else "standard", by=ctx.agent.name)
+    sub = Agent(s, model=model, role="sub", toolset="all", name=name, max_steps=20, extra_system=extra)
     out = sub.run(a["prompt"] + "\n\nReturn a concise report (under 400 words) with exact paths/values the caller needs.")
     return out[:8000]
 
@@ -439,8 +445,10 @@ def builtin() -> dict[str, Tool]:
              S({"question": STR, "options": {"type": "array", "items": STR}}, ["question"]), t_ask_user),
         Tool("plan", "Create/update the task plan. Statuses: pending, in_progress, done.",
              S({"items": {"type": "array", "items": S({"step": STR, "status": STR}, ["step", "status"])}}, ["items"]), t_plan),
-        Tool("task", "Delegate a self-contained sub-task to a fresh sub-agent; returns only its report.",
-             S({"prompt": STR, "agent": STR}, ["prompt"]), t_task, True),
+        Tool("task", "Delegate a self-contained sub-task to a fresh sub-agent; returns only its report. "
+             "level: 'light' for searching, reading or summarizing (cheapest model), 'deep' for hard reasoning, design or debugging "
+             "(strongest model); omit it for ordinary work.",
+             S({"prompt": STR, "agent": STR, "level": {"type": "string", "enum": ["light", "standard", "deep"]}}, ["prompt"]), t_task, True),
     ]
     return {t.name: t for t in T}
 

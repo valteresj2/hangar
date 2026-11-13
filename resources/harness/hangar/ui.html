@@ -1,314 +1,35 @@
 <!doctype html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Hangar</title>
-<style>
-:root{
-  --bg:#f4f3ee; --panel:#fffefb; --ink:#1b1d21; --muted:#6b6f76; --line:#dedbd2; --soft:#ebe9e1;
-  --accent:#d9480f; --accent-ink:#fff; --ok:#2b8a3e; --err:#c92a2a; --warn:#b7791f; --info:#1864ab;
-  --mono:ui-monospace,"Cascadia Code","SF Mono",Consolas,monospace;
-}
-@media (prefers-color-scheme:dark){:root{
-  --bg:#111315; --panel:#191c1f; --ink:#e8e6e1; --muted:#8d9299; --line:#2b3035; --soft:#22262a;
-  --accent:#ff7a3d; --accent-ink:#16110d; --ok:#51cf66; --err:#ff6b6b; --warn:#f0b541; --info:#74b0f4;
-}}
-*{box-sizing:border-box}
-html,body{height:100%;margin:0}
-body{background:var(--bg);color:var(--ink);font:14px/1.5 system-ui,"Segoe UI",sans-serif;display:grid;grid-template-columns:270px minmax(0,1fr) 300px;grid-template-rows:48px minmax(0,1fr)}
-header{grid-column:1/-1;display:flex;align-items:center;gap:14px;padding:0 16px;border-bottom:1px solid var(--line);background:var(--panel)}
-.brand{font:700 13px var(--mono);letter-spacing:.22em}
-.brand b{color:var(--accent)}
-header .sp{flex:1}
-button{font:inherit;border:1px solid var(--line);background:var(--panel);color:var(--ink);border-radius:6px;padding:5px 12px;cursor:pointer}
-button:hover{border-color:var(--muted)}
-button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
-button.danger{color:var(--err)}
-aside,main,section.rail{overflow:auto;min-height:0}
-aside{border-right:1px solid var(--line)}
-.rail{border-left:1px solid var(--line);padding:14px}
-.sess{padding:10px 14px;border-bottom:1px solid var(--line);cursor:pointer}
-.sess:hover{background:var(--soft)}
-.sess.on{background:var(--soft);box-shadow:inset 3px 0 0 var(--accent)}
-.sess .t{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-weight:500}
-.sess .m{font:11px var(--mono);color:var(--muted);display:flex;gap:8px;margin-top:2px}
-.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--muted);margin-right:6px}
-.dot.running{background:var(--accent);animation:pulse 1.2s infinite}
-.dot.waiting{background:var(--warn);animation:pulse .8s infinite}
-.dot.done{background:var(--ok)} .dot.error{background:var(--err)} .dot.incomplete{background:var(--warn)}
-@keyframes pulse{50%{opacity:.35}}
-main{display:flex;flex-direction:column}
-.head{padding:14px 20px 10px;border-bottom:1px solid var(--line);background:var(--panel)}
-.head h1{font-size:15px;margin:0 0 6px;font-weight:600;display:flex;gap:10px;align-items:flex-start}
-.head h1 span{flex:1;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.kpis{display:flex;flex-wrap:wrap;gap:6px 22px;font:12px var(--mono);color:var(--muted)}
-.kpis b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
-.graph{display:flex;flex-wrap:wrap;align-items:center;gap:6px;margin-top:10px}
-.node{font:11px var(--mono);border:1px solid var(--line);border-radius:5px;padding:3px 9px;color:var(--muted)}
-.node.active{border-color:var(--accent);color:var(--accent);box-shadow:0 0 0 2px color-mix(in srgb,var(--accent) 22%,transparent)}
-.node.visited{color:var(--ink);border-color:var(--muted)}
-.node small{opacity:.7}
-.arrow{color:var(--muted);font:11px var(--mono)}
-#timeline{flex:1;overflow-y:auto;overflow-x:hidden;padding:16px 20px 60px;min-height:0}
-.msg{margin:10px 0;max-width:900px}
-.msg .who{font:11px var(--mono);color:var(--muted);text-transform:uppercase;letter-spacing:.08em}
-.msg .body{white-space:pre-wrap;word-wrap:break-word}
-.msg.think .body{color:var(--muted);font-size:12.5px;border-left:2px solid var(--line);padding-left:10px;max-height:7.5em;overflow:auto}
-details.tool{margin:4px 0;max-width:900px;border:1px solid var(--line);border-radius:6px;background:var(--panel)}
-details.tool summary{list-style:none;cursor:pointer;padding:5px 10px;display:flex;gap:10px;align-items:center;font:12px var(--mono)}
-details.tool summary::-webkit-details-marker{display:none}
-.tool .n{font-weight:600}
-.tool .a{flex:1;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tool .s{color:var(--muted);font-variant-numeric:tabular-nums}
-.tool .ic{width:14px;text-align:center}
-.tool.ok .ic{color:var(--ok)} .tool.err .ic{color:var(--err)} .tool.run .ic{color:var(--accent);animation:pulse 1s infinite}
-.tool pre{margin:0;padding:8px 10px;border-top:1px solid var(--line);font:12px/1.45 var(--mono);white-space:pre-wrap;word-break:break-word;max-height:320px;overflow:auto}
-.note{font:12px var(--mono);color:var(--muted);margin:6px 0;overflow-wrap:anywhere}
-.note.warn{color:var(--warn)} .note.error{color:var(--err)} .note.info{color:var(--info)}
-.final{margin:16px 0;max-width:900px;border:1px solid var(--ok);border-radius:8px;padding:12px 14px;background:var(--panel)}
-.final .who{color:var(--ok)}
-.rail h2{font:600 11px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:0 0 8px}
-.rail .blk{margin-bottom:22px}
-.plan div{display:flex;gap:8px;padding:2px 0}
-.plan .done{color:var(--muted);text-decoration:line-through}
-.plan .in_progress{font-weight:600}
-.q{border:1px solid var(--warn);border-radius:8px;padding:10px;background:var(--panel);margin-bottom:8px}
-.q p{margin:0 0 8px;white-space:pre-wrap}
-.q .opts{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
-.q input,dialog input,dialog textarea,dialog select{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:6px 8px}
-.q.answered{border-color:var(--line);opacity:.7}
-.files div{font:12px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.empty{color:var(--muted);padding:40px 20px;text-align:center}
-dialog{border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--ink);width:min(640px,92vw);padding:18px}
-.tabs{display:flex;gap:4px;margin-top:10px}
-.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;color:var(--muted);padding:4px 10px;font:600 12px var(--mono);letter-spacing:.06em}
-.tabs button.on{color:var(--ink);border-bottom-color:var(--accent)}
-#flow{flex:1;min-height:0;display:flex;flex-direction:column}
-#flow[hidden],#timeline[hidden]{display:none}
-.flowbar{display:flex;align-items:center;gap:8px;padding:8px 20px;border-bottom:1px solid var(--line);font:12px var(--mono);color:var(--muted)}
-.flowbar .sp{flex:1}
-.flowbar button{padding:2px 9px;font:12px var(--mono)}
-.flowbar label{display:flex;align-items:center;gap:5px;cursor:pointer}
-.flowscroll{flex:1;overflow:auto;min-height:0;padding:4px 0 40px}
-.flowscroll svg{display:block}
-.lanebg{fill:var(--soft);opacity:.45}
-.edge{fill:none;stroke:var(--muted);stroke-width:1.2;opacity:.7}
-.edge.cross{stroke:var(--accent);stroke-dasharray:5 4;opacity:.9}
-.arrhead{fill:var(--muted)}
-.elabel{font:600 10px var(--mono);fill:var(--accent);paint-order:stroke;stroke:var(--bg);stroke-width:4px}
-.fnode{cursor:pointer}
-.fnode .box{fill:var(--panel);stroke:var(--line);stroke-width:1.2}
-.fnode:hover .box{stroke:var(--ink)}
-.fnode .stripe{fill:var(--muted)}
-.fnode .t1{font:600 12px var(--mono);fill:var(--ink)}
-.fnode .t2{font:10.5px var(--mono);fill:var(--muted)}
-.fnode .t3{font:10px var(--mono);fill:var(--muted)}
-.fnode.s-ok .stripe{fill:var(--ok)} .fnode.s-err .stripe{fill:var(--err)} .fnode.s-err .box{stroke:var(--err)}
-.fnode.s-run .stripe{fill:var(--accent)} .fnode.s-run .box{stroke:var(--accent);animation:pulse 1.1s infinite}
-.fnode.k-head .box{fill:var(--ink);stroke:var(--ink)} .fnode.k-head .t1{fill:var(--bg)} .fnode.k-head .t2{fill:var(--bg);opacity:.7} .fnode.k-head .stripe{fill:var(--accent)}
-.fnode.k-final .box{stroke:var(--ok);stroke-width:2}
-.fnode.k-esc .box,.fnode.k-warn .box{stroke:var(--warn)} .fnode.k-esc .stripe,.fnode.k-warn .stripe{fill:var(--warn)}
-.fnode.k-ask .box{stroke:var(--warn);stroke-dasharray:4 3}
-.fnode.k-mark .box{stroke-dasharray:3 3}
-.tool.flash{outline:2px solid var(--accent);outline-offset:2px}
-dialog::backdrop{background:rgba(0,0,0,.45)}
-dialog label{display:block;font:600 11px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);margin:12px 0 4px}
-dialog .row{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-dialog .act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
-@media (max-width:900px){body{grid-template-columns:1fr;grid-template-rows:48px 150px minmax(0,1fr) auto}aside{border-right:0;border-bottom:1px solid var(--line)}.rail{border-left:0;border-top:1px solid var(--line)}}
-</style>
+<title>Hangar Harness</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Crect width='24' height='24' rx='5' fill='%231c2530'/%3E%3Cpath d='M4 16V11a8 8 0 0 1 16 0v5h-3v-5a5 5 0 0 0-10 0v5z' fill='%23f4b400'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="/ui.css">
 </head>
 <body>
-<header>
-  <div class="brand"><b>▲</b> HANGAR</div>
-  <div class="sp"></div>
-  <button class="primary" id="newBtn">Nova tarefa</button>
-</header>
-<aside id="sessions"></aside>
-<main>
-  <div class="head" id="head" hidden>
-    <h1><span id="task"></span><button class="danger" id="stopBtn" hidden>Parar</button></h1>
-    <div class="kpis" id="kpis"></div>
-    <div class="graph" id="graph"></div>
-    <div class="tabs"><button id="tabTimeline" class="on">Linha do tempo</button><button id="tabFlow">Grafo ao vivo</button></div>
-  </div>
-  <div id="timeline"><div class="empty">Selecione uma sessão ou crie uma nova tarefa.</div></div>
-  <div id="flow" hidden></div>
-</main>
-<section class="rail">
-  <div class="blk"><h2>Perguntas</h2><div id="questions"><span class="note">nenhuma pendente</span></div></div>
-  <div class="blk"><h2>Plano</h2><div class="plan" id="plan"><span class="note">—</span></div></div>
-  <div class="blk"><h2>Arquivos alterados</h2><div class="files" id="files"><span class="note">—</span></div></div>
-  <div class="blk"><h2>Custo por modelo</h2><div class="files" id="bymodel"><span class="note">—</span></div></div>
-</section>
-
-<dialog id="dlg">
-  <form method="dialog" id="form">
-    <label>Tarefa</label><textarea id="fTask" rows="5" required placeholder="Descreva o que precisa ser feito…"></textarea>
-    <div class="row">
-      <div><label>Modelo</label><input id="fModel" list="models"><datalist id="models"></datalist></div>
-      <div><label>Workflow</label><select id="fWf"></select></div>
+<div class="titlebar">
+  <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path d="M3 17v-6a9 9 0 0 1 18 0v6h-3v-6a6 6 0 0 0-12 0v6z" fill="currentColor"/><rect x="9" y="13" width="6" height="4" rx="1" fill="currentColor"/></svg>
+  <strong>Hangar</strong><span class="edition">HARNESS</span>
+  <span class="grow"></span><span class="ver" id="version"></span>
+</div>
+<div class="app">
+  <aside class="sidebar" id="sidebar" aria-label="Sessões"></aside>
+  <main class="main">
+    <header class="topbar" id="topbar"></header>
+    <div class="body">
+      <section class="center" id="center"></section>
+      <section class="side" id="side" hidden>
+        <div class="resizer" id="resizer"></div>
+        <div class="sidebody" id="sidebody"></div>
+      </section>
     </div>
-    <label>Planejador (só nos workflows pev/verify — opcional)</label><input id="fPlanner" list="models">
-    <label>Pasta de trabalho</label><input id="fCwd">
-    <label>Anexos — caminhos de imagem, áudio, vídeo, PDF ou texto (um por linha)</label><textarea id="fAtt" rows="2"></textarea>
-    <div class="act"><button type="button" id="cancel">Cancelar</button><button class="primary" type="submit">Executar</button></div>
-  </form>
-</dialog>
-
+  </main>
+</div>
+<div id="overlay"></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<script>window.HANGAR_TOKEN = "__HANGAR_TOKEN__";</script>
 <script src="/flow.js"></script>
-<script>
-const $ = id => document.getElementById(id);
-const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
-let current = null, es = null, st = null, timer = null;
-const post = (url, body) => fetch(url, {method:'POST', headers:{'Content-Type':'application/json','X-Hangar':'1'}, body:JSON.stringify(body)}).then(r => r.json());
-const fmt = n => n >= 1e6 ? (n/1e6).toFixed(2)+'M' : n >= 1e3 ? (n/1e3).toFixed(1)+'k' : String(n||0);
-
-async function loadSessions() {
-  let rows = [];
-  try { rows = await (await fetch('/api/sessions')).json(); } catch { return; }
-  const box = $('sessions'); box.replaceChildren();
-  if (!rows.length) box.append(el('div','empty','Sem sessões ainda.'));
-  for (const s of rows) {
-    const d = el('div', 'sess' + (s.id === current ? ' on' : ''));
-    const t = el('div','t'); t.append(el('span','dot ' + s.status), document.createTextNode(s.task || '(sem tarefa)'));
-    const m = el('div','m'); m.append(el('span',null,(s.model||'').split('/').pop()), el('span',null,'$'+((s.totals||{}).cost||0).toFixed(4)), el('span',null,s.workflow||''));
-    d.append(t, m); d.onclick = () => select(s.id); box.append(d);
-  }
-  if (!current && rows.length) select(rows[0].id);
-}
-
-function select(id) {
-  if (es) es.close();
-  current = id;
-  st = {live:{}, tools:{}, start:0, end:0, status:'running', nodes:{}, totals:{}};
-  $('timeline').replaceChildren(); $('head').hidden = false; $('graph').replaceChildren(); Flow.reset();
-  $('questions').replaceChildren(el('span','note','nenhuma pendente')); $('plan').replaceChildren(el('span','note','—'));
-  $('files').replaceChildren(el('span','note','—')); $('bymodel').replaceChildren(el('span','note','—'));
-  es = new EventSource('/api/events?session=' + encodeURIComponent(id));
-  es.onmessage = e => { try { handle(JSON.parse(e.data)); } catch (err) { console.error(err); } };
-  loadSessions();
-}
-
-function add(node) {
-  const tl = $('timeline'), stick = tl.scrollHeight - tl.scrollTop - tl.clientHeight < 120;
-  tl.append(node); if (stick) tl.scrollTop = tl.scrollHeight; return node;
-}
-function stickScroll(fn) { const tl = $('timeline'), stick = tl.scrollHeight - tl.scrollTop - tl.clientHeight < 120; fn(); if (stick) tl.scrollTop = tl.scrollHeight; }
-
-function bubble(agent, kind) {
-  const key = agent + '|' + kind;
-  if (!st.live[key]) {
-    const m = el('div', 'msg' + (kind === 'reasoning' ? ' think' : ''));
-    m.append(el('div','who', kind === 'reasoning' ? agent + ' · raciocínio' : agent), el('div','body',''));
-    st.live[key] = add(m);
-  }
-  return st.live[key].lastChild;
-}
-function closeLive(agent) { delete st.live[agent+'|text']; delete st.live[agent+'|reasoning']; }
-
-function kpis() {
-  const t = st.totals, secs = ((st.end || Date.now()/1000) - st.start) || 0;
-  const cachePct = t.prompt ? Math.round(100 * t.cached / t.prompt) : 0;
-  const items = [['status', st.status], ['custo', '$' + (t.cost||0).toFixed(5)], ['entrada', fmt(t.prompt)], ['cache', cachePct + '%'],
-                 ['saída', fmt(t.completion)], ['llm', t.llm_calls||0], ['tools', t.tool_calls||0], ['tempo', secs.toFixed(0) + 's']];
-  $('kpis').replaceChildren(...items.map(([k,v]) => { const s = el('span'); s.append(k + ' ', el('b',null,v)); return s; }));
-  $('stopBtn').hidden = !(st.status === 'running' || st.status === 'waiting');
-}
-
-function showTab(name) {
-  const flow = name === 'flow';
-  $('flow').hidden = !flow; $('timeline').hidden = flow;
-  $('tabFlow').classList.toggle('on', flow); $('tabTimeline').classList.toggle('on', !flow);
-  try { localStorage.setItem('hangarTab', name); } catch {}
-  if (flow) Flow.redraw();
-}
-Flow.mount($('flow'), n => {                 // clicking a graph node jumps to that step in the timeline
-  const d = n.tid && st && st.tools[n.tid];
-  showTab('timeline');
-  if (d) { d.open = true; d.scrollIntoView({block: 'center'}); d.classList.add('flash'); setTimeout(() => d.classList.remove('flash'), 1600); }
-});
-$('tabFlow').onclick = () => showTab('flow');
-$('tabTimeline').onclick = () => showTab('timeline');
-try { if (localStorage.getItem('hangarTab') === 'flow') showTab('flow'); } catch {}
-
-function handle(ev) {
-  Flow.on(ev);
-  const a = ev.agent || 'main';
-  switch (ev.type) {
-    case 'session_start':
-      st.start = ev.t; $('task').textContent = ev.task;
-      add(el('div','note', `${ev.model} · tier ${ev.tier} · workflow ${ev.workflow} · ${ev.cwd}`));
-      timer = timer || setInterval(() => st && st.status === 'running' && kpis(), 1000); break;
-    case 'graph': {
-      const g = $('graph'); g.replaceChildren();
-      ev.nodes.forEach((n, i) => { if (i) g.append(el('span','arrow','→'));
-        const d = el('span','node'); d.id = 'node-' + n.id; d.append(n.id + ' '); if (n.model) d.append(el('small',null,n.model.split('/').pop())); g.append(d); });
-      const back = ev.edges.filter(e => e.label === 'revise').map(e => `${e.from} ⟲ ${e.to}`).join(', ');
-      if (back) g.append(el('span','arrow','  (' + back + ', máx. 2 revisões)')); break; }
-    case 'node_start': document.querySelectorAll('.node.active').forEach(n => n.classList.replace('active','visited'));
-      { const n = $('node-' + ev.node); if (n) n.classList.add('active'); } add(el('div','note info', `▶ nó ${ev.node}` + (ev.visit > 1 ? ` (visita ${ev.visit})` : ''))); break;
-    case 'node_end': { const n = $('node-' + ev.node); if (n) n.classList.replace('active','visited'); break; }
-    case 'delta': stickScroll(() => { bubble(a, ev.kind).textContent += ev.text; }); break;
-    case 'assistant': stickScroll(() => { bubble(a, 'text').textContent = ev.text; }); closeLive(a); break;
-    case 'tool_start': { closeLive(a);
-      const d = el('details','tool run'), s = el('summary');
-      s.append(el('span','ic','●'), el('span','n',ev.name), el('span','a',JSON.stringify(ev.args||{})), el('span','s','…'));
-      d.append(s, el('pre',null,JSON.stringify(ev.args||{}, null, 1))); st.tools[ev.id] = add(d); break; }
-    case 'tool_end': { const d = st.tools[ev.id]; if (!d) break;
-      d.className = 'tool ' + (ev.ok ? 'ok' : 'err'); d.querySelector('.ic').textContent = ev.ok ? '✓' : '✗';
-      d.querySelector('.s').textContent = `${ev.ms}ms · ${fmt(ev.chars)} ch`; d.append(el('pre',null,ev.preview + (ev.chars > ev.preview.length ? '\n…' : ''))); break; }
-    case 'llm_end': st.totals = ev.totals; kpis(); break;
-    case 'plan': $('plan').replaceChildren(...ev.items.map(i => { const d = el('div', i.status); d.append(el('span',null, i.status === 'done' ? '✓' : i.status === 'in_progress' ? '▸' : '○'), el('span',null,i.step)); return d; })); break;
-    case 'question': question(ev); break;
-    case 'answer': { const q = $('q-' + ev.qid); if (q) { q.classList.add('answered'); q.querySelectorAll('button,input').forEach(x => x.disabled = true); q.append(el('div','note','→ ' + (ev.answer ?? '(sem resposta)'))); }
-      add(el('div','note', '↳ resposta: ' + (ev.answer ?? '(sem resposta)'))); break; }
-    case 'attachment': add(el('div','note', `📎 ${ev.kind}: ${ev.path} (${ev.mode === 'native' ? 'nativo' : 'via modelo de percepção'})`)); break;
-    case 'mcp': add(el('div','note' + (ev.error ? ' error' : ''), `MCP ${ev.server}: ` + (ev.error || ev.tools.length + ' tools'))); break;
-    case 'compact': add(el('div','note', `~ compactação de contexto (nível ${ev.tier})`)); break;
-    case 'note': add(el('div','note info', '✎ nota: ' + ev.text)); break;
-    case 'hook': add(el('div','note warn', `⚑ regra do projeto (${ev.event} · ${ev.action}${ev.tool ? ' · ' + ev.tool : ''}): ${ev.message || ''}`)); break;
-    case 'lessons': add(el('div','note info', (ev.used ? '✎ lições usadas: ' : '✎ lições aprendidas: ') + (ev.used || ev.learned || []).join(' · '))); break;
-    case 'verdict': add(el('div','note ' + (ev.verdict === 'approve' ? 'info' : 'warn'), `⚖ revisor: ${ev.verdict}` + (ev.feedback ? ' — ' + ev.feedback : ''))); break;
-    case 'notice': add(el('div','note ' + (ev.level||''), '! ' + ev.text)); break;
-    case 'final': { const f = el('div','final'); f.append(el('div','who','resultado'), el('div','body',ev.text)); f.lastChild.style.whiteSpace = 'pre-wrap'; add(f); break; }
-    case 'session_end': st.status = ev.status; st.end = ev.t; st.totals = {...st.totals, ...ev}; kpis();
-      if ((ev.files||[]).length) $('files').replaceChildren(...ev.files.map(f => el('div',null,f)));
-      { const rows = Object.entries(ev.by_model||{}).map(([m,v]) => el('div',null, `${m.split('/').pop()}  $${v.cost.toFixed(5)} · ${v.calls} calls`)); if (rows.length) $('bymodel').replaceChildren(...rows); }
-      document.querySelectorAll('.node.active').forEach(n => n.classList.replace('active','visited')); loadSessions(); break;
-  }
-}
-
-function question(ev) {
-  const box = $('questions'); if (box.querySelector('.note') && !box.querySelector('.q')) box.replaceChildren();
-  const q = el('div','q'); q.id = 'q-' + ev.qid;
-  q.append(el('p',null,(ev.kind === 'approval' ? '🔐 ' : '') + ev.question));
-  const send = v => post('/api/answer', {session: current, qid: ev.qid, answer: v});
-  if ((ev.options||[]).length) { const o = el('div','opts'); ev.options.forEach(x => { const b = el('button',null,x); b.onclick = () => send(x); o.append(b); }); q.append(o); }
-  const inp = el('input'); inp.placeholder = 'Responder… (Enter)'; inp.onkeydown = e => { if (e.key === 'Enter' && inp.value.trim()) send(inp.value.trim()); };
-  q.append(inp); box.prepend(q);
-  add(el('div','note warn', '? ' + ev.question)); st.status = 'waiting'; kpis();
-}
-
-$('stopBtn').onclick = () => post('/api/stop', {session: current});
-$('newBtn').onclick = async () => {
-  const d = await (await fetch('/api/defaults')).json();
-  if (!$('fModel').value) $('fModel').value = d.model;
-  if (!$('fCwd').value) $('fCwd').value = d.cwd;
-  $('fWf').replaceChildren(...d.workflows.map(w => el('option',null,w)));
-  $('models').replaceChildren(...d.models.map(m => { const o = el('option'); o.value = m; return o; }));
-  $('dlg').showModal();
-};
-$('cancel').onclick = () => $('dlg').close();
-$('form').onsubmit = async e => {
-  e.preventDefault();
-  const r = await post('/api/run', {task: $('fTask').value, model: $('fModel').value, workflow: $('fWf').value, planner: $('fPlanner').value,
-                                   cwd: $('fCwd').value, attachments: $('fAtt').value.split('\n').filter(x => x.trim())});
-  if (r.error) return alert(r.error);
-  $('dlg').close(); $('fTask').value = ''; setTimeout(() => select(r.session), 700);
-};
-loadSessions(); setInterval(loadSessions, 3000);
-</script>
+<script src="/ui.js"></script>
 </body>
 </html>

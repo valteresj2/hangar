@@ -74,6 +74,20 @@ describe('flow graph', () => {
     expect(l.edges.filter((e) => e.cross).map((e) => e.label)).toEqual(['delega'])
   })
 
+  it('a sub-agent lane names the model the harness routed it to', () => {
+    const l = build([
+      { type: 'turn', text: 'analise' },
+      { type: 'tool_start', agent: 'work', id: 't1', name: 'task', args: { prompt: 'a', level: 'deep' } },
+      { type: 'subagent', agent: 'sub1', model: 'openai/gpt-6.1-terra', level: 'deep', by: 'work' },
+      { type: 'tool_start', agent: 'sub1', id: 's1', name: 'read', args: { path: 'a.py' } },
+      { type: 'tool_start', agent: 'work', id: 't2', name: 'task', args: { prompt: 'b' } },
+      { type: 'subagent', agent: 'sub2', model: 'openai/gpt-6-luna', level: 'standard', by: 'work' },
+      { type: 'tool_start', agent: 'sub2', id: 's2', name: 'read', args: { path: 'b.py' } }
+    ]).layout()
+    expect(l.nodes.find((n) => n.title === 'sub-agente 1')!.sub).toBe('profundo · gpt-6.1-terra')
+    expect(l.nodes.find((n) => n.title === 'sub-agente 2')!.sub).toBe('gpt-6-luna')
+  })
+
   it('approvals, questions, project rules and an interrupted turn', () => {
     const g = build([
       { type: 'turn', text: 'rode' },

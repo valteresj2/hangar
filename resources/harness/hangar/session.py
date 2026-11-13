@@ -39,6 +39,12 @@ class Session:
         (self.dir / "answers").mkdir(exist_ok=True)
         self.bus = EventBus(self.dir)
         self.catalog = Catalog(cfg)
+        self.team: dict[str, str] | None = None
+        if self.model == "auto":                   # the harness picks who does what (router.py)
+            from . import router
+            self.team = router.apply(cfg, self.catalog)
+            self.model = self.team["worker"]
+            self.bus.emit("team", team=router.describe(self.team))
         self.llm = LLM(cfg, self.catalog, self.bus, session_id=self.id)
         self.machine = machine.probe()
         bash = self.machine.get("bash") if cfg["shell"] in ("auto", "bash") else ""

@@ -24,6 +24,7 @@ DEFAULTS: dict = {
         "lmstudio": {"base_url": "http://localhost:1234/v1", "api_key_env": ""},
     },
     "escalation_model": "",                # a stronger model that takes over when the worker is stuck
+    "team": {},                            # with model = "auto": per-role overrides of the roster (see router.py)
     "fallback_models": [],                 # stand-ins when a provider is down
     "tiers": {},                           # {"model/id": "strong|standard|weak"} overrides
     # loop limits --------------------------------------------------------------

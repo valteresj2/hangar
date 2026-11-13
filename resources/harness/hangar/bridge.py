@@ -62,8 +62,9 @@ def _configure(start: dict) -> dict:
     overrides = {"permission": start.get("permission") if start.get("permission") in PERMISSIONS else "ask",
                  "reasoning_effort": start.get("effort"), "max_steps": start.get("max_steps"), "max_cost_usd": start.get("max_cost_usd")}
     cfg = config.load(cwd, overrides)
-    cfg["lessons"] = False                               # the host has its own lessons; do not double up
-    cfg["helper_model"] = str(start.get("model"))        # compaction runs on the profile's own model: no other is guaranteed
+    cfg["lessons"] = bool(start.get("lessons"))          # a host with its own lessons library leaves this off
+    if start.get("base_url"):                            # a foreign gateway: compaction runs on the profile's own model
+        cfg["helper_model"] = str(start.get("model"))
     cfg["system_append"] = str(start.get("system_append") or "")
     cfg["model_info"] = start.get("model_info") or {}
     if start.get("trust_project"):                       # the host vouches for the folder (it is the user's own project)
@@ -129,11 +130,15 @@ def main(argv: list[str] | None = None) -> int:
         write({"type": "fatal", "message": f"{type(e).__name__}: {e}"})
         s.finish("error")
         return 2
+    from . import router
+    turn_budget = float(cfg["max_cost_usd"] or 0)        # the cost cap is per turn here: a conversation has no natural end
     write({"type": "ready", "session": s.id, "resumed": resumed, "model": agent.model, "tier": agent.tier,
+           "team": router.describe(s.team) if s.team else None,
            "context_window": agent.info["context"], "tools": [t.name for t in agent.tools], "log": str(s.dir / "events.jsonl"),
            "commands": [{"name": n, "description": c["description"], "argumentHint": c["hint"]} for n, c in project.commands(s.cwd).items()]})
 
     queue: list[dict] = []
+    last = {"final": "", "ok": False}
     state = {"busy": False, "pending_model": None}
     qlock = threading.Lock()
 
@@ -141,6 +146,9 @@ def main(argv: list[str] | None = None) -> int:
         t0, before = time.time(), dict(s.totals)
         s.abort.clear()
         s.incomplete = ""
+        if turn_budget:
+            cfg["max_cost_usd"] = s.totals["cost"] + turn_budget
+        last["final"] = ""
         status, error, kind = "success", "", ""
         try:
             if state["pending_model"]:
@@ -164,7 +172,8 @@ def main(argv: list[str] | None = None) -> int:
                 parts[0]["text"] += f"\n\n[{len(images)} pasted image(s) omitted: this model cannot see images]"
             if msg.get("hidden"):
                 parts.append({"type": "text", "text": str(msg["hidden"])})
-            agent.run(parts if len(parts) > 1 else parts[0]["text"])
+            last["final"] = agent.run(parts if len(parts) > 1 else parts[0]["text"]) or ""
+            last["ok"] = not s.incomplete
             if s.incomplete:
                 status, error = "incomplete", s.incomplete
         except Stopped:
@@ -225,6 +234,14 @@ def main(argv: list[str] | None = None) -> int:
             break
     s.interrupt()
     s.bus._subs.clear()
+    if cfg.get("lessons") and last["ok"]:                # what the CLI does at the end of a run: learn, then the session_end rules
+        try:
+            s.abort.clear()
+            from . import lessons
+            lessons.reflect(s, {"status": "done", "final": last["final"]})
+            s.hooks.session_end({"status": "done", "final": last["final"], "session": s.id, "files": sorted(s.files)})
+        except Exception:
+            pass
     s.finish("done")
     return 0
 

@@ -123,6 +123,7 @@ export class FlowGraph {
   private row = 0
   private byTool = new Map<string, FlowNode>()
   private models = new Map<string, string>()
+  private subs = new Map<string, string>()
   private pendingStage: { node: string; visit: number } | undefined
   private stageTouched = true
   private curStage: Lane | undefined
@@ -187,7 +188,7 @@ export class FlowGraph {
     const model = (st && this.models.get(st.node)) || (isMain ? this.model : '')
     const head = this.addNode(
       L,
-      { kind: 'head', title, sub: isSub ? 'contexto próprio' : (model.split('/').pop() ?? '') },
+      { kind: 'head', title, sub: isSub ? (this.subs.get(agent) ?? 'contexto próprio') : (model.split('/').pop() ?? '') },
       true
     )
     if (isSub) {
@@ -240,6 +241,13 @@ export class FlowGraph {
           true
         )
         break
+      }
+      case 'subagent': {
+        // Which model a sub-agent got, and why: the harness routes light and deep work to different models.
+        const level = str(ev.level)
+        const prefix = level === 'light' ? 'leve · ' : level === 'deep' ? 'profundo · ' : ''
+        this.subs.set(a, prefix + (str(ev.model).split('/').pop() ?? ''))
+        return
       }
       case 'graph':
         if (Array.isArray(ev.nodes))
