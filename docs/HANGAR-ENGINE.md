@@ -45,6 +45,18 @@ próxima mensagem de sessões existentes passam a usar o motor do perfil.
 | Lab                                               | Sim: as variantes rodam como sessões neste motor, com o harness de cada uma; o proponente, o seletor às cegas e o refletor de lições usam o motor do perfil padrão.                                                                     |
 | Bancada de modelos                                | Sim: a variante `harness` roda as mesmas tarefas neste motor, ao lado de `hangar` e `baseline` (Claude Code).                                                                                                                           |
 
+## Grafo ao vivo
+
+Sessões do motor Hangar ganham a aba **Grafo** no painel lateral: o trabalho do agente desenhado enquanto acontece.
+Cada agente tem a sua raia (o principal e cada sub-agente), cada rodada do modelo é uma linha, e as ferramentas
+chamadas na mesma rodada ficam lado a lado. Aparecem também a sua mensagem, aprovações, perguntas, regras do projeto
+que bloquearam algo e o resultado de cada rodada. Clicar num nó mostra os argumentos (e o erro, se houve).
+
+- `src/shared/flow.ts` — o modelo do grafo (porte do `flow.js` do painel do harness), puro e testado.
+- `src/main/features/engine/hangar/flow.ts` — grava os eventos resumidos e sem segredos em
+  `hangar-data/flow/<sessão>.jsonl` (o grafo volta depois de reabrir o app) e os envia ao renderer.
+- `src/renderer/src/features/engine/FlowPanel.tsx` — a aba.
+
 ## O que fica só no Claude Code
 
 - **Voltar e bifurcar** a conversa (dependem do arquivo de sessão e dos checkpoints do Claude Code).

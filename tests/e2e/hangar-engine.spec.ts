@@ -100,11 +100,28 @@ test('motor Hangar: permissão → Permitir → arquivo escrito → resultado �
     await page.locator('header').getByRole('button', { name: 'Artifacts' }).click()
     await expect(page.getByRole('button', { name: /pagina\.html/ }).first()).toBeVisible()
 
+    // The live graph of the session: a lane for the agent, the user's turn, the tool call, the approval, the result.
+    await page.locator('header').getByRole('button', { name: 'Grafo', exact: true }).click()
+    const graph = page.getByRole('img', { name: 'Grafo do trabalho do agente' })
+    await expect(graph).toBeVisible()
+    await expect(graph.locator('g[data-kind="head"]')).toContainText('agente principal')
+    await expect(graph.locator('g[data-kind="user"]')).toContainText('Crie uma página')
+    await expect(graph.locator('g[data-kind="tool"][data-status="ok"]')).toContainText('write')
+    await expect(graph.locator('g[data-kind="ask"][data-status="ok"]')).toContainText('aprovação')
+    await expect(graph.locator('g[data-kind="final"][data-status="ok"]')).toHaveCount(1)
+    await expect(graph.locator('g[data-kind="final"]')).toContainText('resultado')
+    await expect(page.getByText(/1 agente · 1 chamada de ferramenta/)).toBeVisible()
+    await graph.locator('g[data-kind="tool"]').click()
+    await expect(page.locator('pre', { hasText: 'pagina.html' }).last()).toBeVisible()
+
     // Same conversation on the second message, and every call went to the gateway's /v1 with the profile's secret.
     openai.script = [{ text: 'Sim, lembro da pagina.html.' }]
     await composer.fill('Lembra do arquivo?')
     await composer.press('Enter')
     await expect(page.getByText('Sim, lembro da pagina.html.').first()).toBeVisible({ timeout: 60_000 })
+    // The second turn was drawn while the tab stayed open.
+    await expect(graph.locator('g[data-kind="user"]')).toHaveCount(2)
+    await expect(graph.locator('g[data-kind="final"]')).toHaveCount(2)
     const last = openai.requests[openai.requests.length - 1]
     expect(last.body.messages.filter((m) => m.role === 'user').length).toBeGreaterThanOrEqual(2)
     expect(

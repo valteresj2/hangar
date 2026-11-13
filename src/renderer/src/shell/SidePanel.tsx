@@ -2,6 +2,7 @@ import { useCallback, useRef, useState } from 'react'
 import type { Session } from '@shared/contracts'
 import { ChangesPanel, FilesPanel } from '../features/git'
 import { ArtifactsPanel, BrowserPanel } from '../features/preview'
+import { FlowPanel } from '../features/engine'
 import { HarnessPanel } from '../features/harness'
 import { TerminalPanel } from '../features/terminal'
 import { useUi } from '../core/ui'
@@ -45,6 +46,7 @@ export function SidePanel({ session }: { session: Session }) {
       </div>
       {tab === 'artifacts' && <ArtifactsPanel session={session} />}
       {tab === 'harness' && <HarnessPanel session={session} />}
+      {tab === 'flow' && <FlowPanel session={session} />}
     </section>
   )
 }

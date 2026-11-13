@@ -1,5 +1,6 @@
 // IPC channels and payload types for the "engine" feature. Owned by the engine agent.
 import type { Effort, PermissionMode, SessionStatus } from '../contracts'
+import type { FlowEvent } from '../flow'
 import type { ProviderKind, ProviderProfile } from '../providers'
 
 export const ENGINE = {
@@ -35,6 +36,8 @@ export const ENGINE = {
   providers: 'engine:providers',
   /** (sessionId, providerId) → void — switches the session's provider; the next message resumes under it */
   setProvider: 'engine:setProvider',
+  /** (sessionId) → FlowEvent[] — what the live workflow graph of a Hangar-engine session is built from */
+  flowEvents: 'engine:flowEvents',
 
   evEntry: 'engine:event:entry',
   evDelta: 'engine:event:delta',
@@ -43,7 +46,9 @@ export const ENGINE = {
   /** { sessionId } — the transcript changed wholesale (rewind); reload history */
   evReset: 'engine:event:reset',
   /** { sessionId } — ask the renderer to select a session (after a fork) */
-  evSelect: 'engine:event:select'
+  evSelect: 'engine:event:select',
+  /** { sessionId, event } — one more event of a Hangar-engine session's workflow graph */
+  evFlow: 'engine:event:flow'
 } as const
 
 export interface SendOptions {
@@ -291,6 +296,7 @@ declare module '../ipc' {
     [ENGINE.fork]: (sessionId: string, entryId: string) => ForkResult
     [ENGINE.providers]: () => ProviderProfile[]
     [ENGINE.setProvider]: (sessionId: string, providerId: string) => void
+    [ENGINE.flowEvents]: (sessionId: string) => FlowEvent[]
   }
 
   interface IpcEventContract {
@@ -300,5 +306,6 @@ declare module '../ipc' {
     [ENGINE.evStatus]: StatusEvent
     [ENGINE.evReset]: { sessionId: string }
     [ENGINE.evSelect]: { sessionId: string }
+    [ENGINE.evFlow]: { sessionId: string; event: FlowEvent }
   }
 }

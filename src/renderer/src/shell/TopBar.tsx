@@ -1,4 +1,5 @@
 import type { Session, SidePanelTab } from '@shared/contracts'
+import { useSessionEngine } from '../features/engine'
 import { SessionHeader } from '../features/sessions'
 import { useUi } from '../core/ui'
 import { GearIcon, SidebarIcon } from './icons'
@@ -10,11 +11,14 @@ const PANEL_BUTTONS: { tab: SidePanelTab; label: string }[] = [
   { tab: 'files', label: 'Arquivos' },
   { tab: 'browser', label: 'Navegador' },
   { tab: 'artifacts', label: 'Artifacts' },
-  { tab: 'harness', label: 'Harness' }
+  { tab: 'harness', label: 'Harness' },
+  { tab: 'flow', label: 'Grafo' }
 ]
 
 export function TopBar({ session }: { session?: Session }) {
   const { toggleSidebar, sidePanelOpen, sidePanelTab, openSidePanel, closeSidePanel, setSettingsOpen } = useUi()
+  // The live graph belongs to Hangar-engine sessions; other sessions do not get the tab.
+  const engine = useSessionEngine(session)
 
   return (
     <header className={styles.topbar}>
@@ -35,7 +39,7 @@ export function TopBar({ session }: { session?: Session }) {
       {session && <SessionHeader session={session} />}
       <div className={styles.spacer} />
       {session &&
-        PANEL_BUTTONS.map(({ tab, label }) => {
+        PANEL_BUTTONS.filter(({ tab }) => tab !== 'flow' || engine === 'hangar').map(({ tab, label }) => {
           const active = sidePanelOpen && sidePanelTab === tab
           return (
             <button

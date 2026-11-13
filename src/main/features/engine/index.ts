@@ -14,6 +14,7 @@ import {
 import { interrupt, readTranscript, searchTranscripts, sendPrompt } from './api'
 import { fork, rewind, rewindPreview } from './branch'
 import { invalidateFiles, listFiles } from './files'
+import { deleteFlow, readFlow } from './hangar/flow'
 import { imageDataUrl } from './images'
 import { setRewindPoint } from './points'
 import { profiles } from './providers'
@@ -61,6 +62,7 @@ export const engineFeature: Feature = {
     handle(ENGINE.fork, (_e, sessionId: string, entryId: string) => fork(sessionId, entryId))
     handle(ENGINE.providers, () => profiles())
     handle(ENGINE.setProvider, (_e, sessionId: string, providerId: string) => switchProvider(sessionId, providerId))
+    handle(ENGINE.flowEvents, (_e, sessionId: string) => readFlow(sessionId))
 
     // Files the agent writes show up in the @mention index right away.
     bus.on('session:file-written', ({ sessionId }: { sessionId: string }) => invalidateFiles(sessionId))
@@ -74,6 +76,7 @@ export const engineFeature: Feature = {
       closeRunner(change.id)
       invalidateFiles(change.id)
       setRewindPoint(change.id, undefined)
+      deleteFlow(change.id)
     })
   },
   async dispose() {

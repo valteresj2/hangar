@@ -32,6 +32,7 @@ import { effectiveProviderId, isProviderFailure, maskSecrets, providerInfo, type
 import type { RunnerHost } from '../runner'
 import { appendEntries, makeEntry } from '../transcript'
 import { HangarBridge, type BridgeEvent } from './bridge'
+import { recordFlow } from './flow'
 import {
   effortFor,
   freshInputTokens,
@@ -84,6 +85,8 @@ export class HangarRunner {
   private cwd = ''
   private streamText = ''
   private streamThinking = ''
+  /** The main agent's latest message of the turn: what the graph's result node shows. */
+  private lastAnswer = ''
 
   constructor(
     readonly sessionId: string,
@@ -154,6 +157,12 @@ export class HangarRunner {
     const hidden = motion ? await motionInstructions(this.sessionId) : undefined
     this.inflight++
     this.interrupting = false
+    this.lastAnswer = ''
+    recordFlow(this.sessionId, {
+      type: 'turn',
+      text: prompt,
+      model: resolveModel(session.model, resolveProviderLaunch(effectiveProviderId(session)).models) ?? ''
+    })
     this.setStatus('working', patch)
 
     try {
@@ -289,6 +298,8 @@ export class HangarRunner {
     // subagent traffic: their outcome arrives as the result of the tool that started them.
     const agent = typeof ev.agent === 'string' ? ev.agent : 'work'
     const main = agent === 'work' || agent === 'main'
+    // The graph's own turn markers are written in send() and turnEnded(), with what the app knows.
+    if (ev.type !== 'turn' && ev.type !== 'turn_end') recordFlow(this.sessionId, ev, (t) => this.mask(t))
     switch (ev.type) {
       case 'ready': {
         const id = text(ev.session)
@@ -337,7 +348,10 @@ export class HangarRunner {
       case 'assistant':
         if (!main) return
         this.streamText = ''
-        if (text(ev.text).trim()) this.record({ kind: 'assistant', text: text(ev.text) })
+        if (text(ev.text).trim()) {
+          this.lastAnswer = text(ev.text)
+          this.record({ kind: 'assistant', text: text(ev.text) })
+        }
         return
       case 'tool_start': {
         if (!main) return
@@ -413,6 +427,16 @@ export class HangarRunner {
 
     const failed = (status === 'error' || status === 'incomplete') && !wasInterrupt
     const error = this.mask(text(ev.error))
+    recordFlow(
+      this.sessionId,
+      {
+        type: 'turn_end',
+        status: wasInterrupt ? 'interrupted' : status || 'error',
+        text: wasInterrupt ? '' : this.lastAnswer,
+        error
+      },
+      (t) => this.mask(t)
+    )
     if (this.motionWrites.size) {
       this.record(...[...this.motionWrites].map(motionCard))
       this.motionWrites.clear()

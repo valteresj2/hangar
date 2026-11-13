@@ -114,4 +114,4 @@ export interface StoreChange {
 }
 
 /** Side panel tabs. Each feature registers its own tab component in the renderer. */
-export type SidePanelTab = 'terminal' | 'changes' | 'files' | 'browser' | 'artifacts' | 'harness'
+export type SidePanelTab = 'terminal' | 'changes' | 'files' | 'browser' | 'artifacts' | 'harness' | 'flow'

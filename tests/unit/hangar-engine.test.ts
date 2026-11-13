@@ -286,6 +286,33 @@ describe.skipIf(!hasPython())('hangar engine: a session on the real bridge', asy
     expect(JSON.stringify(messages)).toContain('crie nota.txt')
   })
 
+  it('the turns so far are recorded for the live graph, without secrets or file contents', async () => {
+    const { readFlow } = await import('../../src/main/features/engine/hangar/flow')
+    const { FlowGraph } = await import('../../src/shared/flow')
+    const events = readFlow('s1')
+    const types = events.map((e) => e.type)
+    for (const t of ['turn', 'llm_start', 'tool_start', 'tool_end', 'permission', 'permission_result', 'turn_end'])
+      expect(types).toContain(t)
+    expect(types).not.toContain('delta')
+    expect(events.find((e) => e.type === 'turn')).toMatchObject({ text: 'crie nota.txt', model: 'fake/model' })
+    expect(JSON.stringify(events)).not.toContain(SECRET)
+    expect(events.every((e) => !('output' in e))).toBe(true)
+    const graph = new FlowGraph()
+    for (const ev of events) graph.on(ev)
+    const layout = graph.layout()
+    expect(layout.running).toBe(false)
+    expect(layout.nodes[0]).toMatchObject({ kind: 'head', title: 'agente principal', sub: 'model' })
+    expect(layout.nodes.filter((n) => n.kind === 'user').length).toBeGreaterThanOrEqual(3)
+    expect(layout.nodes.some((n) => n.kind === 'tool' && n.title === 'write' && n.status === 'ok')).toBe(true)
+    expect(layout.nodes.some((n) => n.kind === 'ask' && n.status === 'ok')).toBe(true)
+    expect(layout.nodes.some((n) => n.kind === 'final' && n.title === 'interrompido')).toBe(true)
+    expect(layout.nodes.at(-1)).toMatchObject({ kind: 'final', title: 'resultado', status: 'ok' })
+    // One result node per turn.
+    expect(layout.nodes.filter((n) => n.kind === 'final').length).toBe(
+      layout.nodes.filter((n) => n.kind === 'user').length
+    )
+  })
+
   it('rewind and fork are refused clearly', async () => {
     const { rewind, rewindPreview } = await import('../../src/main/features/engine/branch')
     const user = byKind(await entries(), 'user')[0]
