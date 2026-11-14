@@ -14,7 +14,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import media, project, skills as skills_mod
+from . import media, memory, project, skills as skills_mod
 from .config import PKG_ROOT
 
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".hangar", "dist", "build", ".mypy_cache", ".next", "target"}
@@ -95,6 +95,10 @@ def _guard_write(ctx: Ctx, path: Path) -> None:
 # ------------------------------------------------------------------ file tools
 def t_read(ctx: Ctx, a: dict) -> str:
     path = _resolve(ctx, a["path"])
+    try:
+        ctx.session.files_seen.add(str(path.relative_to(ctx.session.cwd)).replace("\\", "/"))
+    except ValueError:
+        pass
     if not path.is_file():
         near = [p.name for p in path.parent.glob("*")][:30] if path.parent.is_dir() else []
         raise ToolError(f"file not found: {a['path']}." + (f" Files in that directory: {', '.join(near)}" if near else ""))
@@ -207,6 +211,27 @@ def t_grep(ctx: Ctx, a: dict) -> str:
 
 
 # ----------------------------------------------------------------------- shell
+_PROBES = {"ls", "dir", "pwd", "cd", "cat", "head", "tail", "type", "which", "where", "echo", "find", "grep", "rg", "wc", "stat", "tree", "file"}
+_GIT_PROBES = {"status", "diff", "log", "show", "rev-parse", "branch", "ls-files", "remote", "describe", "blame"}
+
+
+def is_probe(cmd: str) -> bool:
+    """True when every part of the command only looks at things (ls, cat, git status...). A probe that fails says
+    nothing about the work: `git status` outside a repository must not undo a test run that passed."""
+    parts = [p.strip() for p in re.split(r"&&|\|\||[;|\n]", cmd) if p.strip()]
+    for part in parts:
+        words = part.split()
+        head = words[0].lower().removesuffix(".exe")
+        if head == "git":
+            rest = [w for i, w in enumerate(words[1:], 1) if words[i - 1] not in ("-C", "-c")]      # `git -C dir log`
+            sub = next((w for w in rest if not w.startswith("-")), "")
+            if sub not in _GIT_PROBES:
+                return False
+        elif head not in _PROBES or ">" in part:
+            return False
+    return bool(parts)
+
+
 def kill_tree(p: subprocess.Popen) -> None:
     try:
         if os.name == "nt":
@@ -244,6 +269,13 @@ def t_process(ctx: Ctx, a: dict) -> str:
 def t_note(ctx: Ctx, a: dict) -> str:
     ctx.session.add_note(a["text"])
     return "Noted."
+
+
+def t_remember(ctx: Ctx, a: dict) -> str:
+    ok, msg = memory.save(ctx.session, a, "agent")
+    if not ok:
+        raise ToolError(msg)
+    return msg
 
 
 def t_shell(ctx: Ctx, a: dict) -> str:
@@ -285,7 +317,10 @@ def t_shell(ctx: Ctx, a: dict) -> str:
     try:
         raw, _ = p.communicate(timeout=timeout)
         tail = f"[exit {p.returncode}]" if not s.abort.is_set() else "[interrupted by the user]"
-        s.last_exit = p.returncode
+        if not (p.returncode != 0 and s.last_exit == 0 and not s.edits_since_run and is_probe(cmd)):
+            s.last_exit = p.returncode                   # a failed look-around after a passing check leaves the check standing
+        if not s.abort.is_set():
+            memory.observe(s, cmd, p.returncode)
     except subprocess.TimeoutExpired:
         s.last_exit = -1
         kill_tree(p)
@@ -401,6 +436,7 @@ def t_task(ctx: Ctx, a: dict) -> str:
     name = f"sub{s.sub_count}"
     s.bus.emit("subagent", agent=name, model=model, level=level if s.team else "standard", by=ctx.agent.name)
     sub = Agent(s, model=model, role="sub", toolset="all", name=name, max_steps=20, extra_system=extra)
+    sub.level = level if s.team and level in ("light", "deep") else ""
     out = sub.run(a["prompt"] + "\n\nReturn a concise report (under 400 words) with exact paths/values the caller needs.")
     return out[:8000]
 
@@ -437,6 +473,11 @@ def builtin() -> dict[str, Tool]:
              S({"command": STR, "timeout": INT, "background": BOOL}, ["command"]), t_shell),
         Tool("process", "Manage background processes: action = output | kill | list.", S({"action": STR, "id": STR}, ["action"]), t_process),
         Tool("note", "Save a durable fact or decision; notes survive context compaction and resume.", S({"text": STR}, ["text"]), t_note),
+        Tool("remember", "Save a durable fact about THIS PROJECT for future sessions (how to test/build/run it, where things live, "
+             "a convention, a trap). kind=command needs `command`, exactly as it just ran with exit 0; other kinds need `paths` "
+             "that show the fact. Not for task details.",
+             S({"name": STR, "kind": {"type": "string", "enum": list(memory.KINDS)}, "fact": STR, "command": STR,
+                "paths": {"type": "array", "items": STR}, "detail": STR}, ["name", "kind", "fact"]), t_remember),
         Tool("web_fetch", "Fetch a URL and return its text.", S({"url": STR}, ["url"]), t_web_fetch, True),
         Tool("web_search", "Search the web; returns titles, URLs and snippets.", S({"query": STR}, ["query"]), t_web_search, True),
         Tool("perceive", "Look at / listen to an image, audio, video or PDF file and answer a question about it.",
@@ -471,7 +512,9 @@ def select(session, toolset: str, tier: str, role: str) -> list[Tool]:
     elif toolset == "verify":
         names = [n for n in names if n in READONLY_SET or n in ("shell", "process")]
     if role != "main":
-        names = [n for n in names if n not in ("task", "ask_user", "plan", "note")]
+        names = [n for n in names if n not in ("task", "ask_user", "plan", "note", "remember")]
+    if not session.cfg.get("memory", True) or session.cfg["permission"] == "readonly":
+        names = [n for n in names if n != "remember"]
     if tier == "weak":
         names = [n for n in names if n not in ("task", "note")]   # delegation is below the capability floor; fewer tools = fewer mistakes
     if session.interactive == "none" and session.answers is None:

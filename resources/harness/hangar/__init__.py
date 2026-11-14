@@ -1,2 +1,2 @@
 """Hangar Harness — a model-agnostic, token-frugal agent harness."""
-__version__ = "0.4.2"
+__version__ = "0.6.0"

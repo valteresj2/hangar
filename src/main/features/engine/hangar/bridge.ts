@@ -29,6 +29,8 @@ export interface BridgeStart {
   /** File tools may not leave `cwd`. */
   confine?: boolean
   max_steps?: number
+  /** Keep verified facts about the project in `<cwd>/.hangar/memory` and start each conversation knowing them. */
+  memory?: boolean
 }
 
 export interface BridgeOptions {

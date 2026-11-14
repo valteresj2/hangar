@@ -5,7 +5,7 @@ from __future__ import annotations
 import datetime
 from pathlib import Path
 
-from . import machine, project, skills as skills_mod
+from . import machine, memory, project, skills as skills_mod
 from .toolcall import text_protocol_prompt
 
 CORE = """You are Hangar, an autonomous agent that solves the user's task end to end on this machine using tools.
@@ -51,12 +51,15 @@ def build(session, agent) -> str:
         parts.append(WEAK)
     elif agent.role == "main":
         parts.append(LONG)
+    if "remember" in agent.toolmap:
+        parts.append(memory.RULE)
     parts.append(ROLE.get(agent.role, ""))
     if getattr(agent, "extra_system", ""):
         parts.append("\n\n# Your role in this project (sub-agent definition)\n" + agent.extra_system)
     parts.append(f"\n\n# Environment\n- Working directory: {session.cwd}\n- Date: {datetime.date.today().isoformat()}\n"
                  + machine.describe(session.machine, session.shell_name))
     parts.append(project_instructions(session.cwd))
+    parts.append(getattr(session, "memory_block", ""))
     defs = project.agents(session.cwd) if agent.role == "main" and "task" in agent.toolmap else {}
     if defs:
         parts.append("\n\n# Project sub-agents (delegate with the task tool: task(prompt, agent=\"name\"))\n"

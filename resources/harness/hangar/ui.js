@@ -46,6 +46,9 @@
   const TABS = [['terminal', 'Terminal'], ['changes', 'Alterações'], ['files', 'Arquivos'], ['browser', 'Navegador'],
                 ['artifacts', 'Artifacts'], ['harness', 'Harness'], ['flow', 'Grafo']];
   const STAGE = {plan: 'Planejamento', execute: 'Execução', work: 'Execução', review: 'Revisão independente'};
+  const ROLE_PT = {worker: 'executor', light: 'sub-agente leve', deep: 'sub-agente profundo', sub: 'sub-agente', planner: 'planejador', verifier: 'revisor',
+                   escalation: 'reforço', helper: 'auxiliar', perception: 'percepção', studio: 'estúdio'};
+  const MEM_KIND = {command: 'comando', layout: 'estrutura', convention: 'convenção', gotcha: 'armadilha'};
   const WORKFLOWS = {
     chat: ['Conversa', 'Você conversa com o agente em vários turnos e aprova cada ação.'],
     verify: ['Executar e revisar', 'O agente faz a tarefa e um revisor independente, sem o histórico, confere o resultado; se reprovar, o agente corrige (até 3 vezes).'],
@@ -155,6 +158,10 @@
           this.add(h('div', {class: 'sys ' + (ok ? 'ok' : 'err'), 'data-testid': 'verdict'},
             ok ? 'Revisor: aprovado.' : `Revisor: pediu ajustes — ${ev.feedback || 'sem detalhes'}`));
           break; }
+        case 'memory':
+          this.add(h('div', {class: 'sys', 'data-testid': 'memory-line'}, ev.saved ? `Memória do projeto: ${ev.saved.join(', ')} — ${ev.fact || ''}`
+            : `Memória do projeto: ${(ev.stale || []).join(', ')} saiu de uso (${ev.reason || ''})`));
+          break;
         case 'team':
           if (this.readonly) this.add(h('div', {class: 'sys', 'data-testid': 'team-line'}, 'Equipe: ' + (ev.team || []).filter(m => ['worker', 'planner', 'verifier', 'escalation'].includes(m.role))
             .map(m => `${{worker: 'executor', planner: 'planejador', verifier: 'revisor', escalation: 'reforço'}[m.role]} ${String(m.model).split('/').pop()}`).join(' · ')));
@@ -281,10 +288,15 @@
       else if (status === 'error' && ev.error && ev.error !== 'process exited') this.add(h('div', {class: 'errbox', 'data-testid': 'error'}, ev.error));
       if (ev.type === 'turn_end') {
         this.last = ev;
+        if (S.cur && ev.session_by_role) S.cur.byRole = ev.session_by_role;
         this.add(h('div', {class: 'turnline', 'data-testid': 'turn-end', 'data-status': status},
           h('span', null, String(ev.model || '').split('/').pop()), h('span', null, dur(ev.duration_ms)), h('span', null, money(ev.cost)),
           h('span', null, `${kfmt(ev.prompt)} ↑ · ${kfmt(ev.completion)} ↓`), h('span', null, `${ev.steps || 0} passos`)));
       }
+      const roles = ev.by_role || [];                    // who spent it: shown when more than one role worked
+      if (roles.length > 1 || (ev.type === 'session_end' && roles.length))
+        this.add(h('div', {class: 'roleline', 'data-testid': 'role-costs'}, roles.map(r =>
+          h('span', {title: `${r.calls} chamada${r.calls !== 1 ? 's' : ''} · ${(r.models || []).join(', ')}`}, `${ROLE_PT[r.role] || r.role} ${money(r.cost)}`))));
       renderStatus();
     }
   }
@@ -610,16 +622,23 @@
     setTimeout(() => { syncBusy(); renderAtts(); renderRec(); ta.focus(); }, 0);
     return box;
   }
-  function teamTable(r) {
+  function teamTable(r, spent) {
     if (!r.team || !r.team.length) return h('div', {class: 'hint'}, r.error || 'A equipe é definida ao iniciar a sessão.');
-    return h('table', {class: 'team'}, r.team.map(m => h('tr', null, h('td', {class: 'mono'}, String(m.model).split('/').pop()), h('td', null, m.why))));
+    const by = Object.fromEntries((spent || []).map(x => [x.role, x]));
+    return h('table', {class: 'team'}, r.team.map(m => h('tr', {'data-role': m.role}, h('td', {class: 'mono'}, String(m.model).split('/').pop()),
+      h('td', null, m.why, m.evidence ? h('div', {class: 'ev'}, m.evidence) : null),
+      spent ? h('td', {class: 'spent mono'}, by[m.role] ? money(by[m.role].cost) : '—') : null)));
+  }
+  function spentExtra(r, spent) {                       // spend that has no row in the team table (plain sub-agents, image generation)
+    const known = new Set((r.team || []).map(m => m.role)), rest = spent.filter(x => !known.has(x.role));
+    return rest.length ? h('div', {class: 'hint'}, 'Também nesta sessão: ' + rest.map(x => `${ROLE_PT[x.role] || x.role} ${money(x.cost)}`).join(' · ')) : null;
   }
   async function showTeam() {
     const s = S.cur; let r = {team: s.team};
     if (!s.team) r = await api('/api/team?cwd=' + encodeURIComponent(s.cwd || '')).catch(e => ({team: [], error: e.message}));
     modal('Equipe de modelos', [h('div', {class: 'muted'}, s.model && s.model !== 'auto' ? `Esta sessão usa o modelo fixo ${s.model}.`
         : 'O Hangar escolhe o modelo de cada papel pelo custo por tarefa resolvida nos nossos benchmarks, e só paga pelo modelo forte quando ele muda o resultado.'),
-      teamTable(r), h('div', {class: 'hint'}, 'Para trocar um papel, use a tabela [team] em ~/.hangar/config.toml ou no hangar.toml do projeto.')],
+      teamTable(r, s.byRole || []), spentExtra(r, s.byRole || []), h('div', {class: 'hint'}, 'Para trocar um papel, use a tabela [team] em ~/.hangar/config.toml ou no hangar.toml do projeto.')],
       [{label: 'Fechar', cls: 'primary'}]);
   }
   function renderAtts() {
@@ -936,6 +955,12 @@
           ...sec('Comandos de barra', d.commands, c => h('div', {class: 'hitem'}, h('b', null, '/' + c.name), ' ', c.hint || '', c.description ? ' — ' + c.description : ''), 'Defina em .claude/commands/<nome>.md.'),
           ...sec('Skills', d.skills, k => h('div', {class: 'hitem'}, h('b', null, k.name), ' — ', k.description), 'Nenhuma skill encontrada.'),
           ...sec('Hooks', Object.entries(d.hooks).filter(([, n]) => n), ([k, n]) => h('div', {class: 'hitem'}, h('b', null, k), ` — ${n} regra${n > 1 ? 's' : ''}`), 'Nenhum hook em .claude/settings.json.'),
+          ...sec('Memória do projeto', d.memory || [], m => h('div', {class: 'hitem' + (m.stale ? ' muted' : ''), 'data-testid': 'memory-fact'},
+              h('b', null, m.name), ` (${MEM_KIND[m.kind] || m.kind}) — `, m.fact, m.command ? h('code', {class: 'mcmd'}, m.command) : null,
+              h('span', {class: 'mmeta'}, m.stale ? `fora de uso: ${m.stale}` : `verificado em ${m.verified || '?'} · confirmado ${m.confirmations}×`),
+              h('button', {class: 'btn small', title: 'Apagar este fato', 'data-testid': 'memory-forget',
+                           onclick: () => api(sapi('forget'), {name: m.name}).then(() => PANELS.harness()).catch(fail)}, 'Esquecer')),
+            'O que o agente confirmar sobre o projeto (como testar, onde ficam as coisas) aparece aqui e em .hangar/memory/.'),
           ...sec('Lições aprendidas', d.lessons, l => h('div', {class: 'hitem'}, h('b', null, l.cue || l.task || 'lição'), ' — ', l.lesson), 'As lições de sessões anteriores aparecem aqui.')));
     }
   };

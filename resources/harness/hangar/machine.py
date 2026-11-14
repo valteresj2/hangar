@@ -84,6 +84,16 @@ def probe(refresh: bool = False) -> dict:
     return info
 
 
+def shell(cfg: dict, info: dict) -> tuple[str, list[str]]:
+    """Which shell runs commands here: its description for the prompt and its argv prefix."""
+    bash = info.get("bash") if cfg["shell"] in ("auto", "bash") else ""
+    if os.name != "nt":
+        return "bash", [bash or "/bin/sh", "-c"]
+    if bash:
+        return "bash (Git Bash on Windows; POSIX syntax, forward slashes)", [bash, "-c"]
+    return "Windows PowerShell 5.1 (no &&; use ;)", ["powershell", "-NoProfile", "-NonInteractive", "-Command"]
+
+
 def describe(info: dict, shell_name: str) -> str:
     parts = [f"OS: {info['os']} ({info['arch']})", f"shell tool runs: {shell_name}",
              f"CPU cores: {info['cores']}"]

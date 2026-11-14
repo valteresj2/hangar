@@ -23,7 +23,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs, unquote, urlparse
 
-from . import __version__, config, lessons, media, project, router, skills
+from . import __version__, config, lessons, media, memory, project, router, skills
 from .models import Catalog
 from .session import SESSIONS
 from .tools import SKIP_DIRS
@@ -114,7 +114,7 @@ class Live:
         threading.Thread(target=self._read, daemon=True).start()
         threading.Thread(target=self._stderr, daemon=True).start()
         start = {"type": "start", "cwd": s["cwd"], "model": s["model"], "permission": s.get("permission", "ask"),
-                 "effort": s.get("effort") or None, "title": s["title"], "lessons": True, **self.app.bridge_extra}
+                 "effort": s.get("effort") or None, "title": s["title"], "lessons": True, "memory": True, **self.app.bridge_extra}
         if s.get("hangarSessionId"):
             start["resume"] = s["hangarSessionId"]
         self.send(start)
@@ -163,7 +163,8 @@ class Live:
                 s = store.sessions.get(self.sid) or {}
                 status = ev.get("status")
                 store.patch(self.sid, status="error" if status in ("error", "incomplete") else "idle" if not self.busy else "working",
-                            cost=ev.get("session_cost", s.get("cost", 0)), contextTokens=ev.get("context_tokens"),
+                            cost=ev.get("session_cost", s.get("cost", 0)), byRole=ev.get("session_by_role") or s.get("byRole"),
+                            contextTokens=ev.get("context_tokens"),
                             contextWindow=ev.get("context_window"), unread=self.app.active != self.sid)
             store.append(self.sid, ev)
         code = self.proc.wait()
@@ -440,6 +441,9 @@ class App:
                 "commands": [{"name": n, "description": c["description"], "hint": c["hint"]} for n, c in project.commands(cwd).items()],
                 "skills": [{"name": n, "description": str(s.get("description", ""))[:200]} for n, s in sk.items()],
                 "hooks": {k: len(v) for k, v in project.claude_hooks(cwd).items()},
+                "memory": [{"name": f["name"], "kind": f["kind"], "fact": f["fact"], "command": f["command"], "paths": f["paths"],
+                            "verified": str(f.get("verified", "")), "confirmations": f["confirmations"], "stale": f["_stale"],
+                            "source": str(f.get("source", ""))} for f in memory.load(cwd)],
                 "lessons": [{k: str(l.get(k, ""))[:400] for k in ("cue", "lesson", "task", "model")} for l in ls[-40:]]}
 
     # ----------------------------------------------------------------- git
@@ -763,6 +767,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(app.interrupt(sid))
                 if what == "save":
                     return self._json(app.write_harness(sid, str(data.get("path") or ""), str(data.get("text") or "")))
+                if what == "forget":                        # drop one fact of the project memory (or all, without a name)
+                    return self._json({"removed": memory.forget(app.cwd(sid), str(data.get("name") or ""))})
                 if what == "open":
                     _open_path(app.inside(sid, str(data.get("path") or ".")))
                     return self._json({"ok": True})

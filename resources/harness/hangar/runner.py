@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from . import lessons, media
+from . import lessons, media, memory
 from .graph import load_workflow, run_graph
 from .llm import LLMError
 from .session import Session, Stopped
@@ -72,6 +72,7 @@ def _close(s: Session, status: str, final: str) -> dict:
     """End-of-session duties that must never break the result: learn, run session_end hooks, then finish."""
     try:
         lessons.reflect(s, {"status": status, "final": final})
+        memory.distill(s, {"status": status, "final": final})
         s.hooks.session_end({"status": status, "final": final, "session": s.id, "files": sorted(s.files)})
     except Exception as e:
         s.bus.emit("notice", level="warn", text=f"end-of-session step failed: {type(e).__name__}: {e}")

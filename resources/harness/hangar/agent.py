@@ -38,6 +38,7 @@ class Agent:
         self.messages: list = []
         self.steps = 0
         self.escalated = False
+        self.level = ""                            # a routed sub-agent: "light" or "deep"
         self.goal = ""
         self.max_out = session.cfg["max_output_tokens"]
         self.seen: dict[str, int] = {}
@@ -87,6 +88,15 @@ class Agent:
         self.goal = (first if isinstance(first, str) else next((p["text"] for p in first if p.get("type") == "text"), ""))[:400]
         return self._loop()
 
+    @property
+    def cost_role(self) -> str:
+        """Which line of the bill this agent's calls go to."""
+        if self.role == "sub":
+            return self.level or "sub"
+        if self.role in ("verifier", "planner"):
+            return self.role
+        return "escalation" if self.escalated else "worker"
+
     def escalate(self, reason: str) -> bool:
         """Hand the same conversation to a stronger model when this one is stuck (pay for strength only when needed)."""
         s, up = self.s, self.s.cfg.get("escalation_model")
@@ -113,7 +123,7 @@ class Agent:
                 r = s.llm.chat(self.model, self.messages,
                                tools=self.schemas if (with_tools and self.mode == "native" and self.schemas) else None,
                                on_delta=on_delta, agent=self.name, max_tokens=self.max_out)
-                s.add_usage(r, getattr(r, "model", "") or self.model, self.name)
+                s.add_usage(r, getattr(r, "model", "") or self.model, self.name, self.cost_role)
                 self.ctx.observe(r.usage["prompt"])
                 return r
             except LLMError as e:
@@ -164,6 +174,7 @@ class Agent:
                 except Exception as e:  # tool bugs must never kill the loop
                     ok, out = False, f"Error: {type(e).__name__}: {e}"
         s.totals["tool_calls"] += 1
+        s.tool_counts[name] = s.tool_counts.get(name, 0) + 1
         s.totals["tool_errors"] += 0 if ok else 1
         s.bus.emit("tool_end", id=call["id"], name=name, agent=self.name, ok=ok, ms=int((time.time() - t0) * 1000),
                    chars=len(out), preview=out[:1500], **({"output": out[:30000]} if s.interactive == "bridge" else {}))

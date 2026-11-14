@@ -42,6 +42,7 @@ DEFAULTS: dict = {
     # learning and policy -------------------------------------------------------
     "lessons": True,                       # write/reuse verified lessons (see lessons.py)
     "lessons_max_age_days": 90,
+    "memory": True,                        # project facts in <project>/.hangar/memory (see memory.py)
     "hooks": [],                           # [[hooks]] rules (see hooks.py)
     "trust_project": False,                # allow project hooks/plugins that execute code
     "trusted_projects": [],                     # extra skill folders, e.g. ["~/.claude/skills"]

@@ -255,6 +255,8 @@ export class HangarRunner {
             ...(launch.compat?.contextWindow ? { context_window: launch.compat.contextWindow } : {}),
             // The folder is the user's project (or a Lab variant of it): its .claude/ hooks apply, as in Claude Code.
             trust_project: true,
+            // Verified project facts (how to run the tests, where things live) carry over between conversations.
+            memory: true,
             title: session.title
           },
           onEvent: (ev) => this.handle(ev),
@@ -403,6 +405,23 @@ export class HangarRunner {
         if (main && ev.tier === 2)
           this.record({ kind: 'system', text: 'Contexto compactado para continuar a conversa.' })
         return
+      case 'memory': {
+        const saved = Array.isArray(ev.saved) ? ev.saved.map((n) => text(n)).filter(Boolean) : []
+        const stale = Array.isArray(ev.stale) ? ev.stale.map((n) => text(n)).filter(Boolean) : []
+        if (saved.length) {
+          const fact = text(ev.fact)
+          this.record({
+            kind: 'system',
+            text: this.mask(`Memória do projeto: guardou ${saved.join(', ')}${fact ? ` — ${fact}` : ''}`)
+          })
+        } else if (stale.length) {
+          this.record({
+            kind: 'system',
+            text: this.mask(`Memória do projeto: ${stale.join(', ')} saiu de uso (${text(ev.reason)})`)
+          })
+        }
+        return
+      }
       case 'hook':
         this.record({
           kind: 'system',

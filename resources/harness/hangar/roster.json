@@ -1,0 +1,623 @@
+{
+ "generated": "2026-11-13",
+ "min_runs": 2,
+ "result_files": 24,
+ "tiers": {
+  "core": [
+   "bugfix",
+   "feature",
+   "ask",
+   "mcp"
+  ],
+  "media": [
+   "image",
+   "audio",
+   "video"
+  ],
+  "hard": [
+   "kvstore",
+   "pipeline",
+   "refactor"
+  ],
+  "frontier": [
+   "tinylang"
+  ]
+ },
+ "rules": {
+  "worker": {
+   "cleared": [
+    "core",
+    "media",
+    "hard"
+   ],
+   "ranked_on": [
+    "core",
+    "media",
+    "hard"
+   ]
+  },
+  "light": {
+   "cleared": [
+    "core"
+   ],
+   "ranked_on": [
+    "core"
+   ]
+  },
+  "deep": {
+   "cleared": [
+    "core",
+    "hard",
+    "frontier"
+   ],
+   "ranked_on": [
+    "frontier"
+   ]
+  },
+  "planner": {
+   "cleared": [
+    "core",
+    "hard",
+    "frontier"
+   ],
+   "ranked_on": [
+    "frontier"
+   ]
+  },
+  "verifier": {
+   "cleared": [
+    "core",
+    "hard"
+   ],
+   "ranked_on": [
+    "core",
+    "hard"
+   ]
+  },
+  "escalation": {
+   "cleared": [
+    "core",
+    "hard",
+    "frontier"
+   ],
+   "ranked_on": [
+    "frontier"
+   ]
+  },
+  "helper": {
+   "cleared": [
+    "core"
+   ],
+   "ranked_on": [
+    "core"
+   ]
+  },
+  "perception": {
+   "cleared": [
+    "media"
+   ],
+   "ranked_on": [
+    "media"
+   ]
+  }
+ },
+ "modalities": {
+  "anthropic/claude-fable-5.2": [
+   "file",
+   "image",
+   "text"
+  ],
+  "anthropic/claude-haiku-5.5": [
+   "file",
+   "image",
+   "text"
+  ],
+  "anthropic/claude-sonnet-5.5": [
+   "file",
+   "image",
+   "text"
+  ],
+  "deepseek/deepseek-v4.1-flash-1017": [
+   "image",
+   "text"
+  ],
+  "liquid/lfm-3-1.7b": [
+   "text"
+  ],
+  "meta/muse-ember": [
+   "audio",
+   "file",
+   "image",
+   "text",
+   "video"
+  ],
+  "nex-agi/nex-n2.5-mini": [
+   "image",
+   "text"
+  ],
+  "openai/gpt-6-luna": [
+   "file",
+   "image",
+   "text"
+  ],
+  "openai/gpt-6.1-terra": [
+   "file",
+   "image",
+   "text"
+  ]
+ },
+ "roles": {
+  "worker": [
+   {
+    "model": "openai/gpt-6-luna",
+    "solved": 50,
+    "runs": 50,
+    "cost_per_solved": 0.0015,
+    "cleared": [
+     "core",
+     "media",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "media",
+     "hard"
+    ]
+   },
+   {
+    "model": "anthropic/claude-haiku-5.5",
+    "solved": 40,
+    "runs": 40,
+    "cost_per_solved": 0.00232,
+    "cleared": [
+     "core",
+     "media",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "media",
+     "hard"
+    ]
+   },
+   {
+    "model": "deepseek/deepseek-v4.1-flash-1017",
+    "solved": 27,
+    "runs": 27,
+    "cost_per_solved": 0.00318,
+    "cleared": [
+     "core",
+     "media",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "media",
+     "hard"
+    ]
+   },
+   {
+    "model": "openai/gpt-6.1-terra",
+    "solved": 27,
+    "runs": 27,
+    "cost_per_solved": 0.01373,
+    "cleared": [
+     "core",
+     "media",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "media",
+     "hard"
+    ]
+   },
+   {
+    "model": "anthropic/claude-sonnet-5.5",
+    "solved": 27,
+    "runs": 27,
+    "cost_per_solved": 0.01907,
+    "cleared": [
+     "core",
+     "media",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "media",
+     "hard"
+    ]
+   }
+  ],
+  "light": [
+   {
+    "model": "openai/gpt-6-luna",
+    "solved": 22,
+    "runs": 22,
+    "cost_per_solved": 0.00087,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "anthropic/claude-haiku-5.5",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.00112,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "deepseek/deepseek-v4.1-flash-1017",
+    "solved": 12,
+    "runs": 12,
+    "cost_per_solved": 0.00165,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "meta/muse-ember",
+    "solved": 12,
+    "runs": 12,
+    "cost_per_solved": 0.00193,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "liquid/lfm-3-1.7b",
+    "solved": 12,
+    "runs": 12,
+    "cost_per_solved": 0.00336,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "openai/gpt-6.1-terra",
+    "solved": 12,
+    "runs": 12,
+    "cost_per_solved": 0.00759,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "anthropic/claude-sonnet-5.5",
+    "solved": 12,
+    "runs": 12,
+    "cost_per_solved": 0.01394,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   }
+  ],
+  "deep": [
+   {
+    "model": "anthropic/claude-haiku-5.5",
+    "solved": 31,
+    "runs": 31,
+    "cost_per_solved": 0.02339,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "openai/gpt-6.1-terra",
+    "solved": 20,
+    "runs": 20,
+    "cost_per_solved": 0.0564,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "anthropic/claude-sonnet-5.5",
+    "solved": 20,
+    "runs": 20,
+    "cost_per_solved": 0.18304,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   }
+  ],
+  "planner": [
+   {
+    "model": "anthropic/claude-haiku-5.5",
+    "solved": 31,
+    "runs": 31,
+    "cost_per_solved": 0.02339,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "openai/gpt-6.1-terra",
+    "solved": 20,
+    "runs": 20,
+    "cost_per_solved": 0.0564,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "anthropic/claude-sonnet-5.5",
+    "solved": 20,
+    "runs": 20,
+    "cost_per_solved": 0.18304,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   }
+  ],
+  "verifier": [
+   {
+    "model": "openai/gpt-6-luna",
+    "solved": 35,
+    "runs": 35,
+    "cost_per_solved": 0.0017,
+    "cleared": [
+     "core",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "hard"
+    ]
+   },
+   {
+    "model": "anthropic/claude-haiku-5.5",
+    "solved": 28,
+    "runs": 28,
+    "cost_per_solved": 0.00282,
+    "cleared": [
+     "core",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "hard"
+    ]
+   },
+   {
+    "model": "deepseek/deepseek-v4.1-flash-1017",
+    "solved": 18,
+    "runs": 18,
+    "cost_per_solved": 0.004,
+    "cleared": [
+     "core",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "hard"
+    ]
+   },
+   {
+    "model": "openai/gpt-6.1-terra",
+    "solved": 18,
+    "runs": 18,
+    "cost_per_solved": 0.01894,
+    "cleared": [
+     "core",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "hard"
+    ]
+   },
+   {
+    "model": "anthropic/claude-sonnet-5.5",
+    "solved": 18,
+    "runs": 18,
+    "cost_per_solved": 0.02348,
+    "cleared": [
+     "core",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "hard"
+    ]
+   }
+  ],
+  "escalation": [
+   {
+    "model": "anthropic/claude-haiku-5.5",
+    "solved": 31,
+    "runs": 31,
+    "cost_per_solved": 0.02339,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "openai/gpt-6.1-terra",
+    "solved": 20,
+    "runs": 20,
+    "cost_per_solved": 0.0564,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "anthropic/claude-sonnet-5.5",
+    "solved": 20,
+    "runs": 20,
+    "cost_per_solved": 0.18304,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   }
+  ],
+  "helper": [
+   {
+    "model": "openai/gpt-6-luna",
+    "solved": 22,
+    "runs": 22,
+    "cost_per_solved": 0.00087,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "anthropic/claude-haiku-5.5",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.00112,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "deepseek/deepseek-v4.1-flash-1017",
+    "solved": 12,
+    "runs": 12,
+    "cost_per_solved": 0.00165,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "meta/muse-ember",
+    "solved": 12,
+    "runs": 12,
+    "cost_per_solved": 0.00193,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "liquid/lfm-3-1.7b",
+    "solved": 12,
+    "runs": 12,
+    "cost_per_solved": 0.00336,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "openai/gpt-6.1-terra",
+    "solved": 12,
+    "runs": 12,
+    "cost_per_solved": 0.00759,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "anthropic/claude-sonnet-5.5",
+    "solved": 12,
+    "runs": 12,
+    "cost_per_solved": 0.01394,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   }
+  ],
+  "perception": [
+   {
+    "model": "meta/muse-ember",
+    "solved": 9,
+    "runs": 9,
+    "cost_per_solved": 0.00164,
+    "cleared": [
+     "media"
+    ],
+    "ranked_on": [
+     "media"
+    ]
+   }
+  ]
+ }
+}

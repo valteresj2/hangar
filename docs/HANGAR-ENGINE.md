@@ -101,7 +101,7 @@ O motor do Lab e do refletor é o do **perfil padrão**; o da bancada é escolhi
 ## Atualizar o harness embutido
 
 ```bash
-npm run harness:sync -- --tag v0.4.2            # de uma versão publicada
+npm run harness:sync -- --tag v0.6.0            # de uma versão publicada
 npm run harness:sync -- ../HangarHarness        # de um checkout local
 ```
 
