@@ -330,7 +330,9 @@ def t_shell(ctx: Ctx, a: dict) -> str:
             raw = b""
         tail = f"[timed out after {timeout}s and was killed; for servers or long jobs use background=true and poll with the process tool]"
     s.edits_since_run = False
-    return (raw.decode("utf-8", "replace").replace("\r\n", "\n").rstrip() + "\n" + tail).lstrip()
+    out = raw.decode("utf-8", "replace").replace("\r\n", "\n").rstrip()
+    skills_mod.gate_seen(s, cmd, s.last_exit if not s.abort.is_set() else None, out)
+    return (out + "\n" + tail).lstrip()
 
 
 # ------------------------------------------------------------------------- web
@@ -442,6 +444,10 @@ def t_task(ctx: Ctx, a: dict) -> str:
 
 
 def t_skill(ctx: Ctx, a: dict) -> str:
+    if a["name"] in ctx.session.skills:
+        ctx.session.skills_loaded.add(a["name"])
+    if (ctx.session.skills.get(a["name"]) or {}).get("gate"):
+        ctx.session.skill_gates.setdefault(a["name"], False)
     return skills_mod.load(ctx.session.skills, a["name"])
 
 

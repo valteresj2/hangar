@@ -47,7 +47,7 @@
                 ['artifacts', 'Artifacts'], ['harness', 'Harness'], ['flow', 'Grafo']];
   const STAGE = {plan: 'Planejamento', execute: 'Execução', work: 'Execução', review: 'Revisão independente'};
   const ROLE_PT = {worker: 'executor', light: 'sub-agente leve', deep: 'sub-agente profundo', sub: 'sub-agente', planner: 'planejador', verifier: 'revisor',
-                   escalation: 'reforço', helper: 'auxiliar', perception: 'percepção', studio: 'estúdio'};
+                   escalation: 'reforço', helper: 'auxiliar', perception: 'percepção', studio: 'estúdio', critic: 'crítico'};
   const MEM_KIND = {command: 'comando', layout: 'estrutura', convention: 'convenção', gotcha: 'armadilha'};
   const WORKFLOWS = {
     chat: ['Conversa', 'Você conversa com o agente em vários turnos e aprova cada ação.'],

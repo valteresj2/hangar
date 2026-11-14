@@ -161,6 +161,27 @@ def cmd_pptx(a) -> int:
     return 0
 
 
+def cmd_report(a) -> int:
+    from . import report
+    try:
+        if a.action == "build":
+            spec_path = Path(a.src)
+            r = report.build(json.loads(spec_path.read_text(encoding="utf-8-sig")), Path(a.out), base=spec_path.resolve().parent)
+            print(f"saved {r['path']}: {r['sections']} sections, {r['tables']} tables, {r['charts']} charts, {r['bytes'] // 1024} KB")
+            return 0
+        page = Path(a.src).read_text(encoding="utf-8", errors="replace")
+        have, gaps = report.check(page, report.columns(Path(a.data)) if a.data else None, a.target or "")
+    except (ValueError, OSError, KeyError, TypeError) as e:
+        print(f"error: {type(e).__name__}: {e}")
+        return 1
+    print(", ".join(f"{v} {k}" for k, v in have.items()))
+    if gaps:
+        print("GAPS (fix every one, then check again):\n- " + "\n- ".join(gaps))
+        return 1
+    print("ok: the report meets the depth minimum")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     for stream in (sys.stdout, sys.stderr):
         try:
@@ -205,7 +226,16 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("spec")
     p.add_argument("out")
     p.set_defaults(fn=cmd_pptx)
+    r = sub.add_parser("report", help="build an analysis report from a JSON spec, or check what a report lacks")
+    r.add_argument("action", choices=("build", "check"))
+    r.add_argument("src", help="build: the spec .json; check: the report .html")
+    r.add_argument("out", nargs="?", help="build: the .html to write")
+    r.add_argument("--data", help="check: the raw data file; every column must be covered")
+    r.add_argument("--target", help="check: the column being predicted; turns on the modelling checks")
+    r.set_defaults(fn=cmd_report)
     a = ap.parse_args(argv)
+    if a.cmd == "report" and a.action == "build" and not a.out:
+        ap.error("report build needs the output file")
     return a.fn(a)
 
 

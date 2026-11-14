@@ -26,7 +26,7 @@ def discover(cwd: Path, extra_dirs: list | None = None) -> dict[str, dict]:
                 text = f.read_text(encoding="utf-8", errors="replace")
             except OSError:
                 continue
-            name, desc = f.parent.name, ""
+            name, desc, extra = f.parent.name, "", {}
             m = re.match(r"^---\s*\n(.*?)\n---\s*\n", text, re.S)
             if m:
                 for line in m.group(1).splitlines():
@@ -35,8 +35,33 @@ def discover(cwd: Path, extra_dirs: list | None = None) -> dict[str, dict]:
                         name = v.strip().strip("\"'")
                     elif k.strip() == "description":
                         desc = v.strip().strip("\"'")
-            found.setdefault(name, {"path": f, "description": desc[:160]})
+                    elif k.strip() in GATE_KEYS and v.strip():
+                        extra[k.strip()] = v.strip().strip("\"'")
+            found.setdefault(name, {"path": f, "description": desc[:160], **extra})
     return dict(list(found.items())[:30])
+
+
+# A skill may name the check that proves its work is done. The harness then refuses "I'm done" until a command containing
+# `gate` ran with exit 0 (and without `gate_fail` in its output): the model does not get to skip the check it was told to run.
+GATE_KEYS = ("gate", "gate_fail", "gate_hint")
+
+
+def gate_seen(session, cmd: str, code: int | None, output: str) -> None:
+    """Called after every shell command: settles the gate of each loaded skill the command belongs to."""
+    for name in session.skill_gates:
+        s = session.skills.get(name) or {}
+        if s.get("gate") and s["gate"] in cmd:
+            session.skill_gates[name] = code == 0 and not (s.get("gate_fail") and s["gate_fail"] in output)
+
+
+def gate_pending(session) -> str:
+    """What to tell an agent that wants to finish while a loaded skill's check has not passed; "" when nothing is owed."""
+    owed = [n for n, ok in session.skill_gates.items() if not ok]
+    if not owed:
+        return ""
+    lines = [f"- {n}: {(session.skills.get(n) or {}).get('gate_hint') or (session.skills.get(n) or {}).get('gate')}" for n in owed]
+    return ("Not finished: you loaded a skill whose check has not passed yet. Run it, fix everything it reports and run it again until it passes:\n"
+            + "\n".join(lines) + "\nIf this task produced nothing that check applies to, say so in one line and give your final answer.")
 
 
 def index(skills: dict) -> str:

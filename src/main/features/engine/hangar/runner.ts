@@ -397,6 +397,7 @@ export class HangarRunner {
       case 'notice': {
         if (!main && ev.level !== 'error') return
         const message = this.mask(text(ev.text))
+        if (message.startsWith('quality review (')) return // the 'critic' event that follows says the same, with the verdict
         if (ev.level === 'error') this.record({ kind: 'error', message })
         else this.record({ kind: 'system', text: message })
         return
@@ -420,6 +421,21 @@ export class HangarRunner {
             text: this.mask(`Memória do projeto: ${stale.join(', ')} saiu de uso (${text(ev.reason)})`)
           })
         }
+        return
+      }
+      case 'critic': {
+        // the quality layer (harness 0.7.0): the strongest model reviewed the delivery before it was accepted
+        const defects = Array.isArray(ev.defects) ? ev.defects.map((d) => text(d)).filter(Boolean) : []
+        const who = text(ev.model).split('/').pop() || 'modelo forte'
+        const head = `Revisão de qualidade (${who}, rodada ${Number(ev.round) || 1})`
+        const asked = [
+          `${head}: pediu ${defects.length} ${defects.length === 1 ? 'melhoria' : 'melhorias'}`,
+          ...defects.map((d, i) => `${i + 1}. ${d}`)
+        ].join('\n')
+        this.record({
+          kind: 'system',
+          text: this.mask(ev.verdict === 'revise' && defects.length ? asked : `${head}: aprovou a entrega`)
+        })
         return
       }
       case 'hook':

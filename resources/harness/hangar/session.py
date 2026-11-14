@@ -49,6 +49,8 @@ class Session:
         self.machine = machine.probe()
         self.shell_name, self.shell_argv = machine.shell(cfg, self.machine)
         self.skills = skills_mod.discover(self.cwd, cfg.get("skills_dirs"))
+        self.skill_gates: dict[str, bool] = {}     # loaded skills that name a check -> has it passed
+        self.skills_loaded: set[str] = set()       # their RUBRIC.md, when present, guides the quality review
         self.mcp = MCPManager(self.cwd, self.bus)
         self.tool_mode: dict[str, str] = {}
         self.perception_cache: dict[str, str] = {}

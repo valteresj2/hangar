@@ -24,6 +24,9 @@ DEFAULTS: dict = {
         "lmstudio": {"base_url": "http://localhost:1234/v1", "api_key_env": ""},
     },
     "escalation_model": "",                # a stronger model that takes over when the worker is stuck
+    "critic_model": "",                    # quality review before "done": "" off, "auto" strongest on the roster, or a model id
+    "critic_rounds": 2,                    # reviews per agent at most
+    "critic_scope": "final",               # "final" = the main agent's delivery; "all" = sub-agents and the planner too
     "team": {},                            # with model = "auto": per-role overrides of the roster (see router.py)
     "fallback_models": [],                 # stand-ins when a provider is down
     "tiers": {},                           # {"model/id": "strong|standard|weak"} overrides

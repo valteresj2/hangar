@@ -7,7 +7,7 @@ import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 
-from . import prompts, tools as T
+from . import critic, prompts, skills as skills_mod, tools as T
 from .context import Context
 from .llm import LLMError
 from .session import Stopped
@@ -39,6 +39,8 @@ class Agent:
         self.steps = 0
         self.escalated = False
         self.level = ""                            # a routed sub-agent: "light" or "deep"
+        self.critic_rounds = 0                     # quality reviews this agent already went through (see critic.py)
+        self.critic_defects: list = []
         self.goal = ""
         self.max_out = session.cfg["max_output_tokens"]
         self.seen: dict[str, int] = {}
@@ -218,6 +220,7 @@ class Agent:
         s = self.s
         empty = bad = gates = asked = stale = 0
         verify_nudged = fail_nudged = False
+        skill_nudges = 0
         last_sig, repeats = "", 0
         while True:
             self.save()
@@ -322,10 +325,21 @@ class Agent:
                     self.messages.append({"role": "user", "content": "Before finishing: you changed files but did not run anything afterwards. "
                                           "Run a quick check now (tests / the script). If it already passes, repeat your final answer."})
                     continue
+                owed = skills_mod.gate_pending(s) if self.role == "main" and "shell" in self.toolmap and skill_nudges < 2 else ""
+                if owed:                                 # twice at most: a check that cannot apply must not trap the session
+                    skill_nudges += 1
+                    self.messages.append({"role": "user", "content": owed})
+                    continue
                 push = s.hooks.pre_finish(self, text) if self.role == "main" else ""
                 if push:                                 # project policy decides when "done" is allowed
                     self.messages.append({"role": "user", "content": push})
                     continue
+                if critic.applies(s, self) and not skills_mod.gate_pending(s):
+                    back = critic.review(s, self, text)  # the strongest model judges the delivery; free checks came first
+                    if back:
+                        skill_nudges = 0
+                        self.messages.append({"role": "user", "content": back})
+                        continue
                 self.save()
                 return text
 

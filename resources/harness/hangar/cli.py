@@ -68,6 +68,7 @@ def _overrides(a) -> dict:
     return {"planner_model": a.planner, "verifier_model": a.verifier, "permission": a.permission,
             "max_steps": a.max_steps, "max_cost_usd": a.max_cost, "perception_model": a.perception,
             "reasoning_effort": a.effort, "escalation_model": getattr(a, "escalate", None),
+            "critic_model": getattr(a, "critic", None), "critic_scope": getattr(a, "critic_scope", None),
             "context_budget": getattr(a, "context_budget", None),
             "lessons": False if getattr(a, "no_lessons", False) else None,
             "memory": False if getattr(a, "no_memory", False) else None,
@@ -383,6 +384,9 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--max-cost", type=float)
         p.add_argument("--effort", choices=["low", "medium", "high"])
         p.add_argument("--escalate", help="stronger model that takes over if the worker gets stuck")
+        p.add_argument("--critic", nargs="?", const="auto", metavar="MODEL",
+                       help="quality review before the work is accepted: the strongest model (or MODEL) reads the delivery and sends back improvements")
+        p.add_argument("--critic-scope", choices=["final", "all"], help="final: the main delivery (default); all: sub-agents and the planner too")
         p.add_argument("--fallback", help="comma-separated stand-in models if the provider is down")
         p.add_argument("--context-budget", type=int, help="context tokens before compaction kicks in")
         p.add_argument("--no-lessons", action="store_true", help="do not read or write the lesson library")
