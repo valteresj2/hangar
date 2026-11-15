@@ -41,6 +41,8 @@ class Agent:
         self.level = ""                            # a routed sub-agent: "light" or "deep"
         self.critic_rounds = 0                     # quality reviews this agent already went through (see critic.py)
         self.critic_defects: list = []
+        self.critic_pushes = 0                     # times the critic's own checks sent this agent back since the last review
+        self.critic_snapshot = None                # the reviewed delivery, kept until the revision is known not to be worse
         self.goal = ""
         self.max_out = session.cfg["max_output_tokens"]
         self.seen: dict[str, int] = {}
@@ -219,8 +221,9 @@ class Agent:
     def _loop(self) -> str:
         s = self.s
         empty = bad = gates = asked = stale = 0
-        verify_nudged = fail_nudged = False
+        verify_nudged = fail_nudged = plan_asked = plan_nudged = False
         skill_nudges = 0
+        plan_first = self.tier == "weak" and self.role == "main" and "plan" in self.toolmap and s.cfg.get("model_fit")
         last_sig, repeats = "", 0
         while True:
             self.save()
@@ -325,6 +328,13 @@ class Agent:
                     self.messages.append({"role": "user", "content": "Before finishing: you changed files but did not run anything afterwards. "
                                           "Run a quick check now (tests / the script). If it already passes, repeat your final answer."})
                     continue
+                left = [i["step"] for i in s.plan if i.get("status") != "done"] if plan_first and not plan_nudged else []
+                if left:                                 # once: the plan a weak model wrote is the list it is held to
+                    plan_nudged = True
+                    self.messages.append({"role": "user", "content": "Your plan still lists these steps as not done:\n"
+                                          + "\n".join(f"- {x}" for x in left[:8]) + "\nDo what is really missing. If they are in fact "
+                                          "done and checked, repeat your final answer."})
+                    continue
                 owed = skills_mod.gate_pending(s) if self.role == "main" and "shell" in self.toolmap and skill_nudges < 2 else ""
                 if owed:                                 # twice at most: a check that cannot apply must not trap the session
                     skill_nudges += 1
@@ -334,12 +344,14 @@ class Agent:
                 if push:                                 # project policy decides when "done" is allowed
                     self.messages.append({"role": "user", "content": push})
                     continue
-                if critic.applies(s, self) and not skills_mod.gate_pending(s):
-                    back = critic.review(s, self, text)  # the strongest model judges the delivery; free checks came first
+                if critic.enabled(s, self) and not skills_mod.gate_pending(s):
+                    # the critic's checks are run by the harness, for free; only when they pass is another paid review due
+                    back = critic.pending_checks(s, self) or (critic.review(s, self, text) if critic.applies(s, self) else "")
                     if back:
                         skill_nudges = 0
                         self.messages.append({"role": "user", "content": back})
                         continue
+                text += critic.settle(s, self)           # a revision that broke the skill check is undone
                 self.save()
                 return text
 
@@ -381,10 +393,16 @@ class Agent:
                 outs[-1] += "\n[harness] You have made this exact call 3 times. It will not change. Try a different approach."
             if r.finish == "length":
                 outs[-1] += "\n[harness] Your previous output hit the length limit; split large writes into smaller files/edits."
-            if self.tier == "weak" and self.role == "main" and self.steps % 4 == 0:
+            if plan_first and not plan_asked and not s.plan and self.steps >= 3:
+                plan_asked = True
+                outs[-1] += ("\n[harness] No plan recorded yet. Call the plan tool now with 3 to 6 short steps for this task, "
+                             "then carry them out one at a time.")
+            elif self.tier == "weak" and self.role == "main" and self.steps % 4 == 0:
                 # weak models drift; a tail reminder is cheap and does not disturb the cached prefix
+                nxt = next((i["step"] for i in s.plan if i.get("status") != "done"), "") if plan_first else ""
                 outs[-1] += (f"\n[harness] Reminder of the task: {self.goal}\nDo not explore further than needed. "
-                             "If you already have what you need, produce the requested result now.")
+                             + (f"Next step of your plan: {nxt}" if nxt else
+                                "If you already have what you need, produce the requested result now."))
             self._feed(as_text, calls, outs)
 
     def _feed(self, as_text: bool, calls: list, outs: list) -> None:

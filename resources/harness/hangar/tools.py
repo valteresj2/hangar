@@ -501,6 +501,8 @@ def builtin() -> dict[str, Tool]:
 
 
 READONLY_SET = ("read", "glob", "grep", "web_fetch", "web_search", "perceive", "skill")
+# what a strong model does as well through the shell: every schema dropped is paid for on every call
+SHELL_COVERS = ("glob", "grep", "web_fetch")
 ALIASES = {"read_file": "read", "cat": "read", "view": "read", "open": "read", "write_file": "write", "create_file": "write",
            "edit_file": "edit", "str_replace": "edit", "replace": "edit", "apply_patch": "edit", "bash": "shell", "run": "shell",
            "exec": "shell", "execute": "shell", "run_command": "shell", "terminal": "shell", "powershell": "shell", "cmd": "shell",
@@ -523,6 +525,8 @@ def select(session, toolset: str, tier: str, role: str) -> list[Tool]:
         names = [n for n in names if n != "remember"]
     if tier == "weak":
         names = [n for n in names if n not in ("task", "note")]   # delegation is below the capability floor; fewer tools = fewer mistakes
+    if tier == "strong" and session.cfg.get("model_fit") and "shell" in names and session.cfg.get("allowed_tools") is None:
+        names = [n for n in names if n not in SHELL_COVERS]
     if session.interactive == "none" and session.answers is None:
         names = [n for n in names if n != "ask_user"]
     tools = [b[n] for n in names]

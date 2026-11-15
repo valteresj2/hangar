@@ -30,6 +30,7 @@ DEFAULTS: dict = {
     "team": {},                            # with model = "auto": per-role overrides of the roster (see router.py)
     "fallback_models": [],                 # stand-ins when a provider is down
     "tiers": {},                           # {"model/id": "strong|standard|weak"} overrides
+    "model_fit": False,                    # opt-in (--fit): shape the harness to the model's tier: plan first for weak, lean catalog for strong
     # loop limits --------------------------------------------------------------
     "workflow": "loop",
     "max_steps": 60,
