@@ -262,9 +262,10 @@
       const card = h('div', {class: 'card', 'data-testid': 'permission', 'data-label': label},
         h('div', {class: 'q'}, ev.title || `Permitir ${label}?`),
         h('div', {class: 'row'},
-          h('button', {class: 'btn primary', onclick: () => send('allow')}, 'Permitir'),
-          ev.can_always ? h('button', {class: 'btn', onclick: () => send('allow_always')}, 'Permitir sempre nesta sessão') : null,
-          h('button', {class: 'btn danger', onclick: () => send('deny')}, 'Negar'), reason));
+          h('button', {class: 'btn primary', title: 'Tecla A', onclick: () => send('allow')}, 'Permitir', h('kbd', null, 'A')),
+          ev.can_always ? h('button', {class: 'btn', title: 'Tecla S', onclick: () => send('allow_always')}, 'Permitir sempre nesta sessão', h('kbd', null, 'S')) : null,
+          h('button', {class: 'btn danger', title: 'Tecla N', onclick: () => send('deny')}, 'Negar', h('kbd', null, 'N')), reason));
+      card.decide = d => { if (d !== 'allow_always' || ev.can_always) send(d); };
       this.cards['p' + ev.qid] = card; this.add(card); if (this.workEl) this.root.append(this.workEl);
     }
     question(ev) {
@@ -416,6 +417,66 @@
     modal(title, input, [{label: 'Cancelar'}, {label: 'Salvar', cls: 'primary', run: () => { const v = input.value.trim(); if (!v) return false; done(v); }}]);
     input.select();
   }
+  // ---------------------------------------------------------------- palette
+  const fold = s => String(s).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+  function paletteItems() {
+    const s = S.cur, live = s && !s.cli, items = [];
+    const add = (group, label, run, hint) => items.push({group, label, run, hint});
+    const set = (patch, done) => api(sapi('update'), patch).then(r => { Object.assign(S.cur, r); renderStatus(); renderChatControls(); toast(done); }).catch(fail);
+    add('Sessão', 'Nova sessão', newSession, 'Alt+N');
+    if (live && S.chat && S.chat.busy) add('Sessão', 'Parar a execução', () => api(sapi('interrupt'), {}).catch(fail));
+    if (live) add('Sessão', 'Equipe de modelos: quem faz o quê', showTeam);
+    if (live) for (const [v, l] of Object.entries(PERMS)) add('Permissões', 'Permissões: ' + l, () => set({permission: v}, 'Permissões: ' + l), s.permission === v ? 'atual' : '');
+    if (live) for (const [v, l] of Object.entries(EFFORTS)) add('Esforço', 'Esforço: ' + l, () => set({effort: v}, 'Esforço: ' + l), s.effort === v ? 'atual' : '');
+    if (s) for (const [t, l] of TABS.filter(([t]) => !s.cli || t === 'flow')) add('Painel', 'Abrir painel: ' + l, () => openSide(t));
+    if (s && S.sideOpen) add('Painel', 'Fechar o painel lateral', closeSide);
+    add('Janela', 'Alternar barra lateral', toggleSidebar, 'Alt+B');
+    for (const [v, l] of [['light', 'Claro'], ['dark', 'Escuro'], ['system', 'Seguir o sistema']])
+      add('Janela', 'Tema: ' + l, () => { localStorage.setItem('hangarTheme', v); applyTheme(); }, (localStorage.getItem('hangarTheme') || 'system') === v ? 'atual' : '');
+    add('Janela', 'Configurações', settings);
+    for (const c of (live && cmdCache[s.id]) || [])
+      add('Comandos do projeto', '/' + c.name, () => { const ta = $('prompt'); if (ta) { ta.value = '/' + c.name + ' '; ta.focus(); } }, c.description || c.hint || '');
+    for (const x of (S.state.sessions || []).filter(x => !s || x.id !== s.id).slice(0, 40))
+      add('Ir para a sessão', x.title || x.task || x.id, () => openSession(x), short(x.cwd || ''));
+    return items;
+  }
+  function renderChatControls() {                       // the composer's selects follow a change made elsewhere
+    const s = S.cur, p = document.querySelector('[data-testid="perm"]'), e = document.querySelector('#composer select[aria-label="Esforço"]');
+    if (s && p) p.value = s.permission || 'ask';
+    if (s && e) e.value = s.effort || 'high';
+  }
+  async function palette() {
+    if ($('overlay').querySelector('.palette')) return $('overlay').replaceChildren();
+    const s = S.cur;
+    if (s && !s.cli && !cmdCache[s.id]) cmdCache[s.id] = await api(sapi('commands')).catch(() => []);
+    const all = paletteItems(), input = h('input', {class: 'field', placeholder: 'Digite um comando ou o nome de uma sessão…', 'aria-label': 'Comando', 'data-testid': 'palette-input'});
+    const list = h('div', {class: 'plist', role: 'listbox'});
+    let shown = [], at = 0;
+    const close = () => $('overlay').replaceChildren();
+    const run = it => { close(); it.run(); };
+    const draw = () => {
+      const q = fold(input.value.trim()).split(/\s+/).filter(Boolean);
+      shown = all.filter(it => q.every(w => fold(it.group + ' ' + it.label + ' ' + (it.hint || '')).includes(w)));
+      at = Math.min(at, Math.max(0, shown.length - 1));
+      let group = '';
+      list.replaceChildren(...(shown.length ? shown.flatMap((it, i) => {
+        const row = h('button', {class: 'prow' + (i === at ? ' on' : ''), role: 'option', 'aria-selected': i === at, 'data-testid': 'palette-item', onclick: () => run(it)},
+          h('span', null, it.label), it.hint ? h('span', {class: 'd'}, it.hint) : null);
+        const out = it.group !== group ? [h('div', {class: 'pgroup'}, it.group), row] : [row];
+        group = it.group; return out;
+      }) : [h('div', {class: 'pempty'}, 'Nada encontrado.')]));
+      const on = list.querySelector('.prow.on'); if (on) on.scrollIntoView({block: 'nearest'});
+    };
+    input.addEventListener('input', () => { at = 0; draw(); });
+    input.addEventListener('keydown', e => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); at = shown.length ? (at + (e.key === 'ArrowDown' ? 1 : shown.length - 1)) % shown.length : 0; draw(); }
+      else if (e.key === 'Enter' && shown[at]) { e.preventDefault(); run(shown[at]); }
+    });
+    $('overlay').replaceChildren(h('div', {class: 'modal palette', role: 'dialog', 'aria-modal': 'true', 'aria-label': 'Paleta de comandos', 'data-testid': 'palette'}, input, list,
+      h('div', {class: 'pfoot'}, '↑↓ escolher · Enter executar · Esc fechar')));
+    draw(); input.focus();
+  }
+
   function confirm2(title, text, done) {
     modal(title, h('div', null, text), [{label: 'Cancelar'}, {label: 'Excluir', cls: 'danger', id: 'confirm', run: () => { done(); }}]);
   }
@@ -461,6 +522,7 @@
       s ? h('div', {class: 'tabs', role: 'tablist'}, TABS.filter(([t]) => !s.cli || t === 'flow').map(([t, label]) =>
         h('button', {class: 'tabbtn' + (S.sideOpen && S.tab === t ? ' on' : ''), role: 'tab', 'data-testid': 'tab-' + t,
                      onclick: () => (S.sideOpen && S.tab === t ? closeSide() : openSide(t))}, label))) : null,
+      h('button', {class: 'icon-btn palbtn', title: 'Paleta de comandos (Ctrl+K)', 'aria-label': 'Paleta de comandos', 'data-testid': 'palette-btn', onclick: palette}, 'Ctrl K'),
       h('button', {class: 'icon-btn', title: 'Configurações', 'aria-label': 'Configurações', onclick: settings}, '⚙'));
   }
   function toggleSidebar() { $('sidebar').classList.toggle('collapsed'); }
@@ -997,7 +1059,16 @@
   addEventListener('keydown', e => {
     if (e.altKey && (e.key === 'n' || e.key === 'N')) { e.preventDefault(); newSession(); }
     else if (e.altKey && (e.key === 'b' || e.key === 'B')) { e.preventDefault(); toggleSidebar(); }
+    else if ((e.ctrlKey || e.metaKey) && !e.altKey && !e.shiftKey && (e.key === 'k' || e.key === 'K')) { e.preventDefault(); palette(); }
     else if (e.key === 'Escape') { if ($('overlay').children.length) $('overlay').replaceChildren(); closeMenu(); }
+    else if (!e.ctrlKey && !e.metaKey && !e.altKey && !$('overlay').children.length && !/^(INPUT|TEXTAREA|SELECT)$/.test((e.target && e.target.tagName) || '')
+             && !(e.target && e.target.isContentEditable)) {
+      // a waiting permission is answered from the keyboard, as long as the user is not typing somewhere
+      const d = {a: 'allow', s: 'allow_always', n: 'deny'}[e.key.toLowerCase()];
+      const cards = d ? [...document.querySelectorAll('[data-testid="permission"]')] : [];
+      const card = cards[cards.length - 1];
+      if (card && card.decide) { e.preventDefault(); card.decide(d); }
+    }
   });
   addEventListener('beforeunload', e => { if (S.rec) { e.preventDefault(); e.returnValue = ''; } });
 

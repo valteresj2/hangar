@@ -14,7 +14,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import media, memory, project, skills as skills_mod
+from . import diagnose, media, memory, project, skills as skills_mod
 from .config import PKG_ROOT
 
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".hangar", "dist", "build", ".mypy_cache", ".next", "target"}
@@ -122,10 +122,11 @@ def t_write(ctx: Ctx, a: dict) -> str:
         with open(path, "a", encoding="utf-8", newline="\n") as f:
             f.write(a["content"])
         ctx.session.touched(path)
-        return f"Appended {len(a['content'].splitlines())} lines to {path.name} (now {len(path.read_text(encoding='utf-8', errors='replace').splitlines())} lines)."
+        return (f"Appended {len(a['content'].splitlines())} lines to {path.name} (now {len(path.read_text(encoding='utf-8', errors='replace').splitlines())} lines)."
+                + diagnose.note(ctx.session, path, partial=True))
     path.write_text(a["content"], encoding="utf-8", newline="\n")
     ctx.session.touched(path)
-    return f"Wrote {path.name} ({len(a['content'].splitlines())} lines)."
+    return f"Wrote {path.name} ({len(a['content'].splitlines())} lines)." + diagnose.note(ctx.session, path, partial=len(a["content"].splitlines()) >= 120)
 
 
 def _fuzzy_span(text: str, old: str):
@@ -165,7 +166,7 @@ def t_edit(ctx: Ctx, a: dict) -> str:
         text, n = text[:span[0]] + repl + text[span[1]:], 1
     path.write_text(text, encoding="utf-8", newline="\n")
     ctx.session.touched(path)
-    return f"Edited {path.name} ({n} replacement{'s' if n != 1 else ''})."
+    return f"Edited {path.name} ({n} replacement{'s' if n != 1 else ''})." + diagnose.note(ctx.session, path)
 
 
 def _walk(root: Path):

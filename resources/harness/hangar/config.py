@@ -57,6 +57,7 @@ DEFAULTS: dict = {
     "parallel_tools": 0,                   # 0 = min(8, cpu cores)
     "ask_timeout": 1800,
     "verify_nudge": True,
+    "diagnostics": True,                   # syntax and undefined-name checks in the result of every write/edit (see diagnose.py)
 }
 
 

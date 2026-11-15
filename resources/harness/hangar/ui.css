@@ -284,3 +284,14 @@ table.team .ev { color: var(--text-muted); font: 11.5px var(--mono); } table.tea
 @keyframes spin { to { transform: rotate(360deg); } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
 @media (max-width: 900px) { .sidebar { position: absolute; z-index: 20; top: 36px; bottom: 0; } .side { position: absolute; z-index: 10; right: 0; top: 80px; bottom: 0; width: 100% !important; } .newcard .two { grid-template-columns: 1fr; } }
+
+/* ---- command palette and key hints */
+.modal.palette { width: min(640px, 100%); align-self: start; margin-top: 12vh; padding: 10px; gap: 8px; }
+.palette .plist { overflow: auto; max-height: 52vh; display: flex; flex-direction: column; }
+.palette .pgroup { padding: 8px 9px 3px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); }
+.palette .prow { display: flex; gap: 10px; align-items: baseline; justify-content: space-between; text-align: left; padding: 7px 9px; border-radius: 6px; }
+.palette .prow.on, .palette .prow:hover { background: var(--bg-hover); }
+.palette .prow .d { color: var(--text-muted); font-size: 12px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 55%; }
+.palette .pfoot { padding: 4px 9px 2px; font-size: 12px; color: var(--text-muted); border-top: 1px solid var(--border-soft); }
+.icon-btn.palbtn { font-size: 12px; width: auto; padding: 0 8px; }
+kbd { display: inline-block; margin-left: 7px; padding: 0 5px; border: 1px solid currentColor; border-radius: 4px; font: 11px/16px var(--mono, monospace); opacity: .65; }
