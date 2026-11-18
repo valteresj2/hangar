@@ -48,7 +48,7 @@ def _printer(quiet: bool):
         elif t == "hook" and not quiet:
             print(f"{C['yellow']}⚑ hook {rec['event']} {rec['action']}{C['off']} {C['dim']}{rec.get('message', '')[:160]}{C['off']}", file=out)
         elif t == "lessons":
-            print(f"{C['dim']}✎ lessons {'used' if rec.get('used') else 'learned'}: {'; '.join(rec.get('used') or rec.get('learned') or [])}{C['off']}", file=out)
+            print(f"{C['dim']}✎ lessons {'used' if rec.get('used') else 'retired' if rec.get('retired') else 'learned'}: {'; '.join(rec.get('used') or rec.get('retired') or rec.get('learned') or [])}{C['off']}", file=out)
         elif t == "memory":
             what = ("remembered: " + ", ".join(rec["saved"]) + (f" — {rec.get('fact', '')}" if rec.get("fact") else "")) if rec.get("saved") \
                 else "stale: " + ", ".join(rec.get("stale") or []) + f" ({rec.get('reason', '')})"
@@ -259,7 +259,11 @@ def cmd_lessons(a) -> int:
         return 0 if hit else 1
     for d in items:
         age = int((time.time() - d.get("created", 0)) / 86400)
-        print(f"{d['_file'].stem}  [{d.get('scope')}] {d.get('title')}  ({age}d, used {d.get('uses', 0)}x, confirmed {d.get('confirmations', 1)}x)")
+        record = (f", {d.get('ok', 0)}/{d['tried']} verified" + (f", failure came back {d['recurred']}x" if d.get("recurred") else "")) if d.get("tried") else ""
+        print(f"{d['_file'].stem}  [{d.get('scope')}] {d.get('title')}  ({age}d, used {d.get('uses', 0)}x, confirmed {d.get('confirmations', 1)}x{record})"
+              + (f"  RETIRED: {d['retired']}" if d.get("retired") else ""))
+        if d.get("signal"):
+            print(f"    prevents: {d['signal']}  (learned with a {d.get('tier') or '?'} model)")
         print(f"    do: {d.get('lesson')}\n    when: {d.get('situation')}\n    evidence: {d.get('evidence')}\n    from: {d.get('session')} · {d.get('model')} · {d.get('project')}")
     print(f"{len(items)} lessons in {lessons.DIR}" if items else f"no lessons yet ({lessons.DIR})")
     return 0

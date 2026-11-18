@@ -240,6 +240,7 @@ def main(argv: list[str] | None = None) -> int:
         try:
             s.abort.clear()
             from . import lessons
+            lessons.settle(s, {"status": "done", "final": last["final"]})
             lessons.reflect(s, {"status": "done", "final": last["final"]})
             s.hooks.session_end({"status": "done", "final": last["final"], "session": s.id, "files": sorted(s.files)})
         except Exception:

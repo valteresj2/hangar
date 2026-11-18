@@ -59,6 +59,7 @@ class Session:
         self.edits_since_run = False
         self.last_exit: int | None = None
         self.abort = threading.Event()             # set by the host to stop the turn in flight
+        self.lessons_used: list[str] = []          # lesson files shown to this session, settled at its end
         self.always: set[str] = set()              # tools the user allowed for the rest of the session
         self.channel = None                        # bridge mode: answers from the host (see bridge.py)
         self.current_proc = None                   # the foreground shell command, so an interrupt can kill it

@@ -71,6 +71,7 @@ def run_task(cfg: dict, task: str, cwd: Path, model: str | None = None, workflow
 def _close(s: Session, status: str, final: str) -> dict:
     """End-of-session duties that must never break the result: learn, run session_end hooks, then finish."""
     try:
+        lessons.settle(s, {"status": status, "final": final})
         lessons.reflect(s, {"status": status, "final": final})
         memory.distill(s, {"status": status, "final": final})
         s.hooks.session_end({"status": status, "final": final, "session": s.id, "files": sorted(s.files)})
