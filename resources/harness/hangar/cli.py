@@ -71,6 +71,7 @@ def _overrides(a) -> dict:
             "critic_model": getattr(a, "critic", None), "critic_scope": getattr(a, "critic_scope", None),
             "context_budget": getattr(a, "context_budget", None),
             "model_fit": True if getattr(a, "fit", False) else None,
+            "workflows": True if getattr(a, "workflows", False) else None,
             "diagnostics": False if getattr(a, "no_diagnostics", False) else None,
             "lessons": False if getattr(a, "no_lessons", False) else None,
             "memory": False if getattr(a, "no_memory", False) else None,
@@ -396,6 +397,7 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--fallback", help="comma-separated stand-in models if the provider is down")
         p.add_argument("--context-budget", type=int, help="context tokens before compaction kicks in")
         p.add_argument("--fit", action="store_true", help="shape the harness to the model tier: plan-first for weak models, lean tool catalog for strong ones")
+        p.add_argument("--workflows", action="store_true", help="give the agent run_workflow: a plan of sub-agents (fan-out over items, synthesis, shell glue) in one call")
         p.add_argument("--no-diagnostics", action="store_true", help="do not check files for syntax errors and undefined names after each write/edit")
         p.add_argument("--no-lessons", action="store_true", help="do not read or write the lesson library")
         p.add_argument("--no-memory", action="store_true", help="do not read or write this project's memory (.hangar/memory)")

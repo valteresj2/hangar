@@ -57,6 +57,9 @@ DEFAULTS: dict = {
     "parallel_tools": 0,                   # 0 = min(8, cpu cores)
     "ask_timeout": 1800,
     "verify_nudge": True,
+    "workflows": False,                    # opt-in (--workflows): the run_workflow tool, a plan of sub-agents in one call (see workflow.py)
+    "workflow_max_calls": 40,              # sub-agent runs a session may spend through run_workflow
+    "workflow_parallel": 6,                # sub-agents of a map step running at the same time
     "diagnostics": True,                   # syntax and undefined-name checks in the result of every write/edit (see diagnose.py)
 }
 

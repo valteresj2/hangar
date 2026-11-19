@@ -34,6 +34,9 @@ LONG = """
 - On long tasks save key facts and decisions with the note tool: notes survive context compaction.
 - For big tasks with independent parts, delegate parts with the task tool (several task calls in one turn run in parallel); give each a complete brief."""
 
+WORKFLOW = """
+- When the task is the same careful job over many independent items (a judgement or extraction per file, claim or record), do not do the items one after another in your own context: look at one or two to learn the job, then run_workflow with a map step whose prompt carries the full rules and asks for `fields`, and a shell step or your own check to assemble and verify the result. Redo by hand only the items that failed or look wrong."""
+
 WEAK = """
 Working style
 - One small step at a time: call one tool, read the result, then decide the next step.
@@ -59,6 +62,8 @@ def build(session, agent) -> str:
         parts.append(WEAK)
     elif agent.role == "main":
         parts.append(LONG)
+    if "run_workflow" in agent.toolmap:                  # the user turned workflows on: say when they pay off
+        parts.append(WORKFLOW)
     if "remember" in agent.toolmap:
         parts.append(memory.RULE)
     parts.append(ROLE.get(agent.role, ""))

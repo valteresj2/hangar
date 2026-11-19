@@ -14,7 +14,7 @@ import urllib.request
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import diagnose, media, memory, project, skills as skills_mod
+from . import diagnose, media, memory, project, skills as skills_mod, workflow
 from .config import PKG_ROOT
 
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".hangar", "dist", "build", ".mypy_cache", ".next", "target"}
@@ -444,6 +444,13 @@ def t_task(ctx: Ctx, a: dict) -> str:
     return out[:8000]
 
 
+def t_run_workflow(ctx: Ctx, a: dict) -> str:
+    try:
+        return workflow.run(ctx.session, ctx.agent, a.get("steps"), str(a.get("save") or ""))
+    except workflow.PlanError as e:
+        raise ToolError(f"plan not run: {e}")
+
+
 def t_skill(ctx: Ctx, a: dict) -> str:
     if a["name"] in ctx.session.skills:
         ctx.session.skills_loaded.add(a["name"])
@@ -501,6 +508,18 @@ def builtin() -> dict[str, Tool]:
     return {t.name: t for t in T}
 
 
+WORKFLOW_TOOL = Tool(
+    "run_workflow",
+    "Run a plan of sub-agents in ONE call, for work made of many independent items (one file, one claim, one record each) "
+    "or that needs a check enforced by structure. steps run in order; each has id and type. "
+    "map: {over, prompt, fields?, level?, tools?} runs one fresh sub-agent per item in parallel; `over` is a list, "
+    "\"glob:<pattern>\" or \"$<earlier id>\"; the prompt must contain {item} and everything the sub-agent needs (it sees nothing else). "
+    "agent: {prompt, fields?, level?, tools?} runs one sub-agent. shell: {command} runs a command (merge, filter, write files). "
+    "fields {name: meaning} makes the sub-agent answer with that JSON object. Later steps use {id} (an earlier output as JSON) "
+    "or {id.path} (a file holding it). tools is readonly (default) or all. save writes the last step's output to a file. "
+    "You get a short account back, not every result.",
+    S({"steps": {"type": "array", "items": {"type": "object"}}, "save": STR}, ["steps"]), t_run_workflow)
+
 READONLY_SET = ("read", "glob", "grep", "web_fetch", "web_search", "perceive", "skill")
 # what a strong model does as well through the shell: every schema dropped is paid for on every call
 SHELL_COVERS = ("glob", "grep", "web_fetch")
@@ -531,6 +550,8 @@ def select(session, toolset: str, tier: str, role: str) -> list[Tool]:
     if session.interactive == "none" and session.answers is None:
         names = [n for n in names if n != "ask_user"]
     tools = [b[n] for n in names]
+    if session.cfg.get("workflows") and role == "main" and toolset == "all":     # opt-in; sub-agents are leaves
+        tools.append(WORKFLOW_TOOL)
     if session.skills and toolset != "verify":
         tools.append(Tool("skill", "Load the full instructions of a listed skill.", S({"name": STR}, ["name"]), t_skill, True, 20000))
     if toolset == "all" and session.mcp.servers:
