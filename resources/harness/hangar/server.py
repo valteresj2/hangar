@@ -327,6 +327,15 @@ class App:
             live.send({"type": "interrupt"})
         return {"ok": True}
 
+    def stop_agent(self, sid: str, data: dict) -> dict:
+        name = str(data.get("agent") or "")
+        if not re.fullmatch(r"(wf|sub)\d+", name):
+            raise ApiError(400, "sub-agente desconhecido")
+        live = self.live.get(self.session(sid)["id"])
+        if live and live.alive():
+            live.send({"type": "stop_agent", "agent": name})
+        return {"ok": True}
+
     def state(self) -> dict:
         cfg = config.load()
         cli = []
@@ -770,6 +779,8 @@ class Handler(BaseHTTPRequestHandler):
                     return self._json(app.respond(sid, data))
                 if what == "interrupt":
                     return self._json(app.interrupt(sid))
+                if what == "stop_agent":
+                    return self._json(app.stop_agent(sid, data))
                 if what == "save":
                     return self._json(app.write_harness(sid, str(data.get("path") or ""), str(data.get("text") or "")))
                 if what == "forget":                        # drop one fact of the project memory (or all, without a name)

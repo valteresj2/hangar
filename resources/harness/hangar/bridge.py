@@ -12,6 +12,7 @@ One long-lived process per conversation, newline-delimited JSON on stdin/stdout.
     {"type":"permission_response", qid,               answers them by qid. The API key never travels in a message: the
        decision: allow|allow_always|deny, message?}   host passes it in the HANGAR_BRIDGE_KEY environment variable.
     {"type":"interrupt"}
+    {"type":"stop_agent", agent}                      Stops one sub-agent (the name in its `subagent` event); the turn goes on.
     {"type":"set_options", model?, permission?, effort?, workflows?}
     {"type":"close"}
 
@@ -221,6 +222,8 @@ def main(argv: list[str] | None = None) -> int:
             with qlock:
                 queue.clear()
             s.interrupt()
+        elif t == "stop_agent":
+            s.stop_agent(str(msg.get("agent") or ""))
         elif t == "set_options":
             if msg.get("permission"):
                 apply_permission(str(msg["permission"]))

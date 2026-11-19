@@ -16,6 +16,7 @@ from pathlib import Path
 
 from . import diagnose, media, memory, project, skills as skills_mod, workflow
 from .config import PKG_ROOT
+from .session import Cancelled
 
 SKIP_DIRS = {".git", "node_modules", "__pycache__", ".venv", "venv", ".hangar", "dist", "build", ".mypy_cache", ".next", "target"}
 DANGEROUS = [re.compile(p, re.I) for p in (
@@ -440,13 +441,21 @@ def t_task(ctx: Ctx, a: dict) -> str:
     s.bus.emit("subagent", agent=name, model=model, level=level if s.team else "standard", by=ctx.agent.name)
     sub = Agent(s, model=model, role="sub", toolset="all", name=name, max_steps=20, extra_system=extra)
     sub.level = level if s.team and level in ("light", "deep") else ""
-    out = sub.run(a["prompt"] + "\n\nReturn a concise report (under 400 words) with exact paths/values the caller needs.")
+    status = "failed"
+    try:
+        out = sub.run(a["prompt"] + "\n\nReturn a concise report (under 400 words) with exact paths/values the caller needs.")
+        status = "done"
+    except Cancelled:
+        status = "stopped"
+        raise ToolError(f"sub-agent {name} was stopped by the user before it finished; do not start it again unless asked")
+    finally:
+        s.bus.emit("subagent_end", agent=name, status=status, by=ctx.agent.name)
     return out[:8000]
 
 
 def t_run_workflow(ctx: Ctx, a: dict) -> str:
     try:
-        return workflow.run(ctx.session, ctx.agent, a.get("steps"), str(a.get("save") or ""))
+        return workflow.run(ctx.session, ctx.agent, a.get("steps"), str(a.get("save") or ""), resume=bool(a.get("resume")))
     except workflow.PlanError as e:
         raise ToolError(f"plan not run: {e}")
 
@@ -517,8 +526,8 @@ WORKFLOW_TOOL = Tool(
     "agent: {prompt, fields?, level?, tools?} runs one sub-agent. shell: {command} runs a command (merge, filter, write files). "
     "fields {name: meaning} makes the sub-agent answer with that JSON object. Later steps use {id} (an earlier output as JSON) "
     "or {id.path} (a file holding it). tools is readonly (default) or all. save writes the last step's output to a file. "
-    "You get a short account back, not every result.",
-    S({"steps": {"type": "array", "items": {"type": "object"}}, "save": STR}, ["steps"]), t_run_workflow)
+    "You get a short account back, not every result. resume=true (without steps) continues a plan that was cut off.",
+    S({"steps": {"type": "array", "items": {"type": "object"}}, "save": STR, "resume": BOOL}), t_run_workflow)
 
 READONLY_SET = ("read", "glob", "grep", "web_fetch", "web_search", "perceive", "skill")
 # what a strong model does as well through the shell: every schema dropped is paid for on every call

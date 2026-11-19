@@ -24,6 +24,10 @@ class Stopped(Exception):
     pass
 
 
+class Cancelled(Exception):
+    """One sub-agent was stopped by the user; the turn and the other sub-agents go on."""
+
+
 class Session:
     def __init__(self, cfg: dict, cwd: Path, task: str = "", model: str | None = None, workflow: str = "loop",
                  interactive: str = "none", answers: list | None = None, sid: str | None = None):
@@ -65,6 +69,8 @@ class Session:
         self.current_proc = None                   # the foreground shell command, so an interrupt can kill it
         self.deny_message = ""
         self.llm.abort = self.abort
+        self.cancelled: set[str] = set()           # sub-agents the user stopped one by one (see stop_agent)
+        self.llm.cancelled = self.cancelled
         self.incomplete = ""
         self.sub_count = 0
         self.spill_n = 0
@@ -200,6 +206,11 @@ class Session:
     def check_stop(self) -> None:
         if self.abort.is_set() or (self.dir / "stop").exists():
             raise Stopped("stopped by user")
+
+    def stop_agent(self, name: str) -> None:
+        """Stop one sub-agent by name: its model stream ends and its loop does not take another step. Whoever started
+        it gets an error for that piece of work only."""
+        self.cancelled.add(str(name))
 
     def interrupt(self) -> None:
         """Stop the turn in flight: the model stream, the running command and anything waiting on the user."""

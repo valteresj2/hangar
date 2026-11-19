@@ -64,6 +64,8 @@ def build(session, agent) -> str:
         parts.append(LONG)
     if "run_workflow" in agent.toolmap:                  # the user turned workflows on: say when they pay off
         parts.append(WORKFLOW)
+        from . import workflow
+        parts.append(workflow.hint(session))                   # a plan the process died in the middle of, if any
     if "remember" in agent.toolmap:
         parts.append(memory.RULE)
     parts.append(ROLE.get(agent.role, ""))

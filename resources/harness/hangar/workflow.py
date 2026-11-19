@@ -13,12 +13,17 @@ What keeps it bounded and cheap:
   - every step's output is written to the session folder and reachable as {id.path}; the model gets a short
     account of it, not the pile: the intermediate results never enter its context;
   - a finished sub-agent run is cached in the session by what it was asked: running the plan again after a
-    failure only redoes what failed."""
+    failure only redoes what failed;
+  - the plan in flight is written to the session folder (workflow_pending.json) and removed when it ends. If the
+    process dies in the middle, the next turn of the resumed session is told so, and `resume` runs it again: the
+    cache makes that the unfinished part only;
+  - every sub-agent has a name the host can stop by itself (session.stop_agent): that item fails, the rest go on."""
 from __future__ import annotations
 
 import glob as globmod
 import hashlib
 import json
+import os
 import re
 import subprocess
 import threading
@@ -38,12 +43,36 @@ class PlanError(Exception):
 def _state(session) -> dict:
     st = getattr(session, "_workflow", None)
     if st is None:
-        st = session._workflow = {"calls": 0, "runs": 0, "cache": {}}
+        st = session._workflow = {"calls": 0, "runs": 0, "cache": {}, "active": False}
+        try:                                             # a resumed session keeps numbering its runs
+            st["runs"] = sum(1 for p in (session.dir / "workflow").iterdir() if p.is_dir())
+        except OSError:
+            pass
         try:
             st["cache"] = json.loads((session.dir / "workflow_cache.json").read_text(encoding="utf-8"))
         except (OSError, ValueError):
             pass
     return st
+
+
+def pending(session) -> dict | None:
+    """The plan this session was running when its process stopped, or None. Not the one running right now."""
+    if _state(session)["active"]:
+        return None
+    try:
+        data = json.loads((session.dir / "workflow_pending.json").read_text(encoding="utf-8"))
+        return data if isinstance(data.get("steps"), list) and data["steps"] else None
+    except (OSError, ValueError, AttributeError):
+        return None
+
+
+def hint(session) -> str:
+    p = pending(session)
+    if not p:
+        return ""
+    ids = ", ".join(str(s.get("id")) for s in p["steps"])
+    return (f"\nA run_workflow plan of this session (steps: {ids}) was cut off before it finished, because the process stopped. "
+            "If the task still needs it, call run_workflow with {\"resume\": true}: the items already done are kept and are not redone.")
 
 
 def _items(session, step: dict, outputs: dict) -> list:
@@ -52,7 +81,13 @@ def _items(session, step: dict, outputs: dict) -> list:
         prev = outputs.get(over[1:])
         if prev is None:
             raise PlanError(f"step '{step['id']}': over refers to '{over[1:]}', which is not an earlier step")
-        over = [l.strip() for l in prev.splitlines() if l.strip()] if isinstance(prev, str) else prev
+        if isinstance(prev, str):                        # a shell step: a JSON list if it printed one, else one item per line
+            try:
+                data = json.loads(prev)
+            except ValueError:
+                data = None
+            prev = data if isinstance(data, list) else [l.strip() for l in prev.splitlines() if l.strip()]
+        over = prev
     elif isinstance(over, str) and over.startswith("glob:"):
         root = Path(session.cwd)
         over = sorted(Path(p).relative_to(root).as_posix() for p in globmod.glob(str(root / over[5:].strip()), recursive=True) if Path(p).is_file())
@@ -132,9 +167,10 @@ def _parse(text: str, fields: dict):
     return None
 
 
-def _sub(session, parent, step: dict, prompt: str):
+def _sub(session, parent, step: dict, prompt: str, item=None):
     """One sub-agent run. Returns its result (a dict when the step has fields, text otherwise); raises on failure."""
     from .agent import Agent
+    from .session import Cancelled, Stopped
     st, fields, level = _state(session), step.get("fields"), step.get("level", "standard")
     model = session.team[level] if session.team and level in ("light", "deep") else parent.model
     toolset = step.get("tools", "readonly")
@@ -152,17 +188,27 @@ def _sub(session, parent, step: dict, prompt: str):
         st["calls"] += 1
         session.sub_count += 1
         name = f"wf{session.sub_count}"
-    session.bus.emit("subagent", agent=name, model=model, level=level if session.team else "standard", by=parent.name, step=step["id"])
-    ag = Agent(session, model=model, role="sub", toolset=toolset, name=name, max_steps=int(step.get("max_steps") or 12))
-    ag.level = level if session.team and level in ("light", "deep") else ""
-    out = ag.run(prompt)
-    result = out[:6000]
-    if fields:
-        result = _parse(out, fields)
-        if result is None:                               # one chance to answer in the agreed shape
-            result = _parse(ag.run("Reply with ONLY the JSON object, with exactly these keys: " + ", ".join(fields)), fields)
-        if result is None:
-            raise RuntimeError("did not answer with the JSON object asked for")
+    label = "" if item is None else (item if isinstance(item, str) else json.dumps(item, ensure_ascii=False))[:80]
+    session.bus.emit("subagent", agent=name, model=model, level=level if session.team else "standard", by=parent.name, step=step["id"],
+                     item=label)
+    status = "failed"
+    try:
+        ag = Agent(session, model=model, role="sub", toolset=toolset, name=name, max_steps=int(step.get("max_steps") or 12))
+        ag.level = level if session.team and level in ("light", "deep") else ""
+        out = ag.run(prompt)
+        result = out[:6000]
+        if fields:
+            result = _parse(out, fields)
+            if result is None:                           # one chance to answer in the agreed shape
+                result = _parse(ag.run("Reply with ONLY the JSON object, with exactly these keys: " + ", ".join(fields)), fields)
+            if result is None:
+                raise RuntimeError("did not answer with the JSON object asked for")
+        status = "done"
+    except (Cancelled, Stopped):
+        status = "stopped"
+        raise
+    finally:
+        session.bus.emit("subagent_end", agent=name, status=status, by=parent.name, step=step["id"])
     with _LOCK:
         st["cache"][key] = result
         try:
@@ -172,9 +218,14 @@ def _sub(session, parent, step: dict, prompt: str):
     return result
 
 
-def run(session, parent, steps, save: str = "") -> str:
+def run(session, parent, steps, save: str = "", resume: bool = False) -> str:
     """Validate and run a plan. Returns the short account the model reads. Raises PlanError before spending anything."""
     from .session import Stopped
+    if resume:
+        was = pending(session)
+        if not was:
+            raise PlanError("there is no interrupted plan to resume: send `steps`")
+        steps, save = was["steps"], str(was.get("save") or "")
     steps = validate(steps)
     st = _state(session)
     cap = int(session.cfg.get("workflow_max_calls", 40))
@@ -191,6 +242,25 @@ def run(session, parent, steps, save: str = "") -> str:
     st["runs"] += 1
     folder = session.dir / "workflow" / f"run{st['runs']}"
     folder.mkdir(parents=True, exist_ok=True)
+    mark = session.dir / "workflow_pending.json"
+    try:
+        mark.write_text(json.dumps({"steps": steps, "save": save}, ensure_ascii=False), encoding="utf-8")
+    except OSError:
+        pass
+    st["active"] = True
+    try:
+        text = _execute(session, parent, steps, save, target, folder, st, cap)
+    except Stopped:                                      # the user stopped the turn: nothing to pick up later
+        mark.unlink(missing_ok=True)
+        raise
+    finally:
+        st["active"] = False
+    mark.unlink(missing_ok=True)                         # only a process that died leaves the mark behind
+    return text
+
+
+def _execute(session, parent, steps, save, target, folder, st, cap) -> str:
+    from .session import Stopped
     outputs, paths, account = {}, {}, []
     workers = max(1, min(int(session.cfg.get("workflow_parallel", 6)), 16))
     for step in steps:
@@ -199,9 +269,20 @@ def run(session, parent, steps, save: str = "") -> str:
         session.bus.emit("workflow_step", step=sid, kind=kind, by=parent.name)
         failed = 0
         if kind == "shell":
-            p = subprocess.run([*session.shell_argv, _fill(step["command"], outputs, paths)], cwd=str(session.cwd), capture_output=True,
-                               timeout=int(step.get("timeout", 300)))
-            out = (p.stdout + p.stderr).decode("utf-8", "replace")[-12000:]
+            # No stdin: under the bridge the harness's own stdin is the host's pipe, and a command that inherits it hangs.
+            p = subprocess.Popen([*session.shell_argv, _fill(step["command"], outputs, paths)], cwd=str(session.cwd),
+                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, stdin=subprocess.DEVNULL,
+                                 creationflags=subprocess.CREATE_NEW_PROCESS_GROUP if os.name == "nt" else 0)
+            session.current_proc = p                     # an interrupt kills it, like any command the agent runs
+            try:
+                raw, _ = p.communicate(timeout=int(step.get("timeout", 300)))
+            except subprocess.TimeoutExpired:
+                p.kill()
+                raw = (p.communicate()[0] or b"") + b"\n[timed out]"
+            finally:
+                session.current_proc = None
+            session.check_stop()
+            out = raw.decode("utf-8", "replace")[-12000:]
             line = f"{sid} (shell): exit {p.returncode}\n{out[-1500:]}"
             if p.returncode != 0:
                 outputs[sid], paths[sid] = out, folder / f"{sid}.json"
@@ -222,7 +303,7 @@ def run(session, parent, steps, save: str = "") -> str:
             def one(item, step=step):
                 session.check_stop()
                 try:
-                    return {"item": item, "result": _sub(session, parent, step, _fill(step["prompt"], outputs, paths, item))}
+                    return {"item": item, "result": _sub(session, parent, step, _fill(step["prompt"], outputs, paths, item), item)}
                 except Stopped:
                     raise
                 except Exception as e:

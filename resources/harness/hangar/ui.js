@@ -138,6 +138,7 @@
     constructor(root, readonly) {
       this.root = root; this.readonly = readonly; this.tools = {}; this.cards = {}; this.stream = null; this.streamThink = null;
       this.todos = null; this.last = {}; this.busy = false; this.files = new Set(); this.workEl = null;
+      this.subs = {};                                   // sub-agents running now: name -> what it is working on
     }
     add(el) { this.stream = null; this.streamThink = null; this.root.append(el); this.scroll(); return el; }
     scroll() { const box = this.root.parentElement; if (box && box.scrollHeight - box.scrollTop - box.clientHeight < 260) box.scrollTop = box.scrollHeight; }
@@ -166,7 +167,9 @@
           if (this.readonly) this.add(h('div', {class: 'sys', 'data-testid': 'team-line'}, 'Equipe: ' + (ev.team || []).filter(m => ['worker', 'planner', 'verifier', 'escalation'].includes(m.role))
             .map(m => `${{worker: 'executor', planner: 'planejador', verifier: 'revisor', escalation: 'reforço'}[m.role]} ${String(m.model).split('/').pop()}`).join(' · ')));
           break;
-        case 'subagent': if (ev.level && ev.level !== 'standard') this.add(h('div', {class: 'sys'}, `Sub-agente ${ev.level === 'light' ? 'leve' : 'profundo'}: ${String(ev.model).split('/').pop()}`)); break;
+        case 'subagent_end': delete this.subs[ev.agent]; renderSubs(); break;
+        case 'subagent': this.subs[ev.agent] = {item: ev.item || '', step: ev.step || '', model: String(ev.model || '').split('/').pop()}; renderSubs();
+          if (ev.level && ev.level !== 'standard') this.add(h('div', {class: 'sys'}, `Sub-agente ${ev.level === 'light' ? 'leve' : 'profundo'}: ${String(ev.model).split('/').pop()}`)); break;
         case 'session_start':
           if (this.readonly && ev.task) this.add(h('div', {class: 'msg-user'}, ev.task));
           if (this.readonly) this.setBusy(true);
@@ -280,6 +283,7 @@
     }
     turnEnd(ev) {
       this.setBusy(false);
+      this.subs = {}; renderSubs();
       for (const t of Object.values(this.tools)) if (t.dot.className === 'dot run') t.dot.className = 'dot';
       for (const k of Object.keys(this.cards)) { this.cards[k].remove(); delete this.cards[k]; }
       const status = ev.status;
@@ -669,7 +673,7 @@
       title: 'Workflows dinâmicos (experimental): o agente pode dividir um trabalho repetido sobre muitos itens entre subagentes em paralelo. Costuma custar mais.',
       onclick: () => up({workflows: !S.cur.workflows}).then(renderChatControls)}, wfLabel(s));
     const box = h('div', {class: 'composer', id: 'composer'},
-      h('div', {id: 'recbar'}), chips, ta, file,
+      h('div', {id: 'recbar'}), h('div', {id: 'subbar'}), chips, ta, file,
       h('div', {class: 'bar'},
         h('button', {class: 'icon-btn', title: 'Anexar arquivos', 'aria-label': 'Anexar arquivos', 'data-testid': 'attach', onclick: () => file.click()}, h('span', {html: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.8 1.8 0 0 1-2.6-2.6l8.3-8.3"/></svg>'})),
         h('button', {class: 'icon-btn', title: 'Gravar a tela ou o microfone', 'aria-label': 'Gravar', id: 'recbtn', 'data-testid': 'record', onclick: e => recMenu(e.currentTarget)}, h('span', {html: '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="currentColor"/></svg>'})),
@@ -842,6 +846,17 @@
     if (R.rec.state === 'recording') { R.rec.pause(); R.pausedAt = Date.now(); }
     else if (R.rec.state === 'paused') { R.rec.resume(); R.paused += Date.now() - R.pausedAt; R.pausedAt = 0; }
     renderRec();
+  }
+  function renderSubs() {                              // the sub-agents at work, each with its own stop button
+    const box = $('subbar'), c = S.chat; if (!box) return;
+    const live = c && !c.readonly && c.busy ? Object.entries(c.subs) : [];
+    if (!live.length) return box.replaceChildren();
+    box.replaceChildren(h('div', {class: 'subbar', 'data-testid': 'subbar'}, h('span', {class: 'k'}, live.length === 1 ? '1 subagente' : live.length + ' subagentes'),
+      live.slice(0, 12).map(([name, s]) => h('span', {class: 'chip', title: `${name} · ${s.model}${s.step ? ' · passo ' + s.step : ''}`},
+        h('span', {class: 'k'}, name), h('span', {class: 'n'}, s.item || s.step || s.model),
+        h('button', {class: 'x', title: 'Parar só este subagente', 'aria-label': 'Parar ' + name, 'data-testid': 'stop-' + name,
+          onclick: e => { e.currentTarget.disabled = true; api(sapi('stop_agent'), {agent: name}).catch(fail); }}, '×'))),
+      live.length > 12 ? h('span', {class: 'k'}, '+' + (live.length - 12)) : null));
   }
   function renderRec() {
     const box = $('recbar'), btn = $('recbtn'); if (!box) return;

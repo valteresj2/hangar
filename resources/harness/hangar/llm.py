@@ -51,6 +51,7 @@ class LLM:
     def __init__(self, cfg: dict, catalog, bus=None, session_id: str = ""):
         self.cfg, self.catalog, self.bus, self.session_id = cfg, catalog, bus, session_id
         self.timeout = 180
+        self.cancelled = None                            # names of sub-agents stopped one by one; shared with the session
         self.abort = None                                # threading.Event set by the session to cancel a stream
 
     # ------------------------------------------------------------------ public
@@ -89,7 +90,7 @@ class LLM:
         for attempt in range(5):
             t0 = time.time()
             try:
-                reply = self._once(url, headers, body, on_delta)
+                reply = self._once(url, headers, body, on_delta, agent)
                 reply.ms = int((time.time() - t0) * 1000)
                 reply.model = model
                 self._price(reply, info)
@@ -132,7 +133,7 @@ class LLM:
             return LLMError("transient", f"HTTP {code} {msg}", retry=True)
         return LLMError("bad_request", f"HTTP {code} {msg}")
 
-    def _once(self, url: str, headers: dict, body: dict, on_delta) -> Reply:
+    def _once(self, url: str, headers: dict, body: dict, on_delta, agent: str = "") -> Reply:
         req = urllib.request.Request(url, data=json.dumps(body).encode("utf-8"), headers=headers, method="POST")
         try:
             resp = urllib.request.urlopen(req, timeout=self.timeout)
@@ -146,6 +147,8 @@ class LLM:
                 for raw in resp:
                     if self.abort is not None and self.abort.is_set():
                         raise LLMError("aborted", "interrupted by the user")
+                    if self.cancelled and agent in self.cancelled:
+                        raise LLMError("cancelled", "this sub-agent was stopped by the user")
                     line = raw.decode("utf-8", "replace").strip()
                     if not line.startswith("data:"):
                         continue

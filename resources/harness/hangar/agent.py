@@ -10,7 +10,7 @@ from concurrent.futures import ThreadPoolExecutor
 from . import critic, prompts, skills as skills_mod, tools as T
 from .context import Context
 from .llm import LLMError
-from .session import Stopped
+from .session import Cancelled, Stopped
 from .toolcall import coerce_args, parse_text_calls, repair_json, signature
 
 
@@ -133,6 +133,8 @@ class Agent:
             except LLMError as e:
                 if e.kind == "aborted":
                     raise Stopped("stopped by user") from None
+                if e.kind == "cancelled":
+                    raise Cancelled("stopped by the user") from None
                 if e.kind == "no_tools" and self.mode == "native":
                     self.mode = s.tool_mode[self.model] = "text"      # remembered for the whole session
                     self.messages[0]["content"] = prompts.build(s, self)
@@ -228,6 +230,8 @@ class Agent:
         while True:
             self.save()
             s.check_stop()
+            if self.name in s.cancelled:
+                raise Cancelled("stopped by the user")
             if self.steps >= self.max_steps:
                 if self.escalate(f"it used all {self.max_steps} steps."):
                     continue
