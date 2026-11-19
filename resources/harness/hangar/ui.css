@@ -176,6 +176,7 @@ button:focus-visible, a:focus-visible, select:focus-visible, summary:focus-visib
 .composer select:hover, .composer .model:hover { background: var(--bg-hover); color: var(--text); }
 .teambtn { padding: 3px 8px; border-radius: var(--r); color: var(--text-muted); font: 12.5px var(--mono); }
 .teambtn:hover { background: var(--bg-hover); color: var(--text); }
+.wfbtn[aria-pressed="true"] { color: var(--text); background: var(--bg-hover); }
 .teambox { border: 1px solid var(--border); border-radius: var(--r); background: var(--bg-elev); padding: 8px 12px; font-size: 13px; }
 .teambox summary { cursor: pointer; font-weight: 500; }
 table.team { border-collapse: collapse; width: 100%; margin-top: 6px; font-size: 13px; }

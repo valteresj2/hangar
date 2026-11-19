@@ -50,6 +50,17 @@ test('motor Hangar: permissão → Permitir → arquivo escrito → resultado �
       { text: 'Pronto: pagina.html foi criado.' },
       { text: 'Conferido: pagina.html existe.' }
     ]
+    // The experimental switch only exists on this engine; the choice is saved with the session.
+    await page.getByTestId('workflows-toggle').click()
+    await expect(page.getByTestId('workflows-toggle')).toBeChecked()
+    await expect
+      .poll(
+        async () =>
+          (await invoke<{ id: string; workflows?: boolean }[]>('store:list', 'sessions')).find(
+            (s) => s.id === session.id
+          )?.workflows
+      )
+      .toBe(true)
     const composer = page.getByPlaceholder(/Responder ao Claude/)
     await composer.fill('Crie uma página')
     await composer.press('Enter')

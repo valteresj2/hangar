@@ -17,6 +17,8 @@ export interface BridgeStart {
   base_url?: string
   permission: string
   effort?: string
+  /** run_workflow available to the main agent; the app's switch wins over the harness config. */
+  workflows?: boolean
   system_append?: string
   mcp_servers?: Record<string, { url: string; headers?: Record<string, string> }>
   resume?: string

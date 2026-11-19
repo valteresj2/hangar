@@ -12,7 +12,7 @@ One long-lived process per conversation, newline-delimited JSON on stdin/stdout.
     {"type":"permission_response", qid,               answers them by qid. The API key never travels in a message: the
        decision: allow|allow_always|deny, message?}   host passes it in the HANGAR_BRIDGE_KEY environment variable.
     {"type":"interrupt"}
-    {"type":"set_options", model?, permission?, effort?}
+    {"type":"set_options", model?, permission?, effort?, workflows?}
     {"type":"close"}
 
 stdout carries the protocol only; anything else the process prints goes to stderr."""
@@ -63,6 +63,8 @@ def _configure(start: dict) -> dict:
                  "reasoning_effort": start.get("effort"), "max_steps": start.get("max_steps"), "max_cost_usd": start.get("max_cost_usd")}
     cfg = config.load(cwd, overrides)
     cfg["lessons"] = bool(start.get("lessons"))          # a host with its own lessons library leaves this off
+    if isinstance(start.get("workflows"), bool):         # the host's own switch for run_workflow; absent = what the config says
+        cfg["workflows"] = start["workflows"]
     cfg["memory"] = bool(start.get("memory"))            # project facts in <cwd>/.hangar/memory: the host opts in
     if start.get("base_url"):                            # a foreign gateway: compaction runs on the profile's own model
         cfg["helper_model"] = str(start.get("model"))
@@ -140,7 +142,7 @@ def main(argv: list[str] | None = None) -> int:
 
     queue: list[dict] = []
     last = {"final": "", "ok": False}
-    state = {"busy": False, "pending_model": None}
+    state = {"busy": False, "pending_model": None, "pending_tools": False}
     qlock = threading.Lock()
 
     def turn(msg: dict) -> None:
@@ -152,9 +154,9 @@ def main(argv: list[str] | None = None) -> int:
         last["final"] = ""
         status, error, kind = "success", "", ""
         try:
-            if state["pending_model"]:
-                agent._setup(state["pending_model"])
-                state["pending_model"] = None
+            if state["pending_model"] or state["pending_tools"]:
+                agent._setup(state["pending_model"] or agent.model)
+                state["pending_model"], state["pending_tools"] = None, False
                 s.model = agent.model
             if agent.messages:                           # permission mode / instructions may have changed between turns
                 from . import prompts
@@ -224,6 +226,13 @@ def main(argv: list[str] | None = None) -> int:
                 apply_permission(str(msg["permission"]))
             if msg.get("effort"):
                 cfg["reasoning_effort"] = str(msg["effort"])
+            if isinstance(msg.get("workflows"), bool) and msg["workflows"] != bool(cfg.get("workflows")):
+                cfg["workflows"] = msg["workflows"]      # the tool catalog changes: rebuilt now, or when the running turn ends
+                with qlock:
+                    if state["busy"]:
+                        state["pending_tools"] = True
+                    else:
+                        agent._setup(agent.model)
             if msg.get("model") and msg["model"] != agent.model:
                 with qlock:
                     if state["busy"]:
@@ -231,7 +240,8 @@ def main(argv: list[str] | None = None) -> int:
                     else:
                         agent._setup(str(msg["model"]))
                         s.model = agent.model
-            write({"type": "options", "model": state["pending_model"] or agent.model, "permission": cfg["permission"]})
+            write({"type": "options", "model": state["pending_model"] or agent.model, "permission": cfg["permission"],
+                   "workflows": bool(cfg.get("workflows"))})
         elif t == "close":
             break
     s.interrupt()

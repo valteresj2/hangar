@@ -60,6 +60,8 @@ class Store:
         try:
             for s in json.loads((self.dir / "sessions.json").read_text(encoding="utf-8")):
                 s["status"] = "idle" if s.get("status") in ("working", "waiting") else s.get("status", "idle")
+                if not isinstance(s.get("workflows"), bool):     # a session from before the switch: what its folder's config says
+                    s["workflows"] = bool(config.load(Path(s.get("cwd") or ".")).get("workflows"))
                 self.sessions[s["id"]] = s
         except (OSError, ValueError, KeyError, TypeError):
             pass
@@ -115,6 +117,8 @@ class Live:
         threading.Thread(target=self._stderr, daemon=True).start()
         start = {"type": "start", "cwd": s["cwd"], "model": s["model"], "permission": s.get("permission", "ask"),
                  "effort": s.get("effort") or None, "title": s["title"], "lessons": True, "memory": True, **self.app.bridge_extra}
+        if isinstance(s.get("workflows"), bool):
+            start["workflows"] = s["workflows"]
         if s.get("hangarSessionId"):
             start["resume"] = s["hangarSessionId"]
         self.send(start)
@@ -221,6 +225,7 @@ class App:
              "model": str(data.get("model") or "auto"),
              "effort": data.get("effort") if data.get("effort") in EFFORTS else (cfg["reasoning_effort"] if cfg["reasoning_effort"] in EFFORTS else "low"),
              "permission": data.get("permission") if data.get("permission") in PERMISSIONS else "ask",
+             "workflows": data["workflows"] if isinstance(data.get("workflows"), bool) else bool(config.load(cwd).get("workflows")),
              "pinned": False, "archived": False, "unread": False, "status": "idle", "cost": 0, "createdAt": _now(), "updatedAt": _now()}
         with self.store.lock:
             self.store.sessions[sid] = s
@@ -233,7 +238,7 @@ class App:
         for k in ("title", "model"):
             if isinstance(data.get(k), str) and data[k].strip():
                 fields[k] = data[k].strip()[:200]
-        for k in ("pinned", "archived", "unread"):
+        for k in ("pinned", "archived", "unread", "workflows"):
             if isinstance(data.get(k), bool):
                 fields[k] = data[k]
         if data.get("permission") in PERMISSIONS:
@@ -243,7 +248,7 @@ class App:
         self.store.patch(sid, **fields)
         live = self.live.get(s["id"])
         if live and live.alive():
-            opts = {k: fields[k] for k in ("permission", "effort", "model") if k in fields}
+            opts = {k: fields[k] for k in ("permission", "effort", "model", "workflows") if k in fields}
             if opts:
                 live.send({"type": "set_options", **opts})
             if fields.get("archived"):

@@ -249,6 +249,7 @@ export class HangarRunner {
             base_url: openAiBaseUrl(base),
             permission: permissionFor(session.permissionMode ?? defaults.defaultPermissionMode),
             effort: effortFor(session.effort ?? defaults.defaultEffort),
+            workflows: !!session.workflows,
             ...(instructions ? { system_append: instructions } : {}),
             ...(platformMcp ? { mcp_servers: { [PLATFORM_MCP_NAME]: { url: platformMcp.url } } } : {}),
             ...(session.hangarSessionId ? { resume: session.hangarSessionId } : {}),
@@ -636,7 +637,8 @@ export class HangarRunner {
       type: 'set_options',
       ...(model ? { model } : {}),
       ...(patch.permissionMode !== undefined ? { permission: permissionFor(patch.permissionMode) } : {}),
-      ...(patch.effort !== undefined ? { effort: effortFor(patch.effort) } : {})
+      ...(patch.effort !== undefined ? { effort: effortFor(patch.effort) } : {}),
+      ...(patch.workflows !== undefined ? { workflows: patch.workflows } : {})
     })
     return Promise.resolve()
   }

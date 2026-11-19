@@ -428,6 +428,8 @@
     if (live) add('Sessão', 'Equipe de modelos: quem faz o quê', showTeam);
     if (live) for (const [v, l] of Object.entries(PERMS)) add('Permissões', 'Permissões: ' + l, () => set({permission: v}, 'Permissões: ' + l), s.permission === v ? 'atual' : '');
     if (live) for (const [v, l] of Object.entries(EFFORTS)) add('Esforço', 'Esforço: ' + l, () => set({effort: v}, 'Esforço: ' + l), s.effort === v ? 'atual' : '');
+    if (live) add('Workflows', s.workflows ? 'Desligar workflows dinâmicos' : 'Ligar workflows dinâmicos',
+      () => set({workflows: !s.workflows}, 'Workflows: ' + (s.workflows ? 'desligado' : 'ligado')), 'experimental');
     if (s) for (const [t, l] of TABS.filter(([t]) => !s.cli || t === 'flow')) add('Painel', 'Abrir painel: ' + l, () => openSide(t));
     if (s && S.sideOpen) add('Painel', 'Fechar o painel lateral', closeSide);
     add('Janela', 'Alternar barra lateral', toggleSidebar, 'Alt+B');
@@ -444,7 +446,10 @@
     const s = S.cur, p = document.querySelector('[data-testid="perm"]'), e = document.querySelector('#composer select[aria-label="Esforço"]');
     if (s && p) p.value = s.permission || 'ask';
     if (s && e) e.value = s.effort || 'high';
+    const w = document.querySelector('[data-testid="wf-toggle"]');
+    if (s && w) { w.textContent = wfLabel(s); w.setAttribute('aria-pressed', String(!!s.workflows)); }
   }
+  const wfLabel = s => 'Workflows: ' + (s.workflows ? 'ligado' : 'desligado');
   async function palette() {
     if ($('overlay').querySelector('.palette')) return $('overlay').replaceChildren();
     const s = S.cur;
@@ -660,12 +665,15 @@
       Object.entries(EFFORTS).map(([v, l]) => h('option', {value: v, selected: v === (s.effort || 'high')}, 'Esforço: ' + l)));
     const perm = h('select', {title: 'Permissões', 'aria-label': 'Permissões', 'data-testid': 'perm', onchange: e => up({permission: e.target.value})},
       Object.entries(PERMS).map(([v, l]) => h('option', {value: v, selected: v === (s.permission || 'ask')}, l)));
+    const wfb = h('button', {class: 'teambtn wfbtn', 'data-testid': 'wf-toggle', 'aria-pressed': String(!!s.workflows),
+      title: 'Workflows dinâmicos (experimental): o agente pode dividir um trabalho repetido sobre muitos itens entre subagentes em paralelo. Costuma custar mais.',
+      onclick: () => up({workflows: !S.cur.workflows}).then(renderChatControls)}, wfLabel(s));
     const box = h('div', {class: 'composer', id: 'composer'},
       h('div', {id: 'recbar'}), chips, ta, file,
       h('div', {class: 'bar'},
         h('button', {class: 'icon-btn', title: 'Anexar arquivos', 'aria-label': 'Anexar arquivos', 'data-testid': 'attach', onclick: () => file.click()}, h('span', {html: '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.5l-8.6 8.6a5.5 5.5 0 0 1-7.8-7.8l9-9a3.7 3.7 0 0 1 5.2 5.2l-9 9a1.8 1.8 0 0 1-2.6-2.6l8.3-8.3"/></svg>'})),
         h('button', {class: 'icon-btn', title: 'Gravar a tela ou o microfone', 'aria-label': 'Gravar', id: 'recbtn', 'data-testid': 'record', onclick: e => recMenu(e.currentTarget)}, h('span', {html: '<svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="12" r="4.5" fill="currentColor"/></svg>'})),
-        model, effort, perm,
+        model, effort, perm, wfb,
         h('button', {class: 'btn stopbtn', id: 'stopbtn', hidden: true, 'data-testid': 'stop', onclick: () => api(sapi('interrupt'), {}).catch(fail)}, '■ Parar'),
         h('button', {class: 'send', id: 'sendbtn', title: 'Enviar (Enter)', 'aria-label': 'Enviar', 'data-testid': 'send', onclick: () => send()}, '↑')),
       h('datalist', {id: 'models'}, S.models.map(m => h('option', {value: m}))));

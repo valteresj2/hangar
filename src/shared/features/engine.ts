@@ -105,6 +105,8 @@ export interface EngineOptions {
   effort?: Effort
   permissionMode?: PermissionMode
   fastMode?: boolean
+  /** Hangar engine only (ignored by Claude Code sessions). */
+  workflows?: boolean
 }
 
 export interface SearchHit {

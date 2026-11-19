@@ -101,6 +101,20 @@ function OptionsBar({
         <input type="checkbox" checked={!!session.fastMode} onChange={(e) => apply({ fastMode: e.target.checked })} />
         Rápido
       </label>
+      {profile?.engine === 'hangar' && (
+        <label
+          className={styles.toggle}
+          title="Workflows dinâmicos (experimental): o agente pode dividir um trabalho repetido sobre muitos itens entre subagentes em paralelo. Costuma custar mais."
+        >
+          <input
+            type="checkbox"
+            data-testid="workflows-toggle"
+            checked={!!session.workflows}
+            onChange={(e) => apply({ workflows: e.target.checked })}
+          />
+          Workflows
+        </label>
+      )}
     </div>
   )
 }

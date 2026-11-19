@@ -256,6 +256,27 @@ describe.skipIf(!hasPython())('hangar engine: a session on the real bridge', asy
     }
   )
 
+  it('the workflows switch offers run_workflow to the model, and takes it back', { timeout: 90_000 }, async () => {
+    const offered = () =>
+      (
+        (fake.requests[fake.requests.length - 1].body as { tools?: { function: { name: string } }[] }).tools ?? []
+      ).map((t) => t.function.name)
+    const runner = registry.runnerFor('s1')
+    expect(offered()).not.toContain('run_workflow')
+    for (const [on, text] of [
+      [true, 'Com workflows.'],
+      [false, 'Sem workflows.']
+    ] as const) {
+      const before = (await results()).length
+      fake.script = [{ text }]
+      await runner.setOptions({ workflows: on })
+      expect(db('sessions').get('s1')?.workflows).toBe(on)
+      await runner.send('diga algo')
+      await until(`the result with workflows ${on}`, async () => (await results())[before])
+      expect(offered().includes('run_workflow')).toBe(on)
+    }
+  })
+
   it('interrupting stops the stream and leaves the session usable', { timeout: 90_000 }, async () => {
     const before = (await results()).length
     fake.script = [{ text: Array(300).fill('palavra').join(' '), delayMs: 40 }, { text: 'de volta' }]

@@ -29,6 +29,8 @@ export interface Session {
   effort?: Effort
   permissionMode?: PermissionMode
   fastMode?: boolean
+  /** Hangar engine only: the agent may split repeated work among parallel sub-agents (run_workflow, experimental). */
+  workflows?: boolean
   /** Provider profile (src/shared/providers.ts); undefined = settings.defaultProviderId. */
   providerId?: string
   /** Claude Code session id, used to resume the conversation. */
