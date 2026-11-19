@@ -258,9 +258,9 @@ describe.skipIf(!hasPython())('hangar engine: a session on the real bridge', asy
 
   it('the workflows switch offers run_workflow to the model, and takes it back', { timeout: 90_000 }, async () => {
     const offered = () =>
-      (
-        (fake.requests[fake.requests.length - 1].body as { tools?: { function: { name: string } }[] }).tools ?? []
-      ).map((t) => t.function.name)
+      ((fake.requests[fake.requests.length - 1].body as { tools?: { function: { name: string } }[] }).tools ?? []).map(
+        (t) => t.function.name
+      )
     const runner = registry.runnerFor('s1')
     expect(offered()).not.toContain('run_workflow')
     for (const [on, text] of [
