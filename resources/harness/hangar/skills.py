@@ -35,7 +35,7 @@ def discover(cwd: Path, extra_dirs: list | None = None) -> dict[str, dict]:
                         name = v.strip().strip("\"'")
                     elif k.strip() == "description":
                         desc = v.strip().strip("\"'")
-                    elif k.strip() in GATE_KEYS and v.strip():
+                    elif k.strip() in GATE_KEYS + ("triggers",) and v.strip():
                         extra[k.strip()] = v.strip().strip("\"'")
             found.setdefault(name, {"path": f, "description": desc[:160], **extra})
     return dict(list(found.items())[:30])
@@ -62,6 +62,19 @@ def gate_pending(session) -> str:
     lines = [f"- {n}: {(session.skills.get(n) or {}).get('gate_hint') or (session.skills.get(n) or {}).get('gate')}" for n in owed]
     return ("Not finished: you loaded a skill whose check has not passed yet. Run it, fix everything it reports and run it again until it passes:\n"
             + "\n".join(lines) + "\nIf this task produced nothing that check applies to, say so in one line and give your final answer.")
+
+
+def suggest(skills: dict, task: str, loaded=()) -> str:
+    """A line for the task message when the task plainly is what a skill is for. A skill names its own `triggers` (words or
+    phrases, comma separated); the index in the system prompt alone is easy to skip, and a strong model skips it most."""
+    low = task.lower()
+    hits = [n for n, s in skills.items() if n not in loaded and any(
+        re.search(r"(?<![\w-])" + re.escape(w.strip().lower()) + r"(?![\w-])", low) for w in (s.get("triggers") or "").split(",") if w.strip())]
+    if not hits:
+        return ""
+    names = ", ".join(f"`{n}`" for n in hits[:2])
+    return (f"\n\n[harness] This task is what the skill {names} is for. Load it with the skill tool BEFORE anything else and follow "
+            "it: it holds the way of working and the checks this kind of delivery is held to.")
 
 
 def index(skills: dict) -> str:

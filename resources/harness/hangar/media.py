@@ -134,13 +134,16 @@ def describe(session, path: Path, question: str, prefer_model: str | None = None
     errors = []
     for m in cands:
         if supports(session.catalog.info(m), kind):
-            try:
-                out = ask(m, [part_for(path, kind)], question)
-                if out:
-                    session.perception_cache[key] = out
-                    return out
-            except Exception as e:
-                errors.append(f"{m}: {e}")
+            for attempt in (1, 2):                       # an empty answer is a hiccup, not "cannot see": ask once more
+                try:
+                    out = ask(m, [part_for(path, kind)], question)
+                    if out:
+                        session.perception_cache[key] = out
+                        return out
+                    errors.append(f"{m}: returned an empty answer")
+                except Exception as e:
+                    errors.append(f"{m}: {e}")
+                    break
     if kind == "video":                                  # decompose: frames + soundtrack
         frames, audio = _split_video(path)
         chunks = []
@@ -159,5 +162,8 @@ def describe(session, path: Path, question: str, prefer_model: str | None = None
             out = "\n".join(chunks)
             session.perception_cache[key] = out
             return out
-    return (f"Error: no configured model can process {kind} input ({'; '.join(errors) or 'none supports it'}). "
+    if errors:                                           # a model that can perceive this was asked and failed: say that, not "none can"
+        return (f"Error: the {kind} could not be described this time ({'; '.join(dict.fromkeys(errors))}). "
+                "Try again; if it keeps failing, make the file smaller (crop or split a large image) or ask a narrower question.")
+    return (f"Error: no configured model can process {kind} input. "
             f"Set perception_model to a model with '{kind}' input, e.g. `hangar models omni`.")

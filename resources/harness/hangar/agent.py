@@ -90,6 +90,8 @@ class Agent:
                               "state of the work (files, last results) and continue the task until it is complete." + (f"\n{extra}" if extra else "")})
         first = self.messages[1]["content"] if len(self.messages) > 1 else ""
         self.goal = (first if isinstance(first, str) else next((p["text"] for p in first if p.get("type") == "text"), ""))[:400]
+        if self.role == "main" and "skill" in self.toolmap:              # a follow-up is pointed at the fitting skill like a first task
+            self.messages[-1]["content"] += skills_mod.suggest(self.s.skills, f"{self.goal}\n{extra}", self.s.skills_loaded)
         return self._loop()
 
     @property
@@ -201,6 +203,8 @@ class Agent:
         if not self.messages:
             self.messages.append({"role": "system", "content": prompts.build(s, self)})
         self._repair()
+        if self.role == "main" and "skill" in self.toolmap and isinstance(user, str):
+            user += skills_mod.suggest(s.skills, user, s.skills_loaded)       # in the message, so the system prompt stays cacheable
         self.messages.append({"role": "user", "content": user})
         self.goal = (user if isinstance(user, str) else next((p["text"] for p in user if p.get("type") == "text"), ""))[:400]
         return self._loop()
@@ -223,7 +227,7 @@ class Agent:
     def _loop(self) -> str:
         s = self.s
         empty = bad = gates = asked = stale = 0
-        verify_nudged = fail_nudged = plan_asked = plan_nudged = False
+        verify_nudged = fail_nudged = plan_asked = plan_nudged = page_nudged = False
         skill_nudges = 0
         plan_first = self.tier == "weak" and self.role == "main" and "plan" in self.toolmap and s.cfg.get("model_fit")
         last_sig, repeats = "", 0
@@ -332,6 +336,18 @@ class Agent:
                     self.messages.append({"role": "user", "content": "Before finishing: you changed files but did not run anything afterwards. "
                                           "Run a quick check now (tests / the script). If it already passes, repeat your final answer."})
                     continue
+                if s.cfg["verify_nudge"] and not page_nudged and self.role == "main" and s.page_unseen and "shell" in self.toolmap:
+                    page_nudged = True                   # once, every tier: reading a page's code does not show what it draws
+                    from .browser import find_browser
+                    if find_browser():
+                        self.messages.append({"role": "user", "content": (
+                            f"Before finishing: you changed a web page ({s.page_unseen}) and never opened it in a browser, so nobody has "
+                            "seen what it draws or whether its scripts run. Open it now:\n"
+                            f"  python -m hangar studio check {s.page_unseen}        (console errors, overflow)\n"
+                            f"  python -m hangar studio play {s.page_unseen} shots --do \"wait 500; shot start; press Enter; wait 500; shot next\"\n"
+                            "`play` presses keys, saves screenshots and reports a blank or frozen screen (`--help` lists the steps). "
+                            "Look at the screenshots with the perceive tool, fix what is wrong, then give your final answer.")})
+                        continue
                 left = [i["step"] for i in s.plan if i.get("status") != "done"] if plan_first and not plan_nudged else []
                 if left:                                 # once: the plan a weak model wrote is the list it is held to
                     plan_nudged = True

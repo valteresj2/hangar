@@ -6,6 +6,7 @@ import difflib
 import html.parser
 import json
 import os
+import tempfile
 import re
 import subprocess
 import time
@@ -70,8 +71,20 @@ def S(props: dict, req: list | None = None) -> dict:
 STR, INT, BOOL = {"type": "string"}, {"type": "integer"}, {"type": "boolean"}
 
 
+def _posix_on_windows(p: str) -> str:
+    """The shell tool may be Git Bash, where `/tmp/x.png` and `/c/Users/...` are real paths; the file tools run in Python on
+    Windows, where they are not. Translate, so a file a command just wrote can be read or perceived by the same name."""
+    if os.name != "nt" or not p.startswith("/"):
+        return p
+    if p == "/tmp" or p.startswith("/tmp/"):
+        return tempfile.gettempdir() + p[4:]
+    if len(p) >= 3 and p[1].isalpha() and (len(p) == 2 or p[2] == "/"):
+        return f"{p[1].upper()}:{p[2:] or '/'}"
+    return p
+
+
 def _resolve(ctx: Ctx, p: str) -> Path:
-    path = Path(str(p)).expanduser()
+    path = Path(_posix_on_windows(str(p))).expanduser()
     if not path.is_absolute():
         path = ctx.session.cwd / path
     path = path.resolve()
@@ -332,6 +345,8 @@ def t_shell(ctx: Ctx, a: dict) -> str:
             raw = b""
         tail = f"[timed out after {timeout}s and was killed; for servers or long jobs use background=true and poll with the process tool]"
     s.edits_since_run = False
+    if "hangar studio" in cmd or "hangar.studio" in cmd:  # the page was opened in a real browser
+        s.page_unseen = ""
     out = raw.decode("utf-8", "replace").replace("\r\n", "\n").rstrip()
     skills_mod.gate_seen(s, cmd, s.last_exit if not s.abort.is_set() else None, out)
     return (out + "\n" + tail).lstrip()

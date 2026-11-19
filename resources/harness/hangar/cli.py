@@ -79,11 +79,24 @@ def _overrides(a) -> dict:
             "fallback_models": [m for m in (getattr(a, "fallback", None) or "").split(",") if m] or None}
 
 
+def _text(arg: str) -> str:
+    """`@brief.md` reads a long task or follow-up from a UTF-8 file; anything else is the text itself."""
+    if arg.startswith("@") and Path(arg[1:]).is_file():
+        return Path(arg[1:]).read_text(encoding="utf-8-sig", errors="replace")
+    return arg
+
+
 def cmd_run(a) -> int:
     from .runner import run_task
     cwd = Path(a.cwd or ".").resolve()
     cfg = config.load(cwd, _overrides(a))
-    task = a.task if a.task != "-" else sys.stdin.read()
+    if a.task == "-":                                    # bytes, not the console code page: a task file is UTF-8 on every system
+        task = sys.stdin.buffer.read().decode("utf-8-sig", "replace")
+    else:
+        task = _text(a.task)                             # `run @brief.md`: a long task from a file
+    if not task.strip():
+        print("error: the task is empty (nothing arrived on stdin?). Pass it as text, as @file, or pipe it to `run -`.", file=sys.stderr)
+        return 2
     answers = None
     if a.answers:
         answers = json.loads(Path(a.answers).read_text(encoding="utf-8")) if Path(a.answers).is_file() else [a.answers]
@@ -108,7 +121,7 @@ def cmd_resume(a) -> int:
         return 2
     meta = json.loads((SESSIONS / sid / "meta.json").read_text(encoding="utf-8"))
     cfg = config.load(Path(meta["cwd"]), _overrides(a))
-    res = resume_task(cfg, sid, extra=a.message or "", interactive="tty" if sys.stdin.isatty() and not a.json else "none",
+    res = resume_task(cfg, sid, extra=_text(a.message or ""), interactive="tty" if sys.stdin.isatty() and not a.json else "none",
                       on_event=_printer(a.json))
     print(json.dumps(res, ensure_ascii=False) if a.json else res["final"])
     return 0 if res["status"] == "done" else 1
@@ -404,7 +417,7 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--trust-project", action="store_true", help="allow this project's hooks/plugins that execute code")
 
     r = sub.add_parser("run", help="run one task to completion")
-    r.add_argument("task", help="the task, or - to read it from stdin")
+    r.add_argument("task", help="the task, @file to read it from a file, or - to read it from stdin")
     common(r)
     r.add_argument("-w", "--workflow", help="loop (default) | verify | pev | custom name")
     r.add_argument("-a", "--attach", action="append", default=[], help="image/audio/video/pdf/text file (repeatable)")

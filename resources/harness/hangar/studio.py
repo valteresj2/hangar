@@ -4,6 +4,7 @@ on purpose: tool schemas are paid for on every model call, a command costs nothi
 
     python -m hangar studio screenshot <page.html|url> <out.png> [--width 1440 --height 900 --full --at SECONDS --wait MS]
     python -m hangar studio check      <page.html|url>              # console errors + overflow, no image
+    python -m hangar studio play       <page.html|url> <shots-dir> --do "wait 500; press Enter; hold ArrowRight 400; shot fight"
     python -m hangar studio video      <page.html> <out.mp4> --duration 12 [--fps 30 --width 1920 --height 1080]
     python -m hangar studio image      "<prompt>" <out.png> [--aspect 16:9 --model ... --ref image.png]
     python -m hangar studio pptx       <spec.json> <out.pptx>"""
@@ -33,7 +34,7 @@ LAYOUT_PROBE = """(() => {
     if (out.clipped.length >= 5) break;
   }
   out.images = [...document.images].filter(i => !i.complete || !i.naturalWidth).map(i => i.getAttribute('src')).slice(0, 5);
-  out.text = document.body ? document.body.innerText.trim().length : 0;
+  out.text = document.body ? document.body.innerText.trim().length + document.querySelectorAll('canvas,svg,video,img').length : 0;
   return out;
 })()"""
 
@@ -58,7 +59,7 @@ def _report(b, layout: dict) -> list[str]:
     if layout.get("images"):
         notes.append("BROKEN IMAGES: " + ", ".join(str(i) for i in layout["images"]))
     if not layout.get("text"):
-        notes.append("WARNING: the page shows no text at all")
+        notes.append("WARNING: the page shows no text and has no canvas, image or drawing at all")
     return notes
 
 
@@ -80,6 +81,114 @@ def cmd_screenshot(a) -> int:
         return 1
     print("\n".join(notes) if notes else "page check: no console errors, no overflow, no clipped text")
     return 0
+
+
+PLAY_HELP = """steps, separated by ';' or newlines (keys are DOM codes: ArrowLeft, KeyA, Digit7, Numpad7, Enter, Space, Escape):
+  wait MS            let the page run
+  press KEY [MS]     key down, MS later (default 70) key up
+  hold KEY MS        the same, for holding a direction
+  down KEY / up KEY  for chords and sequences: down ArrowDown; press KeyJ; up ArrowDown
+  seq K1 K2 ... [MS] press the keys one after another, MS apart (default 60): motion inputs
+  click X Y          mouse click at viewport pixels
+  shot NAME          save <shots-dir>/NAME.png and say what it shows (blank? same as the last shot?)
+  eval JS            print the value of a JavaScript expression (game state, a counter)
+  expect JS          like eval, but a falsy value fails the run"""
+
+
+def _steps(text: str) -> list[list[str]]:
+    out = []
+    for raw in text.replace("\n", ";").split(";"):
+        raw = raw.strip()
+        if raw and not raw.startswith("#"):
+            head, _, rest = raw.partition(" ")
+            out.append([head.lower(), rest.strip()])
+    return out
+
+
+def cmd_play(a) -> int:
+    """Drive a page like a person would and report what a model cannot see for itself: errors, a blank or frozen screen."""
+    from .browser import Browser, BrowserError, differ, keycode, look
+    text = a.do or ""
+    if a.script:
+        text = Path(a.script).read_text(encoding="utf-8")
+    steps = _steps(text)
+    if not steps:
+        print("error: nothing to do. Give --do \"...\" or --script FILE.\n" + PLAY_HELP)
+        return 2
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    failed, shots, last, problems = 0, 0, None, []
+    try:
+        with Browser(a.width, a.height) as b:
+            b.goto(a.page, settle_ms=a.wait)
+            for n, (op, arg) in enumerate(steps, 1):
+                parts = arg.split()
+                try:
+                    if op == "wait":
+                        b.settle(int(parts[0]))
+                    elif op in ("press", "hold"):
+                        code = keycode(parts[0])
+                        b.key(code, True)
+                        b.settle(int(parts[1]) if len(parts) > 1 else 70)
+                        b.key(code, False)
+                        b.settle(30)
+                    elif op in ("down", "up"):
+                        b.key(keycode(parts[0]), op == "down")
+                        b.settle(30)
+                    elif op == "seq":
+                        gap = int(parts.pop()) if parts and parts[-1].isdigit() and len(parts[-1]) > 1 else 60
+                        for k in parts:
+                            b.key(keycode(k), True)
+                            b.settle(gap)
+                            b.key(keycode(k), False)
+                    elif op == "click":
+                        b.click(float(parts[0]), float(parts[1]))
+                        b.settle(60)
+                    elif op == "shot":
+                        name = (parts[0] if parts else f"shot{shots + 1}").replace(".png", "")
+                        (out / f"{name}.png").write_bytes(b.screenshot())
+                        shots += 1
+                        _, _, rgb = b.thumbnail()
+                        seen, note = look(rgb), ""
+                        if seen["flat"] > 0.995 or seen["colours"] < 3:
+                            note = "  <-- BLANK: almost one flat colour, nothing is being drawn"
+                            problems.append(f"{name}: blank screen")
+                        elif last is not None and differ(last[1], rgb) < 0.004:
+                            note = f"  <-- IDENTICAL to '{last[0]}': the steps in between changed nothing on screen"
+                            problems.append(f"{name}: same picture as {last[0]}")
+                        last = (name, rgb)
+                        print(f"[{n}] shot {out / (name + '.png')}  ({seen['colours']} colours, {seen['flat']:.0%} one colour){note}")
+                    elif op in ("eval", "expect"):
+                        v = b.eval(arg)
+                        shown = json.dumps(v, ensure_ascii=False, default=str)[:600]
+                        if op == "expect" and not v:
+                            failed += 1
+                            problems.append(f"expect failed: {arg[:80]}")
+                            print(f"[{n}] EXPECT FAILED: {arg}  ->  {shown}")
+                        else:
+                            print(f"[{n}] {op} {arg[:90]}  ->  {shown}")
+                    else:
+                        print(f"error: unknown step '{op}'.\n" + PLAY_HELP)
+                        return 2
+                except (IndexError, ValueError):
+                    print(f"error: bad step {n}: '{op} {arg}'.\n" + PLAY_HELP)
+                    return 2
+                except BrowserError as e:
+                    failed += 1
+                    problems.append(f"step {n} ({op}): {e}")
+                    print(f"[{n}] ERROR in '{op} {arg[:80]}': {e}")
+            errs = list(dict.fromkeys(b.errors))
+    except BrowserError as e:
+        print(f"error: {e}")
+        return 1
+    if errs:
+        print("CONSOLE ERRORS:\n  " + "\n  ".join(errs[:10]))
+    if problems:
+        print("PROBLEMS:\n  " + "\n  ".join(problems[:12]))
+    if not errs and not problems:
+        print(f"play: {len(steps)} steps, {shots} shots, no console errors, no blank or frozen shot. "
+              "Now LOOK at the shots (perceive) before you call it working: this only proves that something is drawn and moves.")
+    return 1 if errs or failed or problems else 0
 
 
 def cmd_video(a) -> int:
@@ -207,6 +316,16 @@ def main(argv: list[str] | None = None) -> int:
     c = sub.add_parser("check")
     page(c, out=False)
     c.set_defaults(fn=cmd_screenshot)
+    pl = sub.add_parser("play", help="drive a page with keys and clicks, save screenshots, report errors and dead screens",
+                        epilog=PLAY_HELP, formatter_class=argparse.RawDescriptionHelpFormatter)
+    pl.add_argument("page")
+    pl.add_argument("out", help="folder for the screenshots")
+    pl.add_argument("--do", help="the steps, inline")
+    pl.add_argument("--script", help="the steps, in a file")
+    pl.add_argument("--width", type=int, default=1280)
+    pl.add_argument("--height", type=int, default=720)
+    pl.add_argument("--wait", type=int, default=700, help="ms to let the page settle after load")
+    pl.set_defaults(fn=cmd_play)
     v = sub.add_parser("video")
     v.add_argument("page")
     v.add_argument("out")

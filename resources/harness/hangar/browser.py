@@ -12,6 +12,7 @@ import subprocess
 import tempfile
 import time
 import urllib.request
+import zlib
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -175,7 +176,13 @@ class Browser:
 
     # ----------------------------------------------------------------- page
     def goto(self, target: str, settle_ms: int = 600, timeout: float = 45) -> None:
-        url = target if "://" in target else Path(target).resolve().as_uri()
+        if "://" in target:
+            url = target
+        else:                                                 # a local page may carry ?scene=fight or #section: keep it out of the path
+            cut = min((i for i in (target.find("?"), target.find("#")) if i >= 0), default=len(target))
+            if not Path(target[:cut]).is_file():
+                raise BrowserError(f"page not found: {target[:cut]}")
+            url = Path(target[:cut]).resolve().as_uri() + target[cut:]
         self.events.clear()
         self.cmd("Page.navigate", {"url": url})
         self.wait_event("Page.loadEventFired", timeout)
@@ -205,6 +212,28 @@ class Browser:
                               "height": min(20000, max(self.height, int(size.get("height", self.height)))), "scale": 1}
         return base64.b64decode(self.cmd("Page.captureScreenshot", params)["data"])
 
+    # ---------------------------------------------------------------- input
+    def key(self, code: str, down: bool = True) -> None:
+        """Press or release one key, named by its DOM `code` (ArrowLeft, KeyA, Digit7, Numpad7, Enter, Space, F3...)."""
+        key, vk, text = keyinfo(code)
+        p = {"type": "keyDown" if down else "keyUp", "key": key, "code": code, "windowsVirtualKeyCode": vk, "nativeVirtualKeyCode": vk}
+        if code.startswith("Numpad"):
+            p["location"] = 3
+        if down and text:
+            p["text"] = text
+        self.cmd("Input.dispatchKeyEvent", p)
+
+    def click(self, x: float, y: float) -> None:
+        for kind in ("mousePressed", "mouseReleased"):
+            self.cmd("Input.dispatchMouseEvent", {"type": kind, "x": x, "y": y, "button": "left", "clickCount": 1})
+
+    def thumbnail(self, width: int = 160) -> tuple[int, int, bytes]:
+        """The viewport shrunk to `width` pixels across, as raw RGB: small enough to compare and count colours in pure Python."""
+        scale = width / self.width
+        png = base64.b64decode(self.cmd("Page.captureScreenshot", {"format": "png", "clip": {
+            "x": 0, "y": 0, "width": self.width, "height": self.height, "scale": scale}})["data"])
+        return png_rgb(png)
+
     def close(self) -> None:
         try:
             self.cmd("Browser.close", timeout=5)
@@ -228,6 +257,98 @@ class Browser:
 
     def __exit__(self, *a):
         self.close()
+
+
+_KEYS = {"Enter": ("Enter", 13, "\r"), "Space": (" ", 32, " "), "Escape": ("Escape", 27, ""), "Tab": ("Tab", 9, ""),
+         "Backspace": ("Backspace", 8, ""), "ArrowLeft": ("ArrowLeft", 37, ""), "ArrowUp": ("ArrowUp", 38, ""),
+         "ArrowRight": ("ArrowRight", 39, ""), "ArrowDown": ("ArrowDown", 40, ""), "ShiftLeft": ("Shift", 16, ""),
+         "ShiftRight": ("Shift", 16, ""), "ControlLeft": ("Control", 17, ""), "ControlRight": ("Control", 17, ""),
+         "AltLeft": ("Alt", 18, ""), "NumpadEnter": ("Enter", 13, "\r")}
+_ALIAS = {"Return": "Enter", "Esc": "Escape", "Left": "ArrowLeft", "Right": "ArrowRight", "Up": "ArrowUp", "Down": "ArrowDown",
+          "Shift": "ShiftLeft", "Control": "ControlLeft", "Ctrl": "ControlLeft", " ": "Space"}
+
+
+def keycode(name: str) -> str:
+    """Accept what people type (`a`, `7`, `left`, `enter`) and return the DOM code (`KeyA`, `Digit7`, `ArrowLeft`, `Enter`)."""
+    name = _ALIAS.get(name[:1].upper() + name[1:], name)
+    if len(name) == 1 and name.isalpha():
+        return "Key" + name.upper()
+    if len(name) == 1 and name.isdigit():
+        return "Digit" + name
+    for known in list(_KEYS) + ["Numpad", "Digit", "Key", "F"]:
+        if name.lower() == known.lower():
+            return known
+        if known in ("Numpad", "Digit", "Key", "F") and name.lower().startswith(known.lower()) and len(name) > len(known):
+            return known + name[len(known):].upper()
+    return name
+
+
+def keyinfo(code: str) -> tuple[str, int, str]:
+    """(key, Windows virtual key code, text typed) for a DOM code."""
+    if code in _KEYS:
+        return _KEYS[code]
+    if code.startswith("Key") and len(code) == 4:
+        return code[3].lower(), ord(code[3]), code[3].lower()
+    if code.startswith("Digit") and len(code) == 6:
+        return code[5], ord(code[5]), code[5]
+    if code.startswith("Numpad") and code[6:].isdigit():
+        return code[6:], 96 + int(code[6:]), code[6:]
+    if code.startswith("F") and code[1:].isdigit():
+        return code, 111 + int(code[1:]), ""
+    raise BrowserError(f"unknown key '{code}' (use DOM codes: ArrowLeft, KeyA, Digit7, Numpad7, Enter, Space, Escape, F3)")
+
+
+def png_rgb(png: bytes) -> tuple[int, int, bytes]:
+    """Decode an 8-bit RGB/RGBA PNG (what Chrome writes) into raw RGB. Meant for thumbnails: pure Python, a few ms each."""
+    pos, w, h, ctype, data = 8, 0, 0, 6, b""
+    while pos < len(png):
+        n, kind = struct.unpack(">I4s", png[pos:pos + 8])
+        body = png[pos + 8:pos + 8 + n]
+        if kind == b"IHDR":
+            w, h, _, ctype = struct.unpack(">IIBB", body[:10])
+        elif kind == b"IDAT":
+            data += body
+        pos += 12 + n
+    bpp = 4 if ctype == 6 else 3
+    raw, stride = zlib.decompress(data), w * bpp
+    prev, out = bytearray(stride), bytearray()
+    for y in range(h):
+        f = raw[y * (stride + 1)]
+        row = bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+        for i in range(stride):
+            a = row[i - bpp] if i >= bpp else 0
+            b = prev[i]
+            c = prev[i - bpp] if i >= bpp else 0
+            if f == 1:
+                row[i] = (row[i] + a) & 255
+            elif f == 2:
+                row[i] = (row[i] + b) & 255
+            elif f == 3:
+                row[i] = (row[i] + (a + b) // 2) & 255
+            elif f == 4:
+                pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
+                row[i] = (row[i] + (a if pa <= pb and pa <= pc else b if pb <= pc else c)) & 255
+        prev = row
+        out += row if bpp == 3 else bytes(v for i, v in enumerate(row) if i % 4 != 3)
+    return w, h, bytes(out)
+
+
+def look(rgb: bytes) -> dict:
+    """What a thumbnail says without a model: how many distinct colours, and how much of it is the commonest one."""
+    counts: dict = {}
+    for i in range(0, len(rgb), 3):
+        k = (rgb[i] >> 4, rgb[i + 1] >> 4, rgb[i + 2] >> 4)
+        counts[k] = counts.get(k, 0) + 1
+    total = max(1, len(rgb) // 3)
+    return {"colours": len(counts), "flat": max(counts.values(), default=0) / total}
+
+
+def differ(a: bytes, b: bytes) -> float:
+    """Share of pixels that changed visibly between two thumbnails of the same size."""
+    if len(a) != len(b) or not a:
+        return 1.0
+    n = sum(1 for i in range(0, len(a), 3) if abs(a[i] - b[i]) + abs(a[i + 1] - b[i + 1]) + abs(a[i + 2] - b[i + 2]) > 36)
+    return n / (len(a) // 3)
 
 
 # deterministic time: the page may define window.hangarFrame(t); CSS/WAAPI animations are seeked for free

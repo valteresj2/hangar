@@ -61,6 +61,7 @@ class Session:
         self.plan: list = []
         self.files: set[str] = set()
         self.edits_since_run = False
+        self.page_unseen = ""                      # a web page changed and not opened in a browser since (see agent.py)
         self.last_exit: int | None = None
         self.abort = threading.Event()             # set by the host to stop the turn in flight
         self.lessons_used: list[str] = []          # lesson files shown to this session, settled at its end
@@ -199,6 +200,11 @@ class Session:
         except ValueError:
             self.files.add(str(path))
         self.edits_since_run = True
+        if path.suffix.lower() in (".html", ".htm"):
+            self.page_unseen = str(path.name)
+        elif path.suffix.lower() in (".js", ".css", ".mjs") and not self.page_unseen and any(
+                f.lower().endswith((".html", ".htm")) for f in self.files):
+            self.page_unseen = next(f for f in sorted(self.files) if f.lower().endswith((".html", ".htm")))
 
     def over_budget(self) -> bool:
         return self.totals["cost"] >= self.cfg["max_cost_usd"]
