@@ -1,5 +1,6 @@
 ---
 name: image-generation
+triggers: generate an image, gere uma imagem, gerar imagem, gerar uma imagem, crie uma imagem, ilustração, illustration, concept art
 description: Generate images (illustrations, hero backgrounds, concept art) with an image model through one command. Load before creating any picture that is not a chart or a screenshot.
 ---
 

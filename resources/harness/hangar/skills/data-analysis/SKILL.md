@@ -1,5 +1,6 @@
 ---
 name: data-analysis
+triggers: data analysis, análise de dados, analise de dados, análise exploratória, analise exploratoria, analyse the dataset, analyze the dataset
 description: Analyse a dataset (CSV/JSON/Excel) in depth - profile every variable, relate them to the outcome, model, and deliver a report with tables and charts. Load before any data analysis, report, dashboard or deck built from data.
 gate: hangar studio report check
 gate_fail: GAPS

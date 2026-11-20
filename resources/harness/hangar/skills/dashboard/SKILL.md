@@ -1,5 +1,6 @@
 ---
 name: dashboard
+triggers: dashboard, dashboards, painel de indicadores, painel de dados, kpi dashboard
 description: Build a modern, self-contained HTML dashboard from computed data (KPIs, charts, insights) and verify it visually. Load before writing any dashboard or data-visualisation page.
 ---
 

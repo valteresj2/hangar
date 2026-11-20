@@ -1,5 +1,6 @@
 ---
 name: motion-video
+triggers: motion graphics, motion video, vídeo animado, video animado, animated video, vídeo explicativo, explainer video
 description: Create a motion-graphics video (MP4) by coding an HTML animation with three.js / canvas / CSS and rendering it frame by frame. Load before making any animated video, intro, explainer or data story clip.
 ---
 

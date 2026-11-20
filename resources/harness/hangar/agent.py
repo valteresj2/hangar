@@ -23,6 +23,24 @@ SPLIT_HINT = ("Split the work: write the first part of the file (up to ~150 line
               "with write(append=true), or use several small edits.")
 CUT_MSG = "NOT executed: your output hit the length limit in the middle of this call, so its arguments are incomplete. " + SPLIT_HINT
 
+# A final answer that itself says part of the work went unchecked (seen in real runs: "não joguei a luta", "not tested").
+_UNVERIFIED = re.compile(
+    r"((n[ãa]o|nunca)\s+(foi|foram|fui|pude|consegui|cheguei a)?\s*(verifi\w+|test\w+|conferi\w*|rod\w+|execut\w+|olh\w+|revi\w*|jog\w+|ouvi\w*|abr\w+|valid\w+)"
+    r"|sem\s+(testar|verificar|rodar|executar|olhar|conferir|validar)|ainda\s+sem\s+\w+ar\b|n[ãa]o\s+verificad\w+|n[ãa]o\s+testad\w+"
+    r"|\b(not|never|n't)\s+(been\s+)?(verif\w+|test\w+|run|ran|check\w+|execut\w+|validat\w+|look\w+\s+at|open\w+)"
+    r"|\bun(verified|tested|checked)\b)", re.I)
+
+
+def unverified(text: str) -> list[str]:
+    """The lines of a final answer that admit something was not checked (at most 6, trimmed)."""
+    out = []
+    for line in text.splitlines():
+        line = line.strip(" \t-*•>#|")
+        if line and _UNVERIFIED.search(line):
+            out.append(line[:220])
+    return out[:6]
+
+
 _TRAILING_MARK =re.compile(r"(\s*<\|?[A-Za-z_]{2,24}\|?>)+\s*$")
 
 
@@ -227,7 +245,7 @@ class Agent:
     def _loop(self) -> str:
         s = self.s
         empty = bad = gates = asked = stale = 0
-        verify_nudged = fail_nudged = plan_asked = plan_nudged = page_nudged = False
+        verify_nudged = fail_nudged = plan_asked = plan_nudged = page_nudged = code_nudged = owed_nudged = False
         skill_nudges = 0
         plan_first = self.tier == "weak" and self.role == "main" and "plan" in self.toolmap and s.cfg.get("model_fit")
         last_sig, repeats = "", 0
@@ -348,12 +366,34 @@ class Agent:
                             "`play` presses keys, saves screenshots and reports a blank or frozen screen (`--help` lists the steps). "
                             "Look at the screenshots with the perceive tool, fix what is wrong, then give your final answer.")})
                         continue
+                if (s.cfg["verify_nudge"] and not code_nudged and self.role == "main" and s.code_new - s.code_asked
+                        and "shell" in self.toolmap):
+                    code_nudged = True                   # once, every tier: tests of the syntax are not a run of the program
+                    fresh = sorted(s.code_new - s.code_asked)
+                    names, many = ", ".join(fresh[:5]), len(fresh) > 1
+                    s.code_asked |= s.code_new           # asked once per program, not again on every later turn
+                    self.messages.append({"role": "user", "content": (
+                        f"Before finishing: you created {names} and no command in this session ever executed "
+                        f"{'any of them' if many else 'it'} (not directly, not through a test suite). Run it now the way "
+                        "a user would, with a real input, and fix what fails. If it truly cannot run here (it needs credentials, "
+                        "hardware or a service this machine lacks), say which and why in one line, then repeat your final answer.")})
+                    continue
                 left = [i["step"] for i in s.plan if i.get("status") != "done"] if plan_first and not plan_nudged else []
                 if left:                                 # once: the plan a weak model wrote is the list it is held to
                     plan_nudged = True
                     self.messages.append({"role": "user", "content": "Your plan still lists these steps as not done:\n"
                                           + "\n".join(f"- {x}" for x in left[:8]) + "\nDo what is really missing. If they are in fact "
                                           "done and checked, repeat your final answer."})
+                    continue
+                gaps = (unverified(text) if s.cfg["verify_nudge"] and not owed_nudged and self.role == "main" and "shell" in self.toolmap
+                        and s.totals["cost"] < 0.85 * s.cfg["max_cost_usd"] and self.steps < self.max_steps - 5 else [])
+                if gaps:                                 # once: the agent's own list of what it skipped becomes its to-do list
+                    owed_nudged = True
+                    self.messages.append({"role": "user", "content": (
+                        "Not finished: your own answer says part of the work was not checked:\n" + "\n".join(f"- {g}" for g in gaps)
+                        + "\nYou still have tools and budget. Check each of these now by running or looking at the real thing, and fix "
+                        "what you find. For anything that cannot be checked from this machine (it needs a person, hardware, "
+                        "credentials), keep it in the final answer with the reason. Then give your final answer again.")})
                     continue
                 owed = skills_mod.gate_pending(s) if self.role == "main" and "shell" in self.toolmap and skill_nudges < 2 else ""
                 if owed:                                 # twice at most: a check that cannot apply must not trap the session

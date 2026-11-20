@@ -62,6 +62,8 @@ class Session:
         self.files: set[str] = set()
         self.edits_since_run = False
         self.page_unseen = ""                      # a web page changed and not opened in a browser since (see agent.py)
+        self.code_new: set[str] = set()            # programs this session created that no command has executed yet
+        self.code_asked: set[str] = set()          # ...and the ones the agent was already sent back for (see agent.py)
         self.last_exit: int | None = None
         self.abort = threading.Event()             # set by the host to stop the turn in flight
         self.lessons_used: list[str] = []          # lesson files shown to this session, settled at its end

@@ -138,9 +138,25 @@ def t_write(ctx: Ctx, a: dict) -> str:
         ctx.session.touched(path)
         return (f"Appended {len(a['content'].splitlines())} lines to {path.name} (now {len(path.read_text(encoding='utf-8', errors='replace').splitlines())} lines)."
                 + diagnose.note(ctx.session, path, partial=True))
+    if not path.exists() and path.suffix.lower() in RUNNABLE:
+        ctx.session.code_new.add(path.name)
     path.write_text(a["content"], encoding="utf-8", newline="\n")
     ctx.session.touched(path)
     return f"Wrote {path.name} ({len(a['content'].splitlines())} lines)." + diagnose.note(ctx.session, path, partial=len(a["content"].splitlines()) >= 120)
+
+
+RUNNABLE = {".py", ".sh", ".ps1", ".bat", ".js", ".mjs", ".ts", ".rb", ".php", ".go", ".rs"}
+# commands that execute a project's code without naming a file: test runners, builds, a page opened in the browser
+RUNNERS = re.compile(r"\b(pytest|unittest|tox|nox|npm (run|test|start)|npx|pnpm|yarn|node --test|vitest|jest|go (run|test|build)|"
+                     r"cargo (run|test|build)|make|dotnet (run|test)|mvn|gradle|hangar[ .]studio|docker (run|compose))\b")
+
+
+def ran_code(names, cmd: str) -> set:
+    """Which of these new programs did the command execute? By file name (`python tool.py`, `-m pkg.tool`, `./run.sh`);
+    a runner (tests, a build, the page in a browser) counts for all of them."""
+    if RUNNERS.search(cmd):
+        return set(names)
+    return {n for n in names if re.search(r"(?<![\w-])" + re.escape(n.rsplit(".", 1)[0]) + r"(?![\w-])", cmd)}
 
 
 def _fuzzy_span(text: str, old: str):
@@ -345,6 +361,8 @@ def t_shell(ctx: Ctx, a: dict) -> str:
             raw = b""
         tail = f"[timed out after {timeout}s and was killed; for servers or long jobs use background=true and poll with the process tool]"
     s.edits_since_run = False
+    if s.code_new:
+        s.code_new -= ran_code(s.code_new, cmd)
     if "hangar studio" in cmd or "hangar.studio" in cmd:  # the page was opened in a real browser
         s.page_unseen = ""
     out = raw.decode("utf-8", "replace").replace("\r\n", "\n").rstrip()

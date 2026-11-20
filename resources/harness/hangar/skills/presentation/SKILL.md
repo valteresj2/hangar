@@ -1,5 +1,6 @@
 ---
 name: presentation
+triggers: presentation, apresentação, apresentacao, slides, slide deck, pptx, powerpoint, pitch deck
 description: Build a presentation as an HTML deck and/or an editable PowerPoint (.pptx) with modern design. Load before creating slides, a deck, a pitch or a pptx.
 ---
 
