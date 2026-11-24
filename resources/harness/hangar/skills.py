@@ -64,12 +64,17 @@ def gate_pending(session) -> str:
             + "\n".join(lines) + "\nIf this task produced nothing that check applies to, say so in one line and give your final answer.")
 
 
+def matches(skills: dict, task: str, loaded=()) -> list[str]:
+    """The skills whose `triggers` appear in the task text and are not loaded yet."""
+    low = task.lower()
+    return [n for n, s in skills.items() if n not in loaded and any(
+        re.search(r"(?<![\w-])" + re.escape(w.strip().lower()) + r"(?![\w-])", low) for w in (s.get("triggers") or "").split(",") if w.strip())]
+
+
 def suggest(skills: dict, task: str, loaded=()) -> str:
     """A line for the task message when the task plainly is what a skill is for. A skill names its own `triggers` (words or
     phrases, comma separated); the index in the system prompt alone is easy to skip, and a strong model skips it most."""
-    low = task.lower()
-    hits = [n for n, s in skills.items() if n not in loaded and any(
-        re.search(r"(?<![\w-])" + re.escape(w.strip().lower()) + r"(?![\w-])", low) for w in (s.get("triggers") or "").split(",") if w.strip())]
+    hits = matches(skills, task, loaded)
     if not hits:
         return ""
     names = ", ".join(f"`{n}`" for n in hits[:2])

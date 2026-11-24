@@ -52,7 +52,9 @@ class Session:
         self.llm = LLM(cfg, self.catalog, self.bus, session_id=self.id)
         self.machine = machine.probe()
         self.shell_name, self.shell_argv = machine.shell(cfg, self.machine)
-        self.skills = skills_mod.discover(self.cwd, cfg.get("skills_dirs"))
+        self.skills = skills_mod.discover(self.cwd, cfg.get("skills_dirs")) if cfg.get("skills", True) else {}
+        self.skills_suggested: list[str] = []      # what the harness pointed at, to compare with what was loaded
+        self.lessons_shown: list[str] = []
         self.skill_gates: dict[str, bool] = {}     # loaded skills that name a check -> has it passed
         self.skills_loaded: set[str] = set()       # their RUBRIC.md, when present, guides the quality review
         self.mcp = MCPManager(self.cwd, self.bus)
@@ -320,13 +322,21 @@ class Session:
             out.append({"role": role, "models": list(r["models"]), "calls": calls, **{k: (round(r[k] - b.get(k, 0), 6) if k == "cost" else r[k] - b.get(k, 0)) for k in ("cost", "prompt", "completion", "cached")}})
         return sorted(out, key=lambda x: -x["cost"])
 
+    def aids(self) -> dict:
+        """What the harness offered this run and what the agent took: skills pointed at and loaded, lessons shown."""
+        return {"skills_suggested": list(self.skills_suggested), "skills_loaded": sorted(self.skills_loaded),
+                "lessons_shown": list(self.lessons_shown), "spills": self.spill_n}
+
     def finish(self, status: str, final: str = "") -> dict:
         self._external_usage()
         self.meta.update(status=status, ended=time.time(), final=final[:4000])
         summary = {"session": self.id, "status": status, "model": self.model, "workflow": self.workflow,
                    "duration_s": round(time.time() - self.started, 1), "files": sorted(self.files),
                    **{k: (round(v, 6) if isinstance(v, float) else v) for k, v in self.totals.items()},
-                   "by_model": self.by_model, "by_role": self.roles(), "final": final, "log": str(self.dir / "events.jsonl")}
+                   "by_model": self.by_model, "by_role": self.roles(),
+                   # a pass says nothing about an aid the run never used: record offered and used apart
+                   "aids": self.aids(),
+                   "final": final, "log": str(self.dir / "events.jsonl")}
         self.bus.emit("session_end", **{k: v for k, v in summary.items() if k != "final"})
         self._save_meta()
         (self.dir / "summary.json").write_text(json.dumps(summary, ensure_ascii=False, indent=1), encoding="utf-8")

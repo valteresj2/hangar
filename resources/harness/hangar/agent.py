@@ -109,8 +109,14 @@ class Agent:
         first = self.messages[1]["content"] if len(self.messages) > 1 else ""
         self.goal = (first if isinstance(first, str) else next((p["text"] for p in first if p.get("type") == "text"), ""))[:400]
         if self.role == "main" and "skill" in self.toolmap:              # a follow-up is pointed at the fitting skill like a first task
+            self._hint(f"{self.goal} {extra}")
             self.messages[-1]["content"] += skills_mod.suggest(self.s.skills, f"{self.goal}\n{extra}", self.s.skills_loaded)
         return self._loop()
+
+    def _hint(self, task: str) -> None:
+        for n in skills_mod.matches(self.s.skills, task, self.s.skills_loaded)[:2]:
+            if n not in self.s.skills_suggested:
+                self.s.skills_suggested.append(n)
 
     @property
     def cost_role(self) -> str:
@@ -222,6 +228,7 @@ class Agent:
             self.messages.append({"role": "system", "content": prompts.build(s, self)})
         self._repair()
         if self.role == "main" and "skill" in self.toolmap and isinstance(user, str):
+            self._hint(user)
             user += skills_mod.suggest(s.skills, user, s.skills_loaded)       # in the message, so the system prompt stays cacheable
         self.messages.append({"role": "user", "content": user})
         self.goal = (user if isinstance(user, str) else next((p["text"] for p in user if p.get("type") == "text"), ""))[:400]
@@ -475,6 +482,7 @@ class Agent:
 
     def _wrap_up(self, reason: str) -> str:
         self.s.bus.emit("notice", level="warn", text=reason, agent=self.name)
+        self.cut = reason                              # whoever started this agent must know it did not finish
         if self.role == "main":
             self.s.incomplete = reason                 # the run must not be reported as done
         self.messages.append({"role": "user", "content": f"{reason} Stop working. Reply with a brief status: what is done, what remains, and where things are."})

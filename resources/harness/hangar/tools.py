@@ -478,12 +478,17 @@ def t_task(ctx: Ctx, a: dict) -> str:
     try:
         out = sub.run(a["prompt"] + "\n\nReturn a concise report (under 400 words) with exact paths/values the caller needs.")
         status = "done"
+        cut = getattr(sub, "cut", "")
+        if cut:                                      # it ran out of steps or budget: what came back is a status, not a result
+            status = "incomplete"
+            out = (f"[sub-agent {name} did NOT finish: {cut} What follows is its status report. Do the rest yourself or "
+                   f"start another sub-agent with a narrower task.]\n{out}")
     except Cancelled:
         status = "stopped"
         raise ToolError(f"sub-agent {name} was stopped by the user before it finished; do not start it again unless asked")
     finally:
         s.bus.emit("subagent_end", agent=name, status=status, by=ctx.agent.name)
-    return out[:8000]
+    return s.cap(out, name, 8000)                    # a long report is parked on disk, not chopped
 
 
 def t_run_workflow(ctx: Ctx, a: dict) -> str:

@@ -11,7 +11,7 @@ your own runs in `~/.hangar/roster.json` replaces the shipped one. A project or 
     deep = ["openai/gpt-6.1-terra", "anthropic/claude-sonnet-5.5"]
 
 Roles
-  worker      the main loop: the cheapest model that solved every everyday, media and hard task
+  worker      the main loop: the cheapest model that solved every task, the hardest one included
   light       sub-agents that only search, read or summarize
   deep        sub-agents asked for hard reasoning, design or debugging: the cheapest that solved the hardest task
   planner     writes the plan in the `pev` workflow (read-only)
@@ -31,14 +31,14 @@ ROLES = ("worker", "light", "deep", "planner", "verifier", "escalation", "helper
 SHIPPED = Path(__file__).resolve().parent / "roster.json"
 # Used only when no roster file can be read (a broken install): the team of the first published benchmark.
 FALLBACK: dict[str, list[str]] = {
-    "worker": ["openai/gpt-6-luna", "anthropic/claude-haiku-5.5"], "light": ["openai/gpt-6-luna", "anthropic/claude-haiku-5.5"],
+    "worker": ["anthropic/claude-haiku-5.5", "openai/gpt-6.1-terra"], "light": ["openai/gpt-6-luna", "anthropic/claude-haiku-5.5"],
     "deep": ["anthropic/claude-haiku-5.5", "openai/gpt-6.1-terra"], "planner": ["anthropic/claude-haiku-5.5", "openai/gpt-6.1-terra"],
-    "verifier": ["openai/gpt-6-luna", "anthropic/claude-haiku-5.5"], "escalation": ["anthropic/claude-haiku-5.5", "openai/gpt-6.1-terra"],
+    "verifier": ["openai/gpt-6-luna", "anthropic/claude-haiku-5.5"], "escalation": ["openai/gpt-6.1-terra", "anthropic/claude-sonnet-5.5"],
     "helper": ["openai/gpt-6-luna", "anthropic/claude-haiku-5.5"], "perception": ["meta/muse-ember"],
 }
 
 WHY = {
-    "worker": "faz a tarefa: o mais barato que resolveu todas as tarefas do dia a dia, de mídia e difíceis",
+    "worker": "faz a tarefa: o mais barato que resolveu todas as tarefas, inclusive a mais difícil",
     "light": "sub-agentes de busca, leitura e resumo",
     "deep": "sub-agentes de raciocínio difícil: o mais barato que resolveu a tarefa mais difícil",
     "planner": "escreve o plano no modo Planejar, executar e revisar",
@@ -83,7 +83,8 @@ def _usable(known: dict, model: str, role: str) -> bool:
 def team(cfg: dict, catalog, roster: dict | None = None) -> dict[str, str]:
     """Resolve every role to a model id. Raises ValueError when nothing can be chosen."""
     overrides = cfg.get("team") or {}
-    ranked = (roster or load())["roles"]
+    roster = roster or load()
+    ranked, ev = roster["roles"], roster.get("evidence") or {}
 
     def wanted(role: str) -> list[str]:
         v = overrides.get(role)
@@ -104,6 +105,11 @@ def team(cfg: dict, catalog, roster: dict | None = None) -> dict[str, str]:
         if role == "verifier" and not mine and "worker" in out:
             other = [m for m in usable if _vendor(m) != _vendor(out["worker"])]
             usable = other + [m for m in usable if m not in other]
+        if role == "escalation" and not mine and out.get("worker") in usable:
+            # a hand-over to the worker itself helps nobody: take the next one that costs more on the hardest task
+            cost = {m: (row.get("cost_per_solved") or 0) for m, row in (ev.get(role) or {}).items()}
+            mine_cost = cost.get(out["worker"])
+            usable = [m for m in usable if mine_cost and cost.get(m, 0) > mine_cost] or usable
         if not usable:
             if role in ("perception",):
                 out[role] = cfg.get("perception_model") or cands[0]

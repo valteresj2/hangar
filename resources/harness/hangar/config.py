@@ -16,6 +16,7 @@ DEFAULTS: dict = {
     "verifier_model": "",                  # goldfish reviewer; "" = planner or model
     "helper_model": "openai/gpt-6-luna",   # compaction summaries (cheap)
     "perception_model": "meta/muse-ember", # image/audio/video -> text fallback
+    "vision_model": "deepseek/deepseek-v4.1-flash",  # describes images (perceive, look tests); "" = the working model, then perception_model
     "default_provider": "openrouter",
     "providers": {
         "openrouter": {"base_url": "https://openrouter.ai/api/v1", "api_key_env": "OPENROUTER_API_KEY"},
@@ -43,6 +44,7 @@ DEFAULTS: dict = {
     "keep_tool_results": 6,                # newest results never cleared
     "mcp_inline_max": 10,                  # more MCP tools than this -> deferred loading
     "skills_dirs": [],
+    "skills": True,                        # False (--no-skills): no skill index, hints or gates; for measuring what skills add
     # learning and policy -------------------------------------------------------
     "lessons": True,                       # write/reuse verified lessons (see lessons.py)
     "lessons_max_age_days": 90,

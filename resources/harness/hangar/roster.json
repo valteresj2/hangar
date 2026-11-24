@@ -1,7 +1,7 @@
 {
- "generated": "2026-11-13",
+ "generated": "2026-11-23",
  "min_runs": 2,
- "result_files": 24,
+ "result_files": 129,
  "tiers": {
   "core": [
    "bugfix",
@@ -28,7 +28,8 @@
    "cleared": [
     "core",
     "media",
-    "hard"
+    "hard",
+    "frontier"
    ],
    "ranked_on": [
     "core",
@@ -117,6 +118,10 @@
    "image",
    "text"
   ],
+  "deepseek/deepseek-v4.1-flash": [
+   "image",
+   "text"
+  ],
   "deepseek/deepseek-v4.1-flash-1017": [
    "image",
    "text"
@@ -127,6 +132,11 @@
   "meta/muse-ember": [
    "audio",
    "file",
+   "image",
+   "text",
+   "video"
+  ],
+  "minimax/minimax-m3.1-flash": [
    "image",
    "text",
    "video"
@@ -144,19 +154,55 @@
    "file",
    "image",
    "text"
+  ],
+  "qwen/qwen3.8-omni-flash": [
+   "audio",
+   "image",
+   "text",
+   "video"
+  ],
+  "tencent/hy4": [
+   "image",
+   "text"
+  ],
+  "tencent/hy4-flash": [
+   "image",
+   "text"
+  ],
+  "thinkingmachines/inkling-2-small": [
+   "image",
+   "text"
+  ],
+  "xiaomi/mimo-v2.6-flash": [
+   "audio",
+   "image",
+   "text",
+   "video"
+  ],
+  "xiaomi/mimo-v2.6-pro": [
+   "audio",
+   "image",
+   "text",
+   "video"
+  ],
+  "z-ai/glm-5.3-flash": [
+   "image",
+   "text",
+   "video"
   ]
  },
  "roles": {
   "worker": [
    {
-    "model": "openai/gpt-6-luna",
-    "solved": 50,
-    "runs": 50,
-    "cost_per_solved": 0.0015,
+    "model": "tencent/hy4-flash",
+    "solved": 22,
+    "runs": 22,
+    "cost_per_solved": 0.00119,
     "cleared": [
      "core",
      "media",
-     "hard"
+     "hard",
+     "frontier"
     ],
     "ranked_on": [
      "core",
@@ -166,13 +212,14 @@
    },
    {
     "model": "anthropic/claude-haiku-5.5",
-    "solved": 40,
-    "runs": 40,
-    "cost_per_solved": 0.00232,
+    "solved": 58,
+    "runs": 58,
+    "cost_per_solved": 0.00258,
     "cleared": [
      "core",
      "media",
-     "hard"
+     "hard",
+     "frontier"
     ],
     "ranked_on": [
      "core",
@@ -181,14 +228,32 @@
     ]
    },
    {
-    "model": "deepseek/deepseek-v4.1-flash-1017",
-    "solved": 27,
-    "runs": 27,
-    "cost_per_solved": 0.00318,
+    "model": "deepseek/deepseek-v4.1-flash",
+    "solved": 22,
+    "runs": 22,
+    "cost_per_solved": 0.00445,
     "cleared": [
      "core",
      "media",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "core",
+     "media",
      "hard"
+    ]
+   },
+   {
+    "model": "xiaomi/mimo-v2.6-flash",
+    "solved": 22,
+    "runs": 22,
+    "cost_per_solved": 0.0108,
+    "cleared": [
+     "core",
+     "media",
+     "hard",
+     "frontier"
     ],
     "ranked_on": [
      "core",
@@ -198,13 +263,14 @@
    },
    {
     "model": "openai/gpt-6.1-terra",
-    "solved": 27,
-    "runs": 27,
+    "solved": 29,
+    "runs": 29,
     "cost_per_solved": 0.01373,
     "cleared": [
      "core",
      "media",
-     "hard"
+     "hard",
+     "frontier"
     ],
     "ranked_on": [
      "core",
@@ -214,13 +280,14 @@
    },
    {
     "model": "anthropic/claude-sonnet-5.5",
-    "solved": 27,
-    "runs": 27,
+    "solved": 29,
+    "runs": 29,
     "cost_per_solved": 0.01907,
     "cleared": [
      "core",
      "media",
-     "hard"
+     "hard",
+     "frontier"
     ],
     "ranked_on": [
      "core",
@@ -230,6 +297,18 @@
    }
   ],
   "light": [
+   {
+    "model": "tencent/hy4-flash",
+    "solved": 8,
+    "runs": 8,
+    "cost_per_solved": 0.00038,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
    {
     "model": "openai/gpt-6-luna",
     "solved": 22,
@@ -243,10 +322,34 @@
     ]
    },
    {
+    "model": "deepseek/deepseek-v4.1-flash",
+    "solved": 8,
+    "runs": 8,
+    "cost_per_solved": 0.00132,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
     "model": "anthropic/claude-haiku-5.5",
-    "solved": 16,
-    "runs": 16,
-    "cost_per_solved": 0.00112,
+    "solved": 26,
+    "runs": 26,
+    "cost_per_solved": 0.00133,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "xiaomi/mimo-v2.6-flash",
+    "solved": 8,
+    "runs": 8,
+    "cost_per_solved": 0.0016,
     "cleared": [
      "core"
     ],
@@ -271,6 +374,18 @@
     "solved": 12,
     "runs": 12,
     "cost_per_solved": 0.00193,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "qwen/qwen3.8-omni-flash",
+    "solved": 8,
+    "runs": 8,
+    "cost_per_solved": 0.00268,
     "cleared": [
      "core"
     ],
@@ -317,10 +432,38 @@
   ],
   "deep": [
    {
+    "model": "tencent/hy4-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.01084,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
     "model": "anthropic/claude-haiku-5.5",
-    "solved": 31,
-    "runs": 31,
+    "solved": 46,
+    "runs": 46,
     "cost_per_solved": 0.02339,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "deepseek/deepseek-v4.1-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.04356,
     "cleared": [
      "core",
      "hard",
@@ -335,6 +478,34 @@
     "solved": 20,
     "runs": 20,
     "cost_per_solved": 0.0564,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "qwen/qwen3.8-omni-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.08571,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "xiaomi/mimo-v2.6-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.16832,
     "cleared": [
      "core",
      "hard",
@@ -361,10 +532,38 @@
   ],
   "planner": [
    {
+    "model": "tencent/hy4-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.01084,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
     "model": "anthropic/claude-haiku-5.5",
-    "solved": 31,
-    "runs": 31,
+    "solved": 46,
+    "runs": 46,
     "cost_per_solved": 0.02339,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "deepseek/deepseek-v4.1-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.04356,
     "cleared": [
      "core",
      "hard",
@@ -379,6 +578,34 @@
     "solved": 20,
     "runs": 20,
     "cost_per_solved": 0.0564,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "qwen/qwen3.8-omni-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.08571,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "xiaomi/mimo-v2.6-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.16832,
     "cleared": [
      "core",
      "hard",
@@ -405,6 +632,20 @@
   ],
   "verifier": [
    {
+    "model": "tencent/hy4-flash",
+    "solved": 14,
+    "runs": 14,
+    "cost_per_solved": 0.00129,
+    "cleared": [
+     "core",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "hard"
+    ]
+   },
+   {
     "model": "openai/gpt-6-luna",
     "solved": 35,
     "runs": 35,
@@ -420,9 +661,9 @@
    },
    {
     "model": "anthropic/claude-haiku-5.5",
-    "solved": 28,
-    "runs": 28,
-    "cost_per_solved": 0.00282,
+    "solved": 43,
+    "runs": 43,
+    "cost_per_solved": 0.00298,
     "cleared": [
      "core",
      "hard"
@@ -437,6 +678,34 @@
     "solved": 18,
     "runs": 18,
     "cost_per_solved": 0.004,
+    "cleared": [
+     "core",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "hard"
+    ]
+   },
+   {
+    "model": "deepseek/deepseek-v4.1-flash",
+    "solved": 14,
+    "runs": 14,
+    "cost_per_solved": 0.00555,
+    "cleared": [
+     "core",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "hard"
+    ]
+   },
+   {
+    "model": "xiaomi/mimo-v2.6-flash",
+    "solved": 14,
+    "runs": 14,
+    "cost_per_solved": 0.01329,
     "cleared": [
      "core",
      "hard"
@@ -473,14 +742,56 @@
      "core",
      "hard"
     ]
+   },
+   {
+    "model": "qwen/qwen3.8-omni-flash",
+    "solved": 14,
+    "runs": 14,
+    "cost_per_solved": 0.024,
+    "cleared": [
+     "core",
+     "hard"
+    ],
+    "ranked_on": [
+     "core",
+     "hard"
+    ]
    }
   ],
   "escalation": [
    {
+    "model": "tencent/hy4-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.01084,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
     "model": "anthropic/claude-haiku-5.5",
-    "solved": 31,
-    "runs": 31,
+    "solved": 46,
+    "runs": 46,
     "cost_per_solved": 0.02339,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "deepseek/deepseek-v4.1-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.04356,
     "cleared": [
      "core",
      "hard",
@@ -495,6 +806,34 @@
     "solved": 20,
     "runs": 20,
     "cost_per_solved": 0.0564,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "qwen/qwen3.8-omni-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.08571,
+    "cleared": [
+     "core",
+     "hard",
+     "frontier"
+    ],
+    "ranked_on": [
+     "frontier"
+    ]
+   },
+   {
+    "model": "xiaomi/mimo-v2.6-flash",
+    "solved": 16,
+    "runs": 16,
+    "cost_per_solved": 0.16832,
     "cleared": [
      "core",
      "hard",
@@ -521,6 +860,18 @@
   ],
   "helper": [
    {
+    "model": "tencent/hy4-flash",
+    "solved": 8,
+    "runs": 8,
+    "cost_per_solved": 0.00038,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
     "model": "openai/gpt-6-luna",
     "solved": 22,
     "runs": 22,
@@ -533,10 +884,34 @@
     ]
    },
    {
+    "model": "deepseek/deepseek-v4.1-flash",
+    "solved": 8,
+    "runs": 8,
+    "cost_per_solved": 0.00132,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
     "model": "anthropic/claude-haiku-5.5",
-    "solved": 16,
-    "runs": 16,
-    "cost_per_solved": 0.00112,
+    "solved": 26,
+    "runs": 26,
+    "cost_per_solved": 0.00133,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "xiaomi/mimo-v2.6-flash",
+    "solved": 8,
+    "runs": 8,
+    "cost_per_solved": 0.0016,
     "cleared": [
      "core"
     ],
@@ -561,6 +936,18 @@
     "solved": 12,
     "runs": 12,
     "cost_per_solved": 0.00193,
+    "cleared": [
+     "core"
+    ],
+    "ranked_on": [
+     "core"
+    ]
+   },
+   {
+    "model": "qwen/qwen3.8-omni-flash",
+    "solved": 8,
+    "runs": 8,
+    "cost_per_solved": 0.00268,
     "cleared": [
      "core"
     ],
@@ -611,6 +998,18 @@
     "solved": 9,
     "runs": 9,
     "cost_per_solved": 0.00164,
+    "cleared": [
+     "media"
+    ],
+    "ranked_on": [
+     "media"
+    ]
+   },
+   {
+    "model": "xiaomi/mimo-v2.6-flash",
+    "solved": 6,
+    "runs": 6,
+    "cost_per_solved": 0.00497,
     "cleared": [
      "media"
     ],

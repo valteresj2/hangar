@@ -144,6 +144,7 @@ def prompt_block(session, task: str) -> str:
         d["uses"] = int(d.get("uses", 0)) + 1
         _save(d)
     session.lessons_used = [str(d["_file"]) for d in picked]           # settled when the session ends
+    session.lessons_shown = getattr(session, "lessons_shown", []) + [d["title"] for d in picked]
     session.bus.emit("lessons", used=[d["title"] for d in picked])
     lines = [f"- {d['title']}: {d['lesson']}" + (f" (when: {d['situation']})" if d.get("situation") else "") for d in picked]
     return ("\n\n[Hints from earlier verified sessions on this machine — use them if they fit, ignore them if they do not]\n"

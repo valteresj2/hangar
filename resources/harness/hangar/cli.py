@@ -75,6 +75,7 @@ def _overrides(a) -> dict:
             "diagnostics": False if getattr(a, "no_diagnostics", False) else None,
             "lessons": False if getattr(a, "no_lessons", False) else None,
             "memory": False if getattr(a, "no_memory", False) else None,
+            "skills": False if getattr(a, "no_skills", False) else None,
             "trust_project": True if getattr(a, "trust_project", False) else None,
             "fallback_models": [m for m in (getattr(a, "fallback", None) or "").split(",") if m] or None}
 
@@ -414,6 +415,7 @@ def main(argv: list[str] | None = None) -> int:
         p.add_argument("--no-diagnostics", action="store_true", help="do not check files for syntax errors and undefined names after each write/edit")
         p.add_argument("--no-lessons", action="store_true", help="do not read or write the lesson library")
         p.add_argument("--no-memory", action="store_true", help="do not read or write this project's memory (.hangar/memory)")
+        p.add_argument("--no-skills", action="store_true", help="run without skills (to measure what they add)")
         p.add_argument("--trust-project", action="store_true", help="allow this project's hooks/plugins that execute code")
 
     r = sub.add_parser("run", help="run one task to completion")

@@ -1,7 +1,9 @@
 """Multimodal input for ANY model.
-1. If the working model accepts the modality, attach the file natively (one call, cheapest).
-2. Otherwise a cheap perception model turns it into text.
-3. If no model takes video, ffmpeg splits it into frames + audio and step 2 runs on the parts."""
+1. An image goes to `vision_model` when one is set: a cheap model that sees well, so a strong working model does not
+   spend its own price on every look.
+2. Otherwise, if the working model accepts the modality, the file is attached natively (one call).
+3. Otherwise a cheap perception model turns it into text.
+4. If no model takes video, ffmpeg splits it into frames + audio and step 2 runs on the parts."""
 from __future__ import annotations
 
 import base64
@@ -120,7 +122,8 @@ def describe(session, path: Path, question: str, prefer_model: str | None = None
     if key in session.perception_cache:
         return session.perception_cache[key]
     cands = []
-    for m in (prefer_model, session.model, session.cfg["perception_model"]):
+    eyes = session.cfg.get("vision_model") if kind == "image" else ""
+    for m in (prefer_model, eyes, session.model, session.cfg["perception_model"]):
         if m and m not in cands:
             cands.append(m)
 
